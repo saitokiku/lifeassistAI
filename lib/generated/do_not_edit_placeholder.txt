@@ -1,0 +1,2 @@
+Generated code lives next to its source (*.g.dart via build_runner).
+This directory is reserved for future generated assets. Do not edit by hand.
