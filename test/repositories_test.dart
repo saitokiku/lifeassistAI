@@ -136,6 +136,18 @@ void main() {
       expect(july, hasLength(1));
       expect(july.single.description, 'in month');
     });
+
+    test('transactions since a date, oldest first (history chart)', () async {
+      final repo = MoneyRepository(db);
+      await repo.addTransaction(
+          date: DateTime(2026, 7, 7), amount: 10, description: 'jul');
+      await repo.addTransaction(
+          date: DateTime(2026, 5, 1), amount: 20, description: 'may');
+      await repo.addTransaction(
+          date: DateTime(2026, 2, 1), amount: 30, description: 'feb');
+      final since = await repo.watchTransactionsSince(DateTime(2026, 5)).first;
+      expect(since.map((t) => t.description), ['may', 'jul']);
+    });
   });
 
   group('TimeRepository', () {
@@ -155,6 +167,23 @@ void main() {
 
       await repo.deleteBudget(budget.id);
       expect(await db.select(db.timeBlocks).get(), isEmpty);
+    });
+
+    test('blocks since a date, oldest first (history chart)', () async {
+      final repo = TimeRepository(db);
+      await repo.createBudget(
+          name: 'Kaizen', kind: 'kaizen', weeklyTargetHours: 42);
+      final budget = (await db.select(db.timeBudgets).get()).single;
+
+      await repo.logBlock(
+          budgetId: budget.id, date: DateTime(2026, 7, 7), hours: 4);
+      await repo.logBlock(
+          budgetId: budget.id, date: DateTime(2026, 6, 1), hours: 3);
+      await repo.logBlock(
+          budgetId: budget.id, date: DateTime(2026, 4, 1), hours: 2);
+
+      final since = await repo.watchBlocksSince(DateTime(2026, 6)).first;
+      expect(since.map((b) => b.hours), [3, 4]);
     });
   });
 

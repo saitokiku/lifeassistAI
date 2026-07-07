@@ -14,21 +14,22 @@ that compounds (Kaizen growth), and am I sustainable?*
   recovery floor, Focus Integrity Score (0–100), freedom progress, and a
   generated Today's Command.
 - **Kaizen** — growth metrics (one active hunt at a time), dated metric
-  entries, daily experiments with kill/confirm/iterate verdicts, streaks,
-  missed days.
+  entries with a 30/90-day trend chart, daily experiments with
+  kill/confirm/iterate verdicts, streaks, missed days.
 - **Money** — income, budget categories with leak-flag rules, transactions,
-  month-to-date and projected spend, surplus targets, Roth IRA and manual
-  balances.
+  month-to-date and projected spend, surplus targets, a monthly-surplus
+  history chart, Roth IRA and manual balances.
 - **Time** — weekly time budgets (actual vs target), time block logging,
-  available time today, countdowns (age-28 lock-in, end of year/month,
-  Roth IRA deadline, custom).
+  available time today, a weekly-hours history chart (Kaizen vs other),
+  countdowns (age-28 lock-in, end of year/month, Roth IRA deadline, custom).
 - **Habits** — boolean/numeric/duration habits, today's checklist, streaks.
 - **Ideas** — anti-diffusion parking lot with a 7-day cooling rule.
 - **Identity** — philosophy, operating identity statements, goals, freedom
   target.
 - **Reminders** — editable daily local notifications (morning command,
   experiment nudge, money check, night review, custom).
-- **Settings** — everything editable; JSON export/import; full reset.
+- **Settings** — everything editable; share-sheet JSON export and
+  file-picker/paste import; full reset; app version.
 
 All data persists locally in SQLite (drift). No cloud, no account, no
 analytics. Seed defaults are inserted once on first launch and become
@@ -39,7 +40,9 @@ ordinary editable records.
 Flutter (Material 3, dark mode first) · Dart · flutter_riverpod ·
 go_router · drift + SQLite (drift_flutter, sqlite3_flutter_libs) ·
 flutter_local_notifications + timezone · shared_preferences (small app
-flags only) · intl · uuid · custom-painted charts (no chart package).
+flags only) · intl · uuid · fl_chart (trend/history charts) plus a
+custom-painted sparkline · share_plus + file_picker (backup export/import) ·
+package_info_plus (version).
 
 Architecture: clean-ish layers per feature — `data/` (repositories over
 drift), `domain/` (models + pure rules), `application/` (Riverpod providers
@@ -112,15 +115,15 @@ scripts/             analyze/test/run/build helpers
 test/                unit + repository tests
 ```
 
-## Current limitations (v1)
+## Current limitations (v1.1)
 
-- Web: data persists via drift's web fallback only if `sqlite3.wasm` /
-  `drift_worker.js` are added to `web/`; local notifications don't exist on
-  web (the UI says so and degrades gracefully). iOS/Android are the real
-  targets.
-- Export/import is copy-paste JSON (plus a best-effort file save to the app
-  documents folder). No share sheet yet (roadmap v1.1).
-- No bank import, calendar integration, or cloud sync (roadmap).
+- Web: `drift_worker.js` is committed; drop `web/sqlite3.wasm` in for
+  persistence (one download — see `web/README.md`). Without it the web
+  build runs but data is in-memory. Local notifications don't exist on web
+  (the UI says so and degrades gracefully). iOS/Android are the real targets.
+- No bank/CSV import, calendar integration, or cloud sync (roadmap v1.2+).
+  Cloud sync is intentionally deferred — it needs a backend + auth and would
+  compromise the local-first, no-account privacy stance if rushed.
 - App icon is a placeholder; signing/bundle id must be configured in Xcode
   before device installs.
 - Reminders use inexact Android alarms; on iOS times are exact but require

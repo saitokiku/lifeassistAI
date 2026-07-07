@@ -7,12 +7,17 @@ Kaizen/Money/Time/Habits/Ideas/Identity/Reminders/Settings, onboarding,
 JSON export/import, tests, iOS build scripts. Private use via development
 builds / TestFlight internal testing.
 
-## v1.1 — better charts & export ergonomics
+## v1.1 — better charts & export ergonomics ✅ (shipped)
 
-- Richer trend charts (30/90-day metric history, weekly hour stacks,
-  monthly surplus history)
-- Share-sheet export (share_plus) and file-picker import
-- Web persistence assets (sqlite3.wasm + drift_worker.js) checked in
+- Richer trend charts (fl_chart): 30/90-day metric history line chart on
+  Kaizen, weekly hour stacks (Kaizen vs other) on Time, monthly surplus
+  history bars on Money
+- Share-sheet export (share_plus) with clipboard fallback; file-picker
+  import (file_picker) with paste fallback
+- `drift_worker.js` compiled and committed under `web/`; `sqlite3.wasm`
+  documented in `web/README.md` (single manual download — the release
+  asset host is blocked in the build sandbox, so it can't be vendored here)
+- App version shown in Settings → About
 
 ## v1.2 — calendar integration
 

@@ -16,6 +16,7 @@ import 'widgets/experiment_log_form.dart';
 import 'widgets/growth_metric_chart.dart';
 import 'widgets/growth_metric_editor.dart';
 import 'widgets/growth_metric_entry_form.dart';
+import 'widgets/metric_history_chart.dart';
 
 /// Kaizen module: growth metrics and daily kill-or-confirm experiments.
 class KaizenScreen extends ConsumerWidget {
@@ -120,6 +121,15 @@ class KaizenScreen extends ConsumerWidget {
                               ),
                           ],
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    MetricCard(
+                      title: 'Metric trend',
+                      child: MetricHistoryChart(
+                        entries: state.activeMetricEntries,
+                        unit: metric.unit,
+                        weeklyTarget: metric.weeklyTarget,
                       ),
                     ),
                   ] else

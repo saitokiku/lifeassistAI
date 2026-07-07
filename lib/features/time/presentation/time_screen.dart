@@ -13,6 +13,7 @@ import 'widgets/countdown_list.dart';
 import 'widgets/time_block_history_list.dart';
 import 'widgets/time_block_log_form.dart';
 import 'widgets/time_budget_editor.dart';
+import 'widgets/weekly_hours_chart.dart';
 import 'widgets/weekly_time_budget_card.dart';
 
 /// Time module: weekly budgets, logged blocks, countdowns.
@@ -45,6 +46,10 @@ class TimeScreen extends ConsumerWidget {
                   WeeklyTimeBudgetCard(
                     state: state,
                     onEdit: () => _showBudgetManager(context, ref, state),
+                  ),
+                  const SizedBox(height: 12),
+                  WeeklyHoursChart(
+                    kaizenWeeklyTarget: state.kaizenWeeklyTarget,
                   ),
                   SectionHeader(
                     title: 'Countdowns',

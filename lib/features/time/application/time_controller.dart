@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../settings/application/settings_controller.dart';
 import '../data/time_repository.dart';
+import '../domain/time_category.dart';
 import 'time_state.dart';
 
 final timeRepositoryProvider = Provider<TimeRepository>(
@@ -44,6 +46,67 @@ final timeStateProvider = Provider<TimeState?>((ref) {
     countdowns: countdowns,
     birthday: settings?.birthday,
   );
+});
+
+/// One week's logged-hours totals for the history chart.
+class WeeklyHoursPoint {
+  const WeeklyHoursPoint({
+    required this.weekStart,
+    required this.totalHours,
+    required this.kaizenHours,
+  });
+
+  final DateTime weekStart;
+  final double totalHours;
+  final double kaizenHours;
+}
+
+/// How many weeks of history the time chart shows.
+const int kWeeklyHistoryWeeks = 8;
+
+final _blocksSinceProvider =
+    StreamProvider.family<List<TimeBlock>, DateTime>((ref, since) {
+  return ref.watch(timeRepositoryProvider).watchBlocksSince(since);
+});
+
+/// Last [kWeeklyHistoryWeeks] weeks of total vs Kaizen hours (oldest first).
+/// Null while sources load.
+final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
+  final now = readNow(ref);
+  final budgets = ref.watch(timeBudgetsProvider).valueOrNull;
+  final firstWeekStart = AppDateUtils.startOfWeek(now)
+      .subtract(const Duration(days: 7 * (kWeeklyHistoryWeeks - 1)));
+  final blocks = ref.watch(_blocksSinceProvider(firstWeekStart)).valueOrNull;
+  if (budgets == null || blocks == null) return null;
+
+  final kaizenBudgetIds = budgets
+      .where((b) => TimeCategoryKind.parse(b.kind) == TimeCategoryKind.kaizen)
+      .map((b) => b.id)
+      .toSet();
+
+  final totals = <String, double>{};
+  final kaizen = <String, double>{};
+  for (final block in blocks) {
+    final weekKey = AppDateUtils.dateKey(
+        AppDateUtils.startOfWeek(AppDateUtils.parseDateKey(block.date)));
+    totals[weekKey] = (totals[weekKey] ?? 0) + block.hours;
+    if (kaizenBudgetIds.contains(block.budgetId)) {
+      kaizen[weekKey] = (kaizen[weekKey] ?? 0) + block.hours;
+    }
+  }
+
+  return [
+    for (var i = 0; i < kWeeklyHistoryWeeks; i++)
+      () {
+        final weekStart = firstWeekStart.add(Duration(days: 7 * i));
+        final key = AppDateUtils.dateKey(weekStart);
+        return WeeklyHoursPoint(
+          weekStart: weekStart,
+          totalHours: totals[key] ?? 0,
+          kaizenHours: kaizen[key] ?? 0,
+        );
+      }(),
+  ];
 });
 
 class TimeController {
