@@ -16,6 +16,7 @@ import 'widgets/budget_category_editor.dart';
 import 'widgets/budget_category_list.dart';
 import 'widgets/money_flags_card.dart';
 import 'widgets/surplus_card.dart';
+import 'widgets/surplus_history_chart.dart';
 import 'widgets/transaction_entry_form.dart';
 import 'widgets/transactions_list.dart';
 
@@ -49,6 +50,10 @@ class MoneyScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   MoneyFlagsCard(flags: state.snapshot.flags),
+                  const SizedBox(height: 12),
+                  SurplusHistoryChart(
+                    targetSurplusLow: state.snapshot.targetSurplusLow,
+                  ),
                   const SizedBox(height: 12),
                   MetricCard(
                     title: 'Freedom accounts',

@@ -41,3 +41,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# drift web worker source map (worker js itself is committed)
+web/*.js.map

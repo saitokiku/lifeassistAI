@@ -48,7 +48,8 @@ Cards (all live from persisted data):
 ### 2. Kaizen
 
 - Growth metrics: create/edit/delete; exactly one active at a time;
-  dated entries (same-day entries replace); history list; sparkline.
+  dated entries (same-day entries replace); history list; sparkline; and a
+  30/90-day metric trend line chart.
 - Daily experiments: hypothesis → action → result → verdict
   (kill / confirm / iterate) + notes; edit/delete; filter by verdict;
   streak and missed-days counters.

@@ -67,6 +67,16 @@ class MoneyRepository {
         .watch();
   }
 
+  /// Transactions on or after [since], oldest first. Powers the monthly
+  /// surplus history chart.
+  Stream<List<TransactionEntry>> watchTransactionsSince(DateTime since) {
+    final key = AppDateUtils.dateKey(since);
+    return (_db.select(_db.transactionEntries)
+          ..where((t) => t.date.isBiggerOrEqualValue(key))
+          ..orderBy([(t) => OrderingTerm.asc(t.date)]))
+        .watch();
+  }
+
   Future<void> addTransaction({
     required DateTime date,
     required double amount,

@@ -63,6 +63,16 @@ class TimeRepository {
             ..limit(limit))
           .watch();
 
+  /// Blocks logged on or after [since] (a date key boundary), oldest first.
+  /// Used by the weekly-hours history chart.
+  Stream<List<TimeBlock>> watchBlocksSince(DateTime since) {
+    final key = AppDateUtils.dateKey(since);
+    return (_db.select(_db.timeBlocks)
+          ..where((t) => t.date.isBiggerOrEqualValue(key))
+          ..orderBy([(t) => OrderingTerm.asc(t.date)]))
+        .watch();
+  }
+
   Future<void> logBlock({
     required String budgetId,
     required DateTime date,
