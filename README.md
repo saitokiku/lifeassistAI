@@ -9,10 +9,15 @@ that compounds (Kaizen growth), and am I sustainable?*
 
 ## What it does
 
-- **Dashboard** — Kaizen hours this week, active growth metric with 7-day
-  trend, today's kill-or-confirm experiment, projected monthly surplus,
-  recovery floor, Focus Integrity Score (0–100), freedom progress, and a
-  generated Today's Command.
+Five tabs — **Today · Kaizen · Money · Time · You** — on a shared design
+system (bundled Inter + Space Grotesk, dark-first, one component library).
+
+- **Today** — the command center: greeting + focus-score ring, a single
+  prioritized "Today's focus" directive with a direct action, one-tap
+  check-in chips (habits, experiment, metric value), a 2×2 scoreboard
+  (Kaizen hours, surplus, recovery, streak), the active growth metric with
+  7-day trend and inline logging, freedom progress, loose ends, and a
+  global quick-add for time/spend/metric/experiment/idea capture.
 - **Kaizen** — growth metrics (one active hunt at a time), dated metric
   entries with a 30/90-day trend chart, daily experiments with
   kill/confirm/iterate verdicts, streaks, missed days.
@@ -27,9 +32,13 @@ that compounds (Kaizen growth), and am I sustainable?*
 - **Identity** — philosophy, operating identity statements, goals, freedom
   target.
 - **Reminders** — editable daily local notifications (morning command,
-  experiment nudge, money check, night review, custom).
+  experiment nudge, money check, night review, custom), grouped by time of
+  day, with rotating or custom message lines.
+- **You** — the hub for Identity, Habits, Ideas, Reminders, and Settings,
+  each row with a live one-line status.
 - **Settings** — everything editable; share-sheet JSON export and
-  file-picker/paste import; full reset; app version.
+  file-picker/paste import (with envelope preview and human error copy);
+  full reset; app version.
 
 All data persists locally in SQLite (drift). No cloud, no account, no
 analytics. Seed defaults are inserted once on first launch and become
@@ -38,11 +47,19 @@ ordinary editable records.
 ## Tech stack
 
 Flutter (Material 3, dark mode first) · Dart · flutter_riverpod ·
-go_router · drift + SQLite (drift_flutter, sqlite3_flutter_libs) ·
-flutter_local_notifications + timezone · shared_preferences (small app
-flags only) · intl · uuid · fl_chart (trend/history charts) plus a
-custom-painted sparkline · share_plus + file_picker (backup export/import) ·
-package_info_plus (version).
+go_router (StatefulShellRoute — tabs keep their state) · drift + SQLite
+(drift_flutter, sqlite3_flutter_libs) · flutter_local_notifications +
+timezone · shared_preferences (small app flags only) · intl · uuid ·
+fl_chart (trend/history charts) plus a custom-painted sparkline ·
+share_plus + file_picker (backup export/import) · package_info_plus
+(version) · bundled Inter + Space Grotesk fonts (OFL, licenses in
+`assets/fonts/`).
+
+Design system: tokens in `lib/core/theme/` (spacing, radii, motion,
+palette, type scale) and a shared component library in
+`lib/shared/widgets/` (cards, tiles, sheet scaffold with busy-state
+buttons, check rings, status pills, progress, skeletons, empty/error
+states, undo snacks, haptics).
 
 Architecture: clean-ish layers per feature — `data/` (repositories over
 drift), `domain/` (models + pure rules), `application/` (Riverpod providers
@@ -100,7 +117,7 @@ lib/
 ├── routing/         go_router config
 ├── shared/          layout (adaptive nav) + reusable widgets
 └── features/
-    ├── dashboard/   aggregated state + cards
+    ├── dashboard/   Today — aggregated state + command center
     ├── kaizen/      metrics + experiments
     ├── money/       budgets + transactions + flags
     ├── time/        budgets + blocks + countdowns
@@ -109,6 +126,7 @@ lib/
     ├── identity/    philosophy, goals, freedom target
     ├── reminders/   local notifications
     ├── settings/    settings + backup (export/import)
+    ├── you/         the You hub (compact-layout home for the above)
     └── onboarding/  first-launch flow
 docs/                product spec, data model, scoring rules, release docs
 scripts/             analyze/test/run/build helpers

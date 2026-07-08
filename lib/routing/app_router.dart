@@ -12,6 +12,7 @@ import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/reminders/presentation/reminders_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/time/presentation/time_screen.dart';
+import '../features/you/presentation/you_screen.dart';
 import '../shared/layout/app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -30,49 +31,61 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => AppShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
-          ),
-          GoRoute(
-            path: '/kaizen',
-            builder: (context, state) => const KaizenScreen(),
-          ),
-          GoRoute(
-            path: '/money',
-            builder: (context, state) => const MoneyScreen(),
-          ),
-          GoRoute(
-            path: '/time',
-            builder: (context, state) => const TimeScreen(),
-          ),
-          GoRoute(
-            path: '/habits',
-            builder: (context, state) => const HabitsScreen(),
-          ),
-          GoRoute(
-            path: '/ideas',
-            builder: (context, state) => const IdeasScreen(),
-          ),
-          GoRoute(
-            path: '/identity',
-            builder: (context, state) => const IdentityScreen(),
-          ),
-          GoRoute(
-            path: '/reminders',
-            builder: (context, state) => const RemindersScreen(),
-          ),
-          GoRoute(
-            path: '/settings',
-            builder: (context, state) => const SettingsScreen(),
-          ),
-          GoRoute(
-            path: '/more',
-            builder: (context, state) => const MoreScreen(),
-          ),
+      // Indexed-stack shell: each tab keeps its scroll position and state.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(shell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/dashboard',
+              builder: (context, state) => const DashboardScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/kaizen',
+              builder: (context, state) => const KaizenScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/money',
+              builder: (context, state) => const MoneyScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/time',
+              builder: (context, state) => const TimeScreen(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/more',
+              builder: (context, state) => const YouScreen(),
+            ),
+            GoRoute(
+              path: '/habits',
+              builder: (context, state) => const HabitsScreen(),
+            ),
+            GoRoute(
+              path: '/ideas',
+              builder: (context, state) => const IdeasScreen(),
+            ),
+            GoRoute(
+              path: '/identity',
+              builder: (context, state) => const IdentityScreen(),
+            ),
+            GoRoute(
+              path: '/reminders',
+              builder: (context, state) => const RemindersScreen(),
+            ),
+            GoRoute(
+              path: '/settings',
+              builder: (context, state) => const SettingsScreen(),
+            ),
+          ]),
         ],
       ),
     ],

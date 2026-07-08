@@ -3,21 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/validation.dart';
+import '../../../../shared/haptics.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../application/ideas_controller.dart';
 import '../../domain/parked_idea.dart';
+import 'idea_snacks.dart';
 
-/// Capture or edit a parked idea. Review date auto-sets 7 days out.
+/// Capture or edit a parked idea.
+///
+/// Capture is title-first: one field, one switch, done — parking a shiny
+/// thing should cost almost nothing. The reflective prompts (description,
+/// why tempting, potential value, category) sit behind "Add detail".
+/// Editing opens with everything visible, and says nothing about cooling:
+/// editing never restarts the clock, so we say nothing rather than lie.
 class IdeaCaptureForm extends ConsumerStatefulWidget {
   const IdeaCaptureForm({super.key, this.idea});
 
   final ParkedIdea? idea;
 
   static Future<void> show(BuildContext context, {ParkedIdea? idea}) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
+      showAppSheet<void>(
+        context,
         builder: (_) => IdeaCaptureForm(idea: idea),
       );
 
@@ -38,6 +47,19 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
       TextEditingController(text: widget.idea?.potentialValue ?? '');
   late bool _helpsKaizen = widget.idea?.directlyHelpsKaizenThisWeek ?? false;
 
+  /// Detail is collapsed on capture, expanded on edit.
+  late bool _showDetail = widget.idea != null;
+
+  /// Guards the keyboard-done path against double submits; the sheet
+  /// button already guards itself.
+  bool _saving = false;
+
+  /// Save failure shown inside the sheet — a snack would render behind
+  /// the modal barrier and go unseen.
+  String? _error;
+
+  bool get _isEdit => widget.idea != null;
+
   @override
   void dispose() {
     _title.dispose();
@@ -52,12 +74,19 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
       c.text.trim().isEmpty ? null : c.text.trim();
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    _saving = true;
+    setState(() => _error = null);
     final controller = ref.read(ideasControllerProvider);
+    // Captured before any await; the sheet pops before the snack shows.
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final textTheme = Theme.of(context).textTheme;
     try {
       if (widget.idea == null) {
+        // The repository owns the review date — cooling cannot be skipped
+        // or shortened at capture, so the form never passes one.
         await controller.captureIdea(
           title: _title.text.trim(),
           description: _emptyToNull(_description),
@@ -67,6 +96,9 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
           directlyHelpsKaizenThisWeek: _helpsKaizen,
         );
       } else {
+        // Full-row update. dateCaptured, reviewDate, decision, and
+        // createdAt ride along untouched — editing never resets the
+        // cooling clock or the verdict.
         await controller.updateIdea(widget.idea!.copyWith(
           title: _title.text.trim(),
           description: Value(_emptyToNull(_description)),
@@ -76,76 +108,128 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
           directlyHelpsKaizenThisWeek: _helpsKaizen,
         ));
       }
+      Haptics.medium();
       navigator.pop();
-      messenger.showSnackBar(
-          const SnackBar(content: Text(AppCopy.curiosityCaptured)));
+      showIdeaSuccessSnack(
+        messenger,
+        textTheme,
+        _isEdit ? 'Updated.' : 'Parked. Let it cool.',
+      );
     } catch (_) {
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Could not save idea.')));
+      // The sheet stays open for retry, so the error must live inside it.
+      if (mounted) {
+        setState(() => _error = "That didn't save. Try again.");
+      } else {
+        showIdeaErrorSnack(
+            messenger, textTheme, "That didn't save. Try again.");
+      }
+    } finally {
+      _saving = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
+    return AppSheet(
+      title: _isEdit ? 'Edit idea' : 'Park an idea',
+      subtitle: _isEdit
+          ? null
+          : 'It cools for ${AppConstants.ideaCoolingDays} days, '
+              'then gets a verdict.',
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline_rounded,
+                      size: 16, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 6),
+                  Text(
+                    _error!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          AppSheetButton(
+            label: _isEdit ? 'Save changes' : 'Park it',
+            onPressed: _save,
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Form(
+      children: [
+        Form(
           key: _formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                widget.idea == null ? 'Park an idea' : 'Edit idea',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'It cools for ${AppConstants.ideaCoolingDays} days unless it directly helps Kaizen this week.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              AppTextField(
-                label: 'Title',
+              TextFormField(
                 controller: _title,
+                autofocus: !_isEdit,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _save(),
                 validator: (v) => Validators.required(v, label: 'Title'),
-                autofocus: widget.idea == null,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  hintText: 'The shiny thing, in one line',
+                ),
               ),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Description', controller: _description, maxLines: 2),
-              const SizedBox(height: 12),
-              AppTextField(label: 'Category', controller: _category),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Why is it tempting?',
-                  controller: _whyTempting,
-                  maxLines: 2),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Potential value',
-                  controller: _potentialValue,
-                  maxLines: 2),
+              const SizedBox(height: AppSpace.xs),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Directly helps Kaizen this week'),
-                subtitle: const Text('Only then can it skip cooling.'),
+                title: const Text('Directly helps the hunt this week'),
+                subtitle: const Text('The only way to skip cooling.'),
                 value: _helpsKaizen,
-                onChanged: (v) => setState(() => _helpsKaizen = v),
+                onChanged: (v) {
+                  Haptics.select();
+                  setState(() => _helpsKaizen = v);
+                },
               ),
-              FilledButton(onPressed: _save, child: const Text('Park it')),
+              if (!_showDetail)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Haptics.select();
+                      setState(() => _showDetail = true);
+                    },
+                    icon: const Icon(Icons.expand_more_rounded, size: 18),
+                    label: const Text('Add detail'),
+                  ),
+                )
+              else ...[
+                const SizedBox(height: AppSpace.xs),
+                AppTextField(
+                  label: 'Description',
+                  controller: _description,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpace.md),
+                AppTextField(
+                  label: 'Why is it tempting?',
+                  controller: _whyTempting,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpace.md),
+                AppTextField(
+                  label: 'Potential value',
+                  controller: _potentialValue,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpace.md),
+                AppTextField(label: 'Category', controller: _category),
+              ],
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

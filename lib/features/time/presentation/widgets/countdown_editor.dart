@@ -3,10 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/storage/app_database.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
+import '../../../../shared/haptics.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../../../shared/widgets/loading_view.dart';
 import '../../application/time_controller.dart';
 
 /// Create or edit a fixed-date countdown. Dynamic countdowns (end of year,
@@ -17,9 +23,8 @@ class CountdownEditor extends ConsumerStatefulWidget {
   final Countdown? countdown;
 
   static Future<void> show(BuildContext context, {Countdown? countdown}) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
+      showAppSheet<void>(
+        context,
         builder: (_) => CountdownEditor(countdown: countdown),
       );
 
@@ -35,6 +40,8 @@ class _CountdownEditorState extends ConsumerState<CountdownEditor> {
           widget.countdown!.targetDate!.isEmpty
       ? null
       : AppDateUtils.parseDateKey(widget.countdown!.targetDate!);
+  bool _missingDate = false;
+  bool _deleting = false;
 
   bool get _isDynamic => widget.countdown?.dynamicKey != null;
 
@@ -51,17 +58,21 @@ class _CountdownEditorState extends ConsumerState<CountdownEditor> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null && mounted) {
+      setState(() {
+        _date = picked;
+        _missingDate = false;
+      });
+    }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_isDynamic && _date == null) {
-      showErrorHint();
+      setState(() => _missingDate = true);
       return;
     }
     final controller = ref.read(timeControllerProvider);
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
       if (widget.countdown == null) {
@@ -75,68 +86,148 @@ class _CountdownEditorState extends ConsumerState<CountdownEditor> {
               : Value(AppDateUtils.dateKey(_date!)),
         ));
       }
-      navigator.pop();
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Countdown saved.')));
     } catch (_) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Could not save countdown.')));
+      if (mounted) showErrorSnack(context, "That didn't save. Try again.");
+      return;
     }
+    Haptics.medium();
+    if (!mounted) return;
+    showSuccessSnack(context, 'Saved.');
+    navigator.pop();
   }
 
-  void showErrorHint() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pick a target date.')),
-    );
+  Future<void> _delete() async {
+    if (_deleting) return;
+    _deleting = true;
+    try {
+      final countdown = widget.countdown!;
+      final controller = ref.read(timeControllerProvider);
+      final navigator = Navigator.of(context);
+      final raw = countdown.targetDate;
+      final recreatable =
+          countdown.dynamicKey == null && raw != null && raw.isNotEmpty;
+
+      if (!recreatable) {
+        // Dynamic countdowns can't be recreated from the UI — confirm first.
+        final confirmed = await showConfirmDialog(
+          context,
+          title: 'Delete countdown?',
+          message: countdown.dynamicKey != null
+              ? '"${countdown.title}" computes its own date. '
+                  'Once deleted it cannot be recreated.'
+              : 'Removes "${countdown.title}".',
+        );
+        if (!confirmed || !mounted) return;
+        try {
+          await controller.deleteCountdown(countdown.id);
+        } catch (_) {
+          if (mounted) {
+            showErrorSnack(context, "That didn't delete. Try again.");
+          }
+          return;
+        }
+        if (!mounted) return;
+        showSuccessSnack(context, 'Deleted.');
+        navigator.pop();
+        return;
+      }
+
+      // Cheap to recreate: delete now, offer undo.
+      final title = countdown.title;
+      final target = AppDateUtils.parseDateKey(raw);
+      try {
+        await controller.deleteCountdown(countdown.id);
+      } catch (_) {
+        if (mounted) {
+          showErrorSnack(context, "That didn't delete. Try again.");
+        }
+        return;
+      }
+      Haptics.medium();
+      if (!mounted) return;
+      showUndoSnack(
+        context,
+        'Countdown deleted.',
+        onUndo: () =>
+            controller.createCountdown(title: title, targetDate: target),
+      );
+      navigator.pop();
+    } finally {
+      _deleting = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
+    final theme = Theme.of(context);
+    final isNew = widget.countdown == null;
+
+    return AppSheet(
+      title: isNew ? 'New countdown' : 'Edit countdown',
+      subtitle: isNew ? 'A visible deadline beats a vague one.' : null,
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSheetButton(label: 'Save', onPressed: _save),
+          if (!isNew) ...[
+            const SizedBox(height: AppSpace.sm),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.critical,
+              ),
+              onPressed: _delete,
+              child: const Text('Delete countdown'),
+            ),
+          ],
+        ],
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.countdown == null ? 'New countdown' : 'Edit countdown',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Title',
-              controller: _title,
-              validator: (v) => Validators.required(v, label: 'Title'),
-            ),
-            const SizedBox(height: 8),
-            if (_isDynamic)
-              Text(
-                'This countdown computes its own date.',
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event),
-                title: Text(
-                    _date == null ? 'No date set' : Formatters.fullDate(_date!)),
-                trailing: TextButton(
-                  onPressed: _pickDate,
-                  child: const Text('Pick date'),
+      children: [
+        Form(
+          key: _formKey,
+          child: AppTextField(
+            label: 'Title',
+            controller: _title,
+            validator: (v) => Validators.required(v, label: 'Title'),
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        if (_isDynamic)
+          Row(
+            children: [
+              Icon(Icons.autorenew,
+                  size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Text(
+                  'This countdown computes its own date.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-            const SizedBox(height: 8),
-            FilledButton(onPressed: _save, child: const Text('Save')),
-          ],
-        ),
-      ),
+            ],
+          )
+        else
+          InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            onTap: _pickDate,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Target date',
+                errorText: _missingDate ? 'Pick a target date.' : null,
+                suffixIcon:
+                    const Icon(Icons.calendar_today_outlined, size: 18),
+              ),
+              isEmpty: _date == null,
+              child: _date == null
+                  ? null
+                  : Text(
+                      Formatters.fullDate(_date!),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+            ),
+          ),
+      ],
     );
   }
 }

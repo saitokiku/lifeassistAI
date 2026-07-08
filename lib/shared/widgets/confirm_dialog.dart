@@ -1,38 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// Confirmation dialog for destructive actions. Returns true when confirmed.
+import 'app_sheet.dart';
+
+/// Confirmation for destructive actions. Returns true when confirmed.
+///
+/// Kept as the app-wide entry point; renders as a bottom sheet rather than
+/// a blocking dialog so confirms live where thumbs are.
 Future<bool> showConfirmDialog(
   BuildContext context, {
   required String title,
   required String message,
   String confirmLabel = 'Delete',
   bool destructive = true,
-}) async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      final theme = Theme.of(context);
-      return AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: destructive
-                ? FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error,
-                    foregroundColor: theme.colorScheme.onError,
-                  )
-                : null,
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(confirmLabel),
-          ),
-        ],
-      );
-    },
+}) {
+  return showConfirmSheet(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: confirmLabel,
+    destructive: destructive,
   );
-  return result ?? false;
 }

@@ -2,8 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Circular progress ring with a centered label. Custom-painted; no chart
-/// package dependency.
+import '../../core/theme/app_tokens.dart';
+
+/// Circular progress ring with a centered label. Custom-painted; the arc
+/// sweeps smoothly when progress changes.
 class ProgressRing extends StatelessWidget {
   const ProgressRing({
     super.key,
@@ -23,15 +25,25 @@ class ProgressRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0).toDouble();
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _RingPainter(
-          progress: progress.clamp(0.0, 1.0),
-          color: color,
-          trackColor: Theme.of(context).colorScheme.outlineVariant,
-          strokeWidth: strokeWidth,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: clamped, end: clamped),
+        duration: AppMotion.sweep,
+        curve: AppMotion.easeOut,
+        builder: (context, animated, child) => CustomPaint(
+          painter: _RingPainter(
+            progress: animated,
+            color: color,
+            trackColor: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withValues(alpha: 0.8),
+            strokeWidth: strokeWidth,
+          ),
+          child: child,
         ),
         child: Center(child: center),
       ),

@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
-import '../../../../shared/widgets/app_number_field.dart';
+import '../../../../shared/haptics.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../application/money_controller.dart';
 import '../../domain/budget_category.dart';
+import 'money_field.dart';
+import 'money_snacks.dart';
 
-/// Create or edit a budget category, including its flag rule.
+/// Create or edit a budget category, including the rule that polices it.
 class BudgetCategoryEditor extends ConsumerStatefulWidget {
   const BudgetCategoryEditor({super.key, this.category});
 
   final BudgetCategory? category;
 
   static Future<void> show(BuildContext context, {BudgetCategory? category}) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
+      showAppSheet<void>(
+        context,
         builder: (_) => BudgetCategoryEditor(category: category),
       );
 
@@ -31,7 +35,8 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
   late final _target = TextEditingController(
       text: widget.category == null
           ? ''
-          : widget.category!.monthlyTarget.toString());
+          : Formatters.number(widget.category!.monthlyTarget,
+              maxDecimals: 2));
   late BudgetFlagType _flagType = widget.category == null
       ? BudgetFlagType.warnOverTarget
       : BudgetFlagType.parse(widget.category!.flagType);
@@ -42,6 +47,19 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
     _target.dispose();
     super.dispose();
   }
+
+  /// What the chosen rule actually does, in one line.
+  String _ruleCaption(BudgetFlagType type) => switch (type) {
+        BudgetFlagType.none => 'No flag. This lane is informational.',
+        BudgetFlagType.warnOverTarget =>
+          'Raises a watch flag once spend passes the monthly target.',
+        BudgetFlagType.warnOverZero =>
+          r'Raises a watch flag on any spend. For lanes meant to stay at $0.',
+        BudgetFlagType.warnOverZeroUnlessIntentional =>
+          'Flags spend unless every transaction is marked intentional.',
+        BudgetFlagType.criticalOverZero =>
+          'Flags any spend as critical. A hard no.',
+      };
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -62,63 +80,66 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
           flagType: _flagType.storageKey,
         ));
       }
-      navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Category saved.')));
     } catch (_) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Could not save category.')));
+      // Sheet stays open on failure.
+      showFailedSnack(messenger, "That didn't save. Try again.");
+      return;
     }
+    Haptics.medium();
+    navigator.pop();
+    showSavedSnack(messenger, 'Saved.');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.category == null ? 'New category' : 'Edit category',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Name',
-              controller: _name,
-              validator: (v) => Validators.required(v, label: 'Name'),
-              autofocus: widget.category == null,
-            ),
-            const SizedBox(height: 12),
-            AppNumberField(
-              label: 'Monthly target',
-              controller: _target,
-              suffixText: r'$',
-              validator: (v) => Validators.nonNegativeNumber(v, label: 'Target'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<BudgetFlagType>(
-              initialValue: _flagType,
-              decoration: const InputDecoration(labelText: 'Flag rule'),
-              items: [
-                for (final t in BudgetFlagType.values)
-                  DropdownMenuItem(value: t, child: Text(t.label)),
-              ],
-              onChanged: (v) =>
-                  setState(() => _flagType = v ?? BudgetFlagType.warnOverTarget),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: _save, child: const Text('Save')),
-          ],
+    final theme = Theme.of(context);
+    return AppSheet(
+      title: widget.category == null ? 'New category' : 'Edit category',
+      footer: AppSheetButton(label: 'Save', onPressed: _save),
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppTextField(
+                label: 'Name',
+                controller: _name,
+                validator: (v) => Validators.required(v, label: 'Name'),
+                autofocus: widget.category == null,
+              ),
+              const SizedBox(height: AppSpace.md),
+              MoneyField(
+                label: 'Monthly target',
+                controller: _target,
+                validator: (v) =>
+                    Validators.nonNegativeNumber(v, label: 'Target'),
+              ),
+              const SizedBox(height: AppSpace.md),
+              DropdownButtonFormField<BudgetFlagType>(
+                initialValue: _flagType,
+                decoration: const InputDecoration(labelText: 'Flag rule'),
+                items: [
+                  for (final t in BudgetFlagType.values)
+                    DropdownMenuItem(value: t, child: Text(t.label)),
+                ],
+                onChanged: (v) {
+                  Haptics.select();
+                  setState(
+                      () => _flagType = v ?? BudgetFlagType.warnOverTarget);
+                },
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                _ruleCaption(_flagType),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

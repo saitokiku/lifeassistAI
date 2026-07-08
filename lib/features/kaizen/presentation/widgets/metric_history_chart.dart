@@ -1,24 +1,33 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/storage/app_database.dart';
+import '../../../../shared/haptics.dart';
+import '../../domain/growth_metric_entry.dart';
 
-/// Line chart of an active metric's dated entries with a 30/90-day toggle.
+/// Line chart of the active metric's dated entries with a 30/90-day toggle
+/// and the weekly target drawn as a dashed reference line.
 class MetricHistoryChart extends StatefulWidget {
   const MetricHistoryChart({
     super.key,
     required this.entries,
     required this.unit,
     this.weeklyTarget,
+    this.today,
   });
 
   /// Newest-first list of entries (as provided by the repository).
   final List<GrowthMetricEntry> entries;
   final String unit;
   final double? weeklyTarget;
+
+  /// The app's ticking "today"; falls back to the device clock.
+  final DateTime? today;
 
   @override
   State<MetricHistoryChart> createState() => _MetricHistoryChartState();
@@ -30,7 +39,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = AppDateUtils.dateOnly(DateTime.now());
+    final today = AppDateUtils.dateOnly(widget.today ?? DateTime.now());
     final start = today.subtract(Duration(days: _days - 1));
 
     final inRange = widget.entries
@@ -41,28 +50,26 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text('History',
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Align(
+          alignment: Alignment.centerRight,
+          child: SegmentedButton<int>(
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            SegmentedButton<int>(
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              segments: const [
-                ButtonSegment(value: 30, label: Text('30d')),
-                ButtonSegment(value: 90, label: Text('90d')),
-              ],
-              selected: {_days},
-              onSelectionChanged: (s) => setState(() => _days = s.first),
-            ),
-          ],
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 30, label: Text('30d')),
+              ButtonSegment(value: 90, label: Text('90d')),
+            ],
+            selected: {_days},
+            onSelectionChanged: (s) {
+              Haptics.select();
+              setState(() => _days = s.first);
+            },
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         SizedBox(
           height: 180,
           child: inRange.length < 2
@@ -71,8 +78,9 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
                     inRange.isEmpty
                         ? 'No entries in the last $_days days.'
                         : 'Log a few more days to see a trend.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 )
               : _buildChart(context, inRange, start),
@@ -82,19 +90,30 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
   }
 
   Widget _buildChart(
-      BuildContext context, List<GrowthMetricEntry> inRange, DateTime start) {
+    BuildContext context,
+    List<GrowthMetricEntry> inRange,
+    DateTime start,
+  ) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final spots = [
       for (final e in inRange)
         FlSpot(
-          AppDateUtils.parseDateKey(e.date).difference(start).inDays.toDouble(),
+          AppDateUtils.parseDateKey(e.date)
+              .difference(start)
+              .inDays
+              .toDouble(),
           e.value,
         ),
     ];
 
+    final target = widget.weeklyTarget;
+    final hasTarget = target != null && target > 0;
+
     final values = spots.map((s) => s.y).toList();
-    var minY = values.reduce((a, b) => a < b ? a : b);
-    var maxY = values.reduce((a, b) => a > b ? a : b);
+    var minY = values.reduce(math.min);
+    var maxY = values.reduce(math.max);
+    if (hasTarget) maxY = math.max(maxY, target);
     if (minY == maxY) {
       minY = minY - 1;
       maxY = maxY + 1;
@@ -112,11 +131,33 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: ((maxY - minY) / 3).clamp(0.001, double.infinity),
+          horizontalInterval:
+              ((maxY - minY) / 3).clamp(0.001, double.infinity),
           getDrawingHorizontalLine: (_) =>
-              FlLine(color: theme.colorScheme.outlineVariant, strokeWidth: 1),
+              FlLine(color: scheme.outlineFaint, strokeWidth: 1),
         ),
         borderData: FlBorderData(show: false),
+        extraLinesData: hasTarget
+            ? ExtraLinesData(
+                horizontalLines: [
+                  HorizontalLine(
+                    y: target,
+                    color: scheme.textTertiary,
+                    strokeWidth: 1,
+                    dashArray: const [6, 4],
+                    label: HorizontalLineLabel(
+                      show: true,
+                      alignment: Alignment.topRight,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.textTertiary,
+                      ),
+                      labelResolver: (_) =>
+                          'Target ${Formatters.compact(target)}',
+                    ),
+                  ),
+                ],
+              )
+            : const ExtraLinesData(),
         titlesData: FlTitlesData(
           topTitles:
               const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -130,8 +171,10 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
                 if (value == meta.min || value == meta.max) {
                   return const SizedBox.shrink();
                 }
-                return Text(Formatters.compact(value),
-                    style: theme.textTheme.labelSmall);
+                return Text(
+                  Formatters.compact(value),
+                  style: theme.textTheme.labelSmall,
+                );
               },
             ),
           ),
@@ -139,13 +182,16 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 24,
-              interval: (_days - 1).toDouble(),
+              // Four date ticks across the range, first and last included.
+              interval: math.max(1, (_days - 1) / 3),
               getTitlesWidget: (value, meta) {
                 final date = start.add(Duration(days: value.round()));
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(Formatters.shortDate(date),
-                      style: theme.textTheme.labelSmall),
+                  child: Text(
+                    Formatters.shortDate(date),
+                    style: theme.textTheme.labelSmall,
+                  ),
                 );
               },
             ),
@@ -153,13 +199,14 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => theme.colorScheme.inverseSurface,
+            getTooltipColor: (_) => scheme.inverseSurface,
             getTooltipItems: (spots) => [
               for (final s in spots)
                 LineTooltipItem(
-                  '${Formatters.number(s.y)} ${widget.unit}\n${Formatters.shortDate(start.add(Duration(days: s.x.round())))}',
+                  '${Formatters.number(s.y)} ${widget.unit}\n'
+                  '${Formatters.shortDate(start.add(Duration(days: s.x.round())))}',
                   TextStyle(
-                    color: theme.colorScheme.onInverseSurface,
+                    color: scheme.onInverseSurface,
                     fontSize: 12,
                   ),
                 ),

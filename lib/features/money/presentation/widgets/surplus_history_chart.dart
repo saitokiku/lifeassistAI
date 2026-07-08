@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../shared/widgets/loading_view.dart';
 import '../../../../shared/widgets/metric_card.dart';
 import '../../application/money_controller.dart';
 
 /// Bar chart of monthly surplus (income − spend) over the last months.
-/// Bars are colored by status; a dashed line marks the low surplus target.
+/// Bars carry status colors; the in-progress month is outlined, not solid,
+/// because it hasn't finished happening yet.
 class SurplusHistoryChart extends ConsumerWidget {
   const SurplusHistoryChart({super.key, required this.targetSurplusLow});
 
@@ -21,7 +24,11 @@ class SurplusHistoryChart extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final history = ref.watch(monthlySurplusHistoryProvider);
-    if (history == null) return const SizedBox.shrink();
+    if (history == null) {
+      // Hold the card's height while the stream warms up so the page
+      // doesn't jump when the chart arrives.
+      return const SkeletonCard(height: 288);
+    }
 
     final surpluses = history.map((p) => p.surplus).toList();
     var maxV = surpluses.reduce((a, b) => a > b ? a : b);
@@ -31,9 +38,9 @@ class SurplusHistoryChart extends ConsumerWidget {
     minV = minV >= 0 ? 0 : minV * 1.15;
 
     return MetricCard(
-      title: 'Monthly surplus · last ${history.length} months',
+      title: 'Surplus · last ${history.length} months',
       supportText:
-          'Income − actual spend per month. Dashed line = ${Formatters.money(targetSurplusLow)} floor.',
+          'Dashed line marks the ${Formatters.money(targetSurplusLow)} floor.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -59,7 +66,7 @@ class SurplusHistoryChart extends ConsumerWidget {
                   horizontalLines: [
                     HorizontalLine(
                       y: targetSurplusLow,
-                      color: AppColors.watch.withValues(alpha: 0.8),
+                      color: AppColors.watch.withValues(alpha: 0.7),
                       strokeWidth: 1.2,
                       dashArray: [6, 4],
                     ),
@@ -76,15 +83,20 @@ class SurplusHistoryChart extends ConsumerWidget {
                       reservedSize: 44,
                       getTitlesWidget: (value, meta) {
                         if (value == meta.max) return const SizedBox.shrink();
-                        return Text(Formatters.compact(value),
-                            style: theme.textTheme.labelSmall);
+                        return Text(
+                          Formatters.compact(value),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.textTertiary,
+                            letterSpacing: 0,
+                          ),
+                        );
                       },
                     ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 22,
+                      reservedSize: 24,
                       getTitlesWidget: (value, meta) {
                         final i = value.round();
                         if (i < 0 || i >= history.length) {
@@ -92,8 +104,13 @@ class SurplusHistoryChart extends ConsumerWidget {
                         }
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text(_monthFmt.format(history[i].month),
-                              style: theme.textTheme.labelSmall),
+                          child: Text(
+                            _monthFmt.format(history[i].month),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.textTertiary,
+                              letterSpacing: 0,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -109,6 +126,7 @@ class SurplusHistoryChart extends ConsumerWidget {
                         TextStyle(
                           color: theme.colorScheme.onInverseSurface,
                           fontSize: 12,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       );
                     },
@@ -119,18 +137,39 @@ class SurplusHistoryChart extends ConsumerWidget {
                     BarChartGroupData(
                       x: i,
                       barRods: [
-                        BarChartRodData(
-                          toY: history[i].surplus,
-                          width: 18,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(3)),
-                          color: _colorFor(history[i])
-                              .withValues(alpha: history[i].isPartial ? 0.55 : 1),
-                        ),
+                        if (history[i].isPartial)
+                          // Outlined: this month is still accumulating.
+                          BarChartRodData(
+                            toY: history[i].surplus,
+                            width: 16,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4)),
+                            color: _colorFor(history[i])
+                                .withValues(alpha: 0.18),
+                            borderSide: BorderSide(
+                              color: _colorFor(history[i]),
+                              width: 1.4,
+                            ),
+                          )
+                        else
+                          BarChartRodData(
+                            toY: history[i].surplus,
+                            width: 16,
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(4)),
+                            color: _colorFor(history[i]),
+                          ),
                       ],
                     ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            'Outlined bar is this month, still in motion. Assumes current income across past months.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.textTertiary,
             ),
           ),
         ],

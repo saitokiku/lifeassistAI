@@ -3,14 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/storage/app_database.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
-import '../../../../shared/widgets/app_number_field.dart';
+import '../../../../shared/haptics.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../application/money_controller.dart';
+import 'money_field.dart';
+import 'money_snacks.dart';
 
-/// Add or edit a transaction.
+/// Add or edit a transaction. Built for speed: amount first (autofocused),
+/// last-used category preselected, date handled by chips.
 class TransactionEntryForm extends ConsumerStatefulWidget {
   const TransactionEntryForm({
     super.key,
@@ -26,9 +31,8 @@ class TransactionEntryForm extends ConsumerStatefulWidget {
     required List<BudgetCategory> categories,
     TransactionEntry? transaction,
   }) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
+      showAppSheet<void>(
+        context,
         builder: (_) => TransactionEntryForm(
           categories: categories,
           transaction: transaction,
@@ -45,14 +49,31 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
   late final _amount = TextEditingController(
       text: widget.transaction == null
           ? ''
-          : widget.transaction!.amount.toString());
+          : Formatters.number(widget.transaction!.amount, maxDecimals: 2));
   late final _description =
       TextEditingController(text: widget.transaction?.description ?? '');
-  late String? _categoryId = widget.transaction?.categoryId;
+  late String? _categoryId = _initialCategoryId();
   late bool _isIntentional = widget.transaction?.isIntentional ?? false;
   late DateTime _date = widget.transaction == null
       ? DateTime.now()
       : AppDateUtils.parseDateKey(widget.transaction!.date);
+
+  /// Editing keeps the transaction's category; creating starts from the
+  /// most recent transaction's category so repeat spends are one tap less.
+  /// Ids that don't resolve to a known category fall back to uncategorized.
+  String? _initialCategoryId() {
+    String? id;
+    if (widget.transaction != null) {
+      id = widget.transaction!.categoryId;
+    } else {
+      final recent = ref.read(monthTransactionsProvider).valueOrNull;
+      if (recent != null && recent.isNotEmpty) {
+        id = recent.first.categoryId;
+      }
+    }
+    if (id == null) return null;
+    return widget.categories.any((c) => c.id == id) ? id : null;
+  }
 
   @override
   void dispose() {
@@ -62,13 +83,14 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
   }
 
   Future<void> _pickDate() async {
+    Haptics.select();
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null && mounted) setState(() => _date = picked);
   }
 
   Future<void> _save() async {
@@ -94,47 +116,45 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
           isIntentional: _isIntentional,
         ));
       }
-      navigator.pop();
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Transaction saved.')));
     } catch (_) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Could not save transaction.')));
+      // Sheet stays open; the entry is still on screen.
+      showFailedSnack(messenger, "That didn't save. Try again.");
+      return;
     }
+    Haptics.medium();
+    navigator.pop();
+    showSavedSnack(messenger, 'Logged.');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
+    final theme = Theme.of(context);
+    final today = DateTime.now();
+    final yesterday = today.subtract(const Duration(days: 1));
+    final isToday = AppDateUtils.isSameDay(_date, today);
+    final isYesterday = AppDateUtils.isSameDay(_date, yesterday);
+    final isCustom = !isToday && !isYesterday;
+
+    return AppSheet(
+      title:
+          widget.transaction == null ? 'Add transaction' : 'Edit transaction',
+      footer: AppSheetButton(label: 'Save', onPressed: _save),
+      children: [
+        Form(
           key: _formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                widget.transaction == null
-                    ? 'Add transaction'
-                    : 'Edit transaction',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              AppNumberField(
+              MoneyField(
                 label: 'Amount',
                 controller: _amount,
-                suffixText: r'$',
-                validator: (v) => Validators.positiveNumber(v, label: 'Amount'),
+                autofocus: true,
+                validator: (v) =>
+                    Validators.positiveNumber(v, label: 'Amount'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.md),
               AppTextField(label: 'Description', controller: _description),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.md),
               DropdownButtonFormField<String?>(
                 initialValue: _categoryId,
                 decoration: const InputDecoration(labelText: 'Category'),
@@ -144,32 +164,66 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
                     child: Text('Uncategorized'),
                   ),
                   for (final c in widget.categories)
-                    DropdownMenuItem<String?>(value: c.id, child: Text(c.name)),
+                    DropdownMenuItem<String?>(
+                        value: c.id, child: Text(c.name)),
                 ],
-                onChanged: (v) => setState(() => _categoryId = v),
+                onChanged: (v) {
+                  Haptics.select();
+                  setState(() => _categoryId = v);
+                },
               ),
+              const SizedBox(height: AppSpace.lg),
+              Wrap(
+                spacing: AppSpace.sm,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Today'),
+                    selected: isToday,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      Haptics.select();
+                      setState(() => _date = today);
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Yesterday'),
+                    selected: isYesterday,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      Haptics.select();
+                      setState(() => _date = yesterday);
+                    },
+                  ),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.event,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    label: Text(
+                      isCustom ? Formatters.shortDate(_date) : 'Pick date',
+                    ),
+                    selected: isCustom,
+                    showCheckmark: false,
+                    onSelected: (_) => _pickDate(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.xs),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Intentional spend'),
-                subtitle: const Text(
-                    'Planned exceptions (e.g. a deliberate restaurant night).'),
+                subtitle: const Text('Planned indulgence, not drift.'),
                 value: _isIntentional,
-                onChanged: (v) => setState(() => _isIntentional = v),
+                onChanged: (v) {
+                  Haptics.select();
+                  setState(() => _isIntentional = v);
+                },
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event),
-                title: Text(Formatters.fullDate(_date)),
-                trailing: TextButton(
-                  onPressed: _pickDate,
-                  child: const Text('Change'),
-                ),
-              ),
-              FilledButton(onPressed: _save, child: const Text('Save')),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

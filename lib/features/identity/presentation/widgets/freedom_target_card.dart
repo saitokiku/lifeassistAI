@@ -1,19 +1,21 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
-import '../../../../shared/widgets/app_number_field.dart';
-import '../../../../shared/widgets/app_text_field.dart';
-import '../../../../shared/widgets/metric_card.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../../shared/widgets/progress_bar_card.dart';
 import '../../application/identity_controller.dart';
 import '../../domain/freedom_target.dart';
+import 'freedom_target_editor.dart';
+import 'quick_update_sheet.dart';
 
-/// Freedom target with progress and an inline editor.
+/// The freedom target: the two numbers the whole app points at.
+/// Each progress row is tappable — one tap, one field, updated.
 class FreedomTargetCard extends ConsumerWidget {
   const FreedomTargetCard({super.key, required this.target});
 
@@ -21,159 +23,267 @@ class FreedomTargetCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final t = target;
-    if (t == null) {
-      return MetricCard(
-        title: 'Freedom target',
-        supportText: AppCopy.freedomGoal,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: () => _showEditor(context, ref, null),
-            child: const Text('Set freedom target'),
-          ),
-        ),
-      );
-    }
+    if (t == null) return _EmptyTargetCard(theme: theme);
 
-    return MetricCard(
-      title: t.title,
-      supportText: t.description ?? AppCopy.freedomGoal,
-      trailing: TextButton(
-        onPressed: () => _showEditor(context, ref, t),
-        child: const Text('Edit'),
+    final description = t.description?.trim();
+    final deadlineKey = t.targetDate;
+    final deadline = (deadlineKey == null || deadlineKey.isEmpty)
+        ? null
+        : AppDateUtils.parseDateKey(deadlineKey);
+
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.cardPadding,
+        AppSpace.cardPadding,
+        AppSpace.sm,
+        AppSpace.cardPadding,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LabeledProgressBar(
-            progress: t.passiveIncomeProgress,
-            color: AppColors.primary,
-            leading:
-                'Passive income · ${Formatters.money(t.currentMonthlyPassiveIncome)} / ${Formatters.money(t.targetMonthlyPassiveIncome)}/mo',
-            trailing: Formatters.percent(t.passiveIncomeProgress),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.title, style: theme.textTheme.titleMedium),
+                    if (description != null && description.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (deadline != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'By ${Formatters.fullDate(deadline)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: theme.colorScheme.textTertiary,
+                ),
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    await FreedomTargetEditor.show(context, target: t);
+                  } else if (value == 'delete') {
+                    final controller = ref.read(identityControllerProvider);
+                    final confirmed = await showConfirmDialog(
+                      context,
+                      title: 'Delete this target?',
+                      message:
+                          'Removes "${t.title}" and both progress lines. '
+                          'Freedom stays the goal — this just clears the number.',
+                    );
+                    if (confirmed) {
+                      await controller.deleteFreedomTarget(t.id);
+                    }
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          LabeledProgressBar(
-            progress: t.netWorthProgress,
-            color: AppColors.aligned,
-            leading:
-                'Liquid net worth · ${Formatters.money(t.currentLiquidNetWorth)} / ${Formatters.money(t.targetLiquidNetWorth)}',
-            trailing: Formatters.percent(t.netWorthProgress),
+          const SizedBox(height: AppSpace.md),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpace.sm + 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ProgressRow(
+                  label: 'Passive income',
+                  values:
+                      '${Formatters.money(t.currentMonthlyPassiveIncome)} of ${Formatters.money(t.targetMonthlyPassiveIncome)}/mo',
+                  progress: t.passiveIncomeProgress,
+                  color: AppColors.primary,
+                  onTap: () => _updatePassiveIncome(context, ref, t),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                _ProgressRow(
+                  label: 'Liquid net worth',
+                  values:
+                      '${Formatters.money(t.currentLiquidNetWorth)} of ${Formatters.money(t.targetLiquidNetWorth)}',
+                  progress: t.netWorthProgress,
+                  color: AppColors.aligned,
+                  onTap: () => _updateNetWorth(context, ref, t),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showEditor(BuildContext context, WidgetRef ref, FreedomTarget? t) {
-    final title = TextEditingController(text: t?.title ?? 'Freedom number');
-    final description = TextEditingController(text: t?.description ?? '');
-    final passiveTarget = TextEditingController(
-        text: t?.targetMonthlyPassiveIncome.toString() ?? '');
-    final passiveCurrent = TextEditingController(
-        text: t?.currentMonthlyPassiveIncome.toString() ?? '0');
-    final worthTarget =
-        TextEditingController(text: t?.targetLiquidNetWorth.toString() ?? '');
-    final worthCurrent =
-        TextEditingController(text: t?.currentLiquidNetWorth.toString() ?? '0');
-    final formKey = GlobalKey<FormState>();
+  Future<void> _updatePassiveIncome(
+      BuildContext context, WidgetRef ref, FreedomTarget t) {
+    final controller = ref.read(identityControllerProvider);
+    return QuickUpdateSheet.show(
+      context,
+      title: 'Passive income',
+      subtitle:
+          'Target ${Formatters.money(t.targetMonthlyPassiveIncome)}/mo.',
+      label: 'Current monthly passive income',
+      suffixText: '/mo',
+      initialValue: t.currentMonthlyPassiveIncome,
+      validator: (v) => Validators.nonNegativeNumber(v, label: 'Current'),
+      onSave: (value) => controller.updateFreedomTarget(
+        t.copyWith(currentMonthlyPassiveIncome: value),
+      ),
+    );
+  }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 16,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+  Future<void> _updateNetWorth(
+      BuildContext context, WidgetRef ref, FreedomTarget t) {
+    final controller = ref.read(identityControllerProvider);
+    return QuickUpdateSheet.show(
+      context,
+      title: 'Liquid net worth',
+      subtitle: 'Target ${Formatters.money(t.targetLiquidNetWorth)}.',
+      label: 'Current liquid net worth',
+      initialValue: t.currentLiquidNetWorth,
+      validator: (v) => Validators.nonNegativeNumber(v, label: 'Current'),
+      onSave: (value) => controller.updateFreedomTarget(
+        t.copyWith(currentLiquidNetWorth: value),
+      ),
+    );
+  }
+}
+
+/// One tappable progress line: label, tabular values, animated bar.
+class _ProgressRow extends StatelessWidget {
+  const _ProgressRow({
+    required this.label,
+    required this.values,
+    required this.progress,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final String values;
+  final double progress;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text('Freedom target',
-                    style: Theme.of(sheetContext).textTheme.titleMedium),
-                const SizedBox(height: 16),
-                AppTextField(
-                  label: 'Title',
-                  controller: title,
-                  validator: (v) => Validators.required(v, label: 'Title'),
+                Expanded(
+                  child: Text(label, style: theme.textTheme.bodyMedium),
                 ),
-                const SizedBox(height: 12),
-                AppTextField(
-                    label: 'Description', controller: description, maxLines: 2),
-                const SizedBox(height: 12),
-                AppNumberField(
-                  label: 'Target monthly passive income',
-                  controller: passiveTarget,
-                  validator: (v) =>
-                      Validators.nonNegativeNumber(v, label: 'Target'),
+                Text(
+                  values,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                AppNumberField(
-                  label: 'Current monthly passive income',
-                  controller: passiveCurrent,
-                  validator: (v) =>
-                      Validators.nonNegativeNumber(v, label: 'Current'),
-                ),
-                const SizedBox(height: 12),
-                AppNumberField(
-                  label: 'Target liquid net worth',
-                  controller: worthTarget,
-                  validator: (v) =>
-                      Validators.nonNegativeNumber(v, label: 'Target'),
-                ),
-                const SizedBox(height: 12),
-                AppNumberField(
-                  label: 'Current liquid net worth',
-                  controller: worthCurrent,
-                  validator: (v) =>
-                      Validators.nonNegativeNumber(v, label: 'Current'),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
-                    final controller = ref.read(identityControllerProvider);
-                    final navigator = Navigator.of(sheetContext);
-                    final desc = description.text.trim().isEmpty
-                        ? null
-                        : description.text.trim();
-                    if (t == null) {
-                      await controller.createFreedomTarget(
-                        title: title.text.trim(),
-                        description: desc,
-                        targetMonthlyPassiveIncome:
-                            Validators.parseNumber(passiveTarget.text),
-                        targetLiquidNetWorth:
-                            Validators.parseNumber(worthTarget.text),
-                      );
-                    } else {
-                      await controller.updateFreedomTarget(t.copyWith(
-                        title: title.text.trim(),
-                        description: Value(desc),
-                        targetMonthlyPassiveIncome:
-                            Validators.parseNumber(passiveTarget.text),
-                        currentMonthlyPassiveIncome:
-                            Validators.parseNumber(passiveCurrent.text),
-                        targetLiquidNetWorth:
-                            Validators.parseNumber(worthTarget.text),
-                        currentLiquidNetWorth:
-                            Validators.parseNumber(worthCurrent.text),
-                      ));
-                    }
-                    navigator.pop();
-                  },
-                  child: const Text('Save'),
+                const SizedBox(width: AppSpace.xs),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: theme.colorScheme.textTertiary,
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 6),
+            LabeledProgressBar(progress: progress, color: color),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// Designed empty state: what the target is for, and the first move.
+class _EmptyTargetCard extends StatelessWidget {
+  const _EmptyTargetCard({required this.theme});
+
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryTint,
+                  borderRadius: BorderRadius.circular(AppRadius.chip + 2),
+                ),
+                child: const Icon(
+                  Icons.explore_outlined,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpace.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Freedom needs a number.',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Set the passive income and net worth marks '
+                      'everything else points at.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.lg),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton(
+              onPressed: () => FreedomTargetEditor.show(context),
+              child: const Text('Set target'),
+            ),
+          ),
+        ],
       ),
     );
   }
