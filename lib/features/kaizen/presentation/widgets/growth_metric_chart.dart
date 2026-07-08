@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Lightweight custom sparkline. Null values (no data yet) leave gaps.
+/// Lightweight custom sparkline with a soft area fill under the line.
+/// Null values (no data yet) leave gaps.
 class Sparkline extends StatelessWidget {
   const Sparkline({super.key, required this.values, required this.color});
 
@@ -66,7 +67,8 @@ class _SparklinePainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     final dot = Paint()..color = color;
 
     final n = values.length;
@@ -76,29 +78,58 @@ class _SparklinePainter extends CustomPainter {
       return Offset(x, y);
     }
 
-    Path? path;
-    for (var i = 0; i < n; i++) {
-      final v = values[i];
-      if (v == null) {
-        path = null;
+    // Draw each contiguous segment as a line plus a soft area fill.
+    var i = 0;
+    while (i < n) {
+      if (values[i] == null) {
+        i++;
         continue;
       }
-      final p = pointFor(i, v);
-      if (path == null) {
-        path = Path()..moveTo(p.dx, p.dy);
-        canvas.drawCircle(p, 2, dot);
-      } else {
-        path.lineTo(p.dx, p.dy);
-        canvas.drawPath(path, stroke);
-        path = Path()..moveTo(p.dx, p.dy);
+      final start = i;
+      while (i < n && values[i] != null) {
+        i++;
       }
+      final end = i; // exclusive
+
+      final first = pointFor(start, values[start]!);
+      if (end - start == 1) {
+        canvas.drawCircle(first, 2, dot);
+        continue;
+      }
+
+      final line = Path()..moveTo(first.dx, first.dy);
+      for (var j = start + 1; j < end; j++) {
+        final p = pointFor(j, values[j]!);
+        line.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(line, stroke);
+
+      final last = pointFor(end - 1, values[end - 1]!);
+      final area = Path.from(line)
+        ..lineTo(last.dx, size.height - 1)
+        ..lineTo(first.dx, size.height - 1)
+        ..close();
+      canvas.drawPath(
+        area,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: 0.18),
+              color.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+          ),
+      );
     }
 
     // Emphasize the latest point.
-    for (var i = n - 1; i >= 0; i--) {
-      final v = values[i];
+    for (var j = n - 1; j >= 0; j--) {
+      final v = values[j];
       if (v != null) {
-        canvas.drawCircle(pointFor(i, v), 3.5, dot);
+        canvas.drawCircle(pointFor(j, v), 3.5, dot);
         break;
       }
     }

@@ -2,22 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/storage/app_database.dart';
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
+import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_number_field.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/loading_view.dart';
 import '../../application/time_controller.dart';
 import '../../domain/time_category.dart';
+import 'time_kind_icon.dart';
 
-/// Create or edit a weekly time budget category.
+/// Create or edit a weekly category: name, target hours, and what the
+/// hours count as for scoring.
 class TimeBudgetEditor extends ConsumerStatefulWidget {
   const TimeBudgetEditor({super.key, this.budget});
 
   final TimeBudget? budget;
 
   static Future<void> show(BuildContext context, {TimeBudget? budget}) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
+      showAppSheet<void>(
+        context,
         builder: (_) => TimeBudgetEditor(budget: budget),
       );
 
@@ -31,7 +37,7 @@ class _TimeBudgetEditorState extends ConsumerState<TimeBudgetEditor> {
   late final _hours = TextEditingController(
       text: widget.budget == null
           ? ''
-          : widget.budget!.weeklyTargetHours.toString());
+          : Formatters.number(widget.budget!.weeklyTargetHours));
   late TimeCategoryKind _kind = widget.budget == null
       ? TimeCategoryKind.other
       : TimeCategoryKind.parse(widget.budget!.kind);
@@ -46,7 +52,6 @@ class _TimeBudgetEditorState extends ConsumerState<TimeBudgetEditor> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final controller = ref.read(timeControllerProvider);
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
       if (widget.budget == null) {
@@ -62,67 +67,78 @@ class _TimeBudgetEditorState extends ConsumerState<TimeBudgetEditor> {
           weeklyTargetHours: Validators.parseNumber(_hours.text),
         ));
       }
-      navigator.pop();
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Time budget saved.')));
     } catch (_) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Could not save time budget.')));
+      if (mounted) showErrorSnack(context, "That didn't save. Try again.");
+      return;
     }
+    Haptics.medium();
+    if (!mounted) return;
+    showSuccessSnack(context, 'Saved.');
+    navigator.pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.budget == null ? 'New time budget' : 'Edit time budget',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Name',
-              controller: _name,
-              validator: (v) => Validators.required(v, label: 'Name'),
-            ),
-            const SizedBox(height: 12),
-            AppNumberField(
-              label: 'Weekly target hours',
-              controller: _hours,
-              suffixText: 'h',
-              validator: (v) => Validators.nonNegativeNumber(v, label: 'Hours'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<TimeCategoryKind>(
-              initialValue: _kind,
-              decoration: const InputDecoration(
-                labelText: 'Kind (drives scoring)',
-                helperText:
-                    'Kaizen feeds the score. Decompress feeds the recovery floor.',
+    final theme = Theme.of(context);
+    final isNew = widget.budget == null;
+
+    return AppSheet(
+      title: isNew ? 'New category' : 'Edit category',
+      subtitle: isNew ? 'A name, a weekly target, and what it counts as.' : null,
+      footer: AppSheetButton(label: 'Save', onPressed: _save),
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppTextField(
+                label: 'Name',
+                controller: _name,
+                validator: (v) => Validators.required(v, label: 'Name'),
               ),
-              items: [
-                for (final k in TimeCategoryKind.values)
-                  DropdownMenuItem(value: k, child: Text(k.label)),
-              ],
-              onChanged: (v) =>
-                  setState(() => _kind = v ?? TimeCategoryKind.other),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: _save, child: const Text('Save')),
-          ],
+              const SizedBox(height: AppSpace.md),
+              AppNumberField(
+                label: 'Weekly target hours',
+                controller: _hours,
+                suffixText: 'h',
+                validator: (v) =>
+                    Validators.nonNegativeNumber(v, label: 'Hours'),
+              ),
+              const SizedBox(height: AppSpace.md),
+              DropdownButtonFormField<TimeCategoryKind>(
+                initialValue: _kind,
+                decoration: const InputDecoration(
+                  labelText: 'Counts as',
+                  helperText: 'Scoring keys off this, not the name.',
+                ),
+                items: [
+                  for (final k in TimeCategoryKind.values)
+                    DropdownMenuItem(
+                      value: k,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            k.icon,
+                            size: 18,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AppSpace.sm),
+                          Text(k.label),
+                        ],
+                      ),
+                    ),
+                ],
+                onChanged: (v) {
+                  Haptics.select();
+                  setState(() => _kind = v ?? TimeCategoryKind.other);
+                },
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

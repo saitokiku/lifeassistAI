@@ -1,82 +1,166 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../shared/widgets/confirm_dialog.dart';
-import '../../application/time_controller.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../domain/countdown.dart';
+import 'birthday_sheet.dart';
 import 'countdown_editor.dart';
 
-/// Countdowns with days remaining. The age-28 countdown asks for a birthday
-/// until one is set.
-class CountdownList extends ConsumerWidget {
+/// Countdown tiles, two per row. Tap to edit; the age-28 tile asks for a
+/// birthday inline until one is set.
+class CountdownList extends StatelessWidget {
   const CountdownList({super.key, required this.countdowns});
 
   final List<ResolvedCountdown> countdowns;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        for (final rc in countdowns)
-          Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              title: Text(rc.countdown.title),
-              subtitle: rc.needsBirthday
-                  ? const Text('Set birthday to activate.')
-                  : rc.targetDate == null
-                      ? const Text('No date set.')
-                      : Text(Formatters.fullDate(rc.targetDate!)),
-              leading: const Icon(Icons.hourglass_bottom, size: 20),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (rc.needsBirthday)
-                    TextButton(
-                      onPressed: () => context.go('/settings'),
-                      child: const Text('Set birthday'),
-                    )
-                  else if (rc.daysLeft != null)
-                    Text(
-                      '${rc.daysLeft}d',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: rc.daysLeft! < 30
-                                ? AppColors.watch
-                                : AppColors.primary,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                    ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        await CountdownEditor.show(context,
-                            countdown: rc.countdown);
-                      } else if (value == 'delete') {
-                        final confirmed = await showConfirmDialog(
-                          context,
-                          title: 'Delete countdown?',
-                          message: 'Removes "${rc.countdown.title}".',
-                        );
-                        if (confirmed) {
-                          await ref
-                              .read(timeControllerProvider)
-                              .deleteCountdown(rc.countdown.id);
-                        }
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                  ),
-                ],
-              ),
+  Widget build(BuildContext context) {
+    if (countdowns.isEmpty) {
+      return EmptyState(
+        icon: Icons.hourglass_bottom,
+        title: 'Nothing on the clock',
+        message: 'Deadlines only work when you can see them coming. Add one.',
+        actionLabel: 'New countdown',
+        onAction: () => CountdownEditor.show(context),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = AppSpace.cardGap;
+        final tileWidth = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final rc in countdowns)
+              SizedBox(width: tileWidth, child: _CountdownTile(rc: rc)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CountdownTile extends StatelessWidget {
+  const _CountdownTile({required this.rc});
+
+  final ResolvedCountdown rc;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.tilePadding),
+      onTap: rc.needsBirthday
+          ? () => BirthdaySheet.show(context)
+          : () => CountdownEditor.show(context, countdown: rc.countdown),
+      onLongPress: rc.needsBirthday
+          ? () => CountdownEditor.show(context, countdown: rc.countdown)
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            rc.countdown.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: AppSpace.sm),
+          _value(theme),
+          const SizedBox(height: 2),
+          _caption(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _value(ThemeData theme) {
+    if (rc.needsBirthday) {
+      return Text(
+        'Set birthday',
+        style: theme.textTheme.titleSmall?.copyWith(color: AppColors.primary),
+      );
+    }
+    final daysLeft = rc.daysLeft;
+    if (rc.targetDate == null || daysLeft == null) {
+      return Text(
+        '—',
+        style: theme.textTheme.numberMedium
+            .copyWith(color: AppColors.neutral),
+      );
+    }
+    if (daysLeft < 0) {
+      return Text(
+        'Passed',
+        style: theme.textTheme.numberMedium
+            .copyWith(color: AppColors.neutral),
+      );
+    }
+    if (daysLeft == 0) {
+      return Text(
+        'Today',
+        style:
+            theme.textTheme.numberMedium.copyWith(color: AppColors.watch),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '$daysLeft',
+          style: theme.textTheme.numberMedium.copyWith(
+            color: daysLeft < 30 ? AppColors.watch : null,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          daysLeft == 1 ? 'day' : 'days',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _caption(ThemeData theme) {
+    final style = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.textTertiary,
+    );
+    if (rc.needsBirthday) {
+      return Text('Needed to start this clock.',
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    }
+    final target = rc.targetDate;
+    final daysLeft = rc.daysLeft;
+    if (target == null || daysLeft == null) {
+      return Text('No date set.',
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    }
+    if (daysLeft < 0) {
+      final ago = -daysLeft;
+      return Text(
+        ago == 1 ? 'Yesterday' : '$ago days ago',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    return Text(
+      Formatters.fullDate(target),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
     );
   }
 }

@@ -1,44 +1,140 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../shared/haptics.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/app_sheet.dart';
+import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/loading_view.dart';
+import '../../../settings/application/settings_controller.dart';
 import '../../domain/life_philosophy.dart';
 
-/// The triad, always visible on the identity screen.
-class PhilosophyCard extends StatelessWidget {
+/// The philosophy card: the user's one line up top, the triad underneath.
+/// Tap anywhere (or the pencil) to edit the line — it saves via settings.
+class PhilosophyCard extends ConsumerWidget {
   const PhilosophyCard({super.key, required this.philosophyText});
 
   final String philosophyText;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final line in LifePhilosophy.triad)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    const Icon(Icons.chevron_right,
-                        size: 18, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Text(line, style: theme.textTheme.titleMedium),
-                  ],
+    final line = philosophyText.trim();
+    final hasLine = line.isNotEmpty;
+
+    return AppCard(
+      tinted: true,
+      onTap: () => _edit(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'PHILOSOPHY',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
-            const SizedBox(height: 4),
-            Text(
-              philosophyText,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              IconButton(
+                tooltip: 'Edit philosophy',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () => _edit(context),
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 16,
+                  color: theme.colorScheme.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            hasLine ? line : 'Write the one line you run on.',
+            style: hasLine
+                ? theme.textTheme.titleMedium?.copyWith(height: 1.4)
+                : theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Text(
+            LifePhilosophy.triad.join(' · '),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.textTertiary,
+              letterSpacing: 0.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Future<void> _edit(BuildContext context) async {
+    final saved = await showAppSheet<bool>(
+      context,
+      builder: (_) => _PhilosophyEditor(initial: philosophyText),
+    );
+    if (saved == true && context.mounted) {
+      showSuccessSnack(context, 'Saved.');
+    }
+  }
+}
+
+class _PhilosophyEditor extends ConsumerStatefulWidget {
+  const _PhilosophyEditor({required this.initial});
+
+  final String initial;
+
+  @override
+  ConsumerState<_PhilosophyEditor> createState() => _PhilosophyEditorState();
+}
+
+class _PhilosophyEditorState extends ConsumerState<_PhilosophyEditor> {
+  late final _line = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _line.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final navigator = Navigator.of(context);
+    try {
+      await ref
+          .read(settingsControllerProvider)
+          .setPhilosophyText(_line.text.trim());
+      Haptics.medium();
+      navigator.pop(true);
+    } catch (_) {
+      if (mounted) {
+        showErrorSnack(context, "That didn't save. Try again.");
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheet(
+      title: 'Philosophy',
+      subtitle: 'The one line you run on.',
+      footer: AppSheetButton(label: 'Save', onPressed: _save),
+      children: [
+        AppTextField(
+          label: 'Your line',
+          controller: _line,
+          maxLines: 2,
+          autofocus: true,
+        ),
+      ],
     );
   }
 }
