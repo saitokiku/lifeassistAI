@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/notifications/habit_reminder_scheduler.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../settings/application/settings_controller.dart';
 import '../data/habits_repository.dart';
 import 'habits_state.dart';
 
@@ -42,20 +44,56 @@ final habitsStateProvider = Provider<HabitsState?>((ref) {
 });
 
 class HabitsController {
-  HabitsController(this._repo);
+  HabitsController(this._ref);
 
-  final HabitsRepository _repo;
+  final Ref _ref;
+
+  HabitsRepository get _repo => _ref.read(habitsRepositoryProvider);
+
+  /// Habit mutations resync per-habit reminders so the OS schedule always
+  /// mirrors the table. No-op when notifications are off.
+  Future<void> _resyncReminders() async {
+    final habits = await _repo.getHabits();
+    await _ref.read(habitReminderSchedulerProvider).syncAll(
+          habits,
+          appEnabled: _ref.read(notificationsEnabledProvider),
+        );
+  }
 
   Future<void> createHabit({
     required String name,
     required String type,
     String? unit,
-  }) =>
-      _repo.createHabit(name: name, type: type, unit: unit);
+    int weekdays = 127,
+    int? reminderHour,
+    int? reminderMinute,
+  }) async {
+    await _repo.createHabit(
+      name: name,
+      type: type,
+      unit: unit,
+      weekdays: weekdays,
+      reminderHour: reminderHour,
+      reminderMinute: reminderMinute,
+    );
+    await _resyncReminders();
+  }
 
-  Future<void> updateHabit(Habit habit) => _repo.updateHabit(habit);
+  Future<void> updateHabit(Habit habit) async {
+    await _repo.updateHabit(habit);
+    await _resyncReminders();
+  }
 
-  Future<void> deleteHabit(String id) => _repo.deleteHabit(id);
+  Future<void> deleteHabit(String id) async {
+    final habit =
+        (await _repo.getHabits()).where((h) => h.id == id).firstOrNull;
+    await _repo.deleteHabit(id);
+    if (habit != null) {
+      await _ref
+          .read(notificationServiceProvider)
+          .cancelMany(HabitReminderScheduler.allIdsFor(habit));
+    }
+  }
 
   Future<void> logHabit({
     required String habitId,
@@ -70,5 +108,5 @@ class HabitsController {
 }
 
 final habitsControllerProvider = Provider<HabitsController>(
-  (ref) => HabitsController(ref.watch(habitsRepositoryProvider)),
+  (ref) => HabitsController(ref),
 );

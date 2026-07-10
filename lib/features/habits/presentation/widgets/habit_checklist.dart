@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/weekdays.dart';
 import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/check_ring.dart';
@@ -209,7 +210,7 @@ class _HabitRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final valueLabel = _todayValueLabel();
+    final metaLabel = _metaLabel();
 
     return AppCard(
       onTap: onTap,
@@ -221,7 +222,11 @@ class _HabitRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CheckRing(checked: view.doneToday, onTap: onCheck),
+          // Off-schedule days keep the ring usable but visibly at rest.
+          Opacity(
+            opacity: view.dueToday ? 1 : 0.45,
+            child: CheckRing(checked: view.doneToday, onTap: onCheck),
+          ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
@@ -234,10 +239,12 @@ class _HabitRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleSmall,
                 ),
-                if (valueLabel != null) ...[
+                if (metaLabel != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    valueLabel,
+                    metaLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -306,15 +313,28 @@ class _HabitRow extends StatelessWidget {
     );
   }
 
-  /// "20 min" — trimmed number, no dangling space, value habits only.
-  String? _todayValueLabel() {
+  /// Today's value, plus the schedule and reminder when set:
+  /// "20 min · Mon, Wed, Fri · 9:00 AM" (only the parts that exist).
+  String? _metaLabel() {
+    final parts = <String>[];
     final log = view.todayLog;
     final type = HabitType.parse(view.habit.type);
-    if (log == null || type == HabitType.boolean) return null;
-    final unit =
-        type == HabitType.duration ? 'min' : (view.habit.unit?.trim() ?? '');
-    final value = Formatters.number(log.value);
-    return unit.isEmpty ? value : '$value $unit';
+    if (log != null && type != HabitType.boolean) {
+      final unit =
+          type == HabitType.duration ? 'min' : (view.habit.unit?.trim() ?? '');
+      final value = Formatters.number(log.value);
+      parts.add(unit.isEmpty ? value : '$value $unit');
+    }
+    if (!view.dueToday) {
+      parts.add('off today');
+    } else if (view.isScheduled) {
+      parts.add(WeekdayMask.describe(view.habit.weekdays));
+    }
+    if (view.hasReminder) {
+      parts.add(Formatters.timeOfDay(
+          view.habit.reminderHour!, view.habit.reminderMinute!));
+    }
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 }
 

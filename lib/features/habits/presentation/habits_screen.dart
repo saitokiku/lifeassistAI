@@ -12,6 +12,7 @@ import '../application/habits_controller.dart';
 import 'widgets/archived_habits_section.dart';
 import 'widgets/habit_checklist.dart';
 import 'widgets/habit_editor.dart';
+import 'widgets/habit_heatmap.dart';
 import 'widgets/habit_streak_card.dart';
 
 /// Habits — the daily support systems. One unified list: check off, see the
@@ -86,6 +87,8 @@ class HabitsScreen extends ConsumerWidget {
                           HabitStreakCard(state: state),
                           const SizedBox(height: AppSpace.cardGap),
                           HabitChecklist(state: state),
+                          const SizedBox(height: AppSpace.cardGap),
+                          HabitHeatmap(state: state),
                         ],
                         const ArchivedHabitsSection(),
                       ],

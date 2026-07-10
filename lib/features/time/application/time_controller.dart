@@ -68,6 +68,53 @@ final timeStateProvider = Provider<TimeState?>((ref) {
   );
 });
 
+// --- Week browsing -----------------------------------------------------------
+
+/// How many weeks back the "This week" card is looking (0 = current).
+final viewedWeekOffsetProvider = StateProvider<int>((ref) => 0);
+
+/// Monday of the viewed week.
+final viewedWeekStartProvider = Provider<DateTime>((ref) {
+  final today = readToday(ref);
+  final offset = ref.watch(viewedWeekOffsetProvider);
+  return AppDateUtils.startOfWeek(today)
+      .subtract(Duration(days: 7 * offset));
+});
+
+final _weekBlocksForProvider = StreamProvider.autoDispose
+    .family<List<TimeBlock>, DateTime>((ref, weekOf) {
+  return ref.watch(timeRepositoryProvider).watchWeekBlocks(weekOf);
+});
+
+/// Time state for the viewed week — drives the weekly budget card while
+/// browsing history. Same as [timeStateProvider] on the current week.
+final viewedTimeStateProvider = Provider<TimeState?>((ref) {
+  if (ref.watch(viewedWeekOffsetProvider) == 0) {
+    return ref.watch(timeStateProvider);
+  }
+  final weekStart = ref.watch(viewedWeekStartProvider);
+  final budgets = ref.watch(timeBudgetsProvider).valueOrNull;
+  final blocks = ref.watch(_weekBlocksForProvider(weekStart)).valueOrNull;
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  if (budgets == null || blocks == null) return null;
+  return TimeState.compute(
+    now: weekStart,
+    budgets: budgets,
+    weekBlocks: blocks,
+    countdowns: const [],
+    birthday: settings?.birthday,
+  );
+});
+
+// --- Focus timer ---------------------------------------------------------------
+
+/// The live timer, mirrored from SharedPreferences so it survives
+/// restarts. Null when nothing is running.
+final runningTimerProvider =
+    StateProvider<({String budgetId, DateTime startedAt})?>(
+  (ref) => ref.watch(preferencesProvider).runningTimer,
+);
+
 /// One week's logged-hours totals for the history chart.
 class WeeklyHoursPoint {
   const WeeklyHoursPoint({
@@ -132,9 +179,34 @@ final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
 });
 
 class TimeController {
-  TimeController(this._repo);
+  TimeController(this._ref, this._repo);
 
+  final Ref _ref;
   final TimeRepository _repo;
+
+  /// Starts the focus timer against [budgetId] (persisted across restarts).
+  Future<void> startTimer(String budgetId) async {
+    final startedAt = DateTime.now();
+    await _ref.read(preferencesProvider).setRunningTimer(budgetId, startedAt);
+    _ref.read(runningTimerProvider.notifier).state =
+        (budgetId: budgetId, startedAt: startedAt);
+  }
+
+  /// Stops the timer and returns the elapsed hours (min 0.01) for the log
+  /// form to confirm. Returns null when no timer was running.
+  Future<({String budgetId, double hours})?> stopTimer() async {
+    final running = _ref.read(runningTimerProvider);
+    if (running == null) return null;
+    await _ref.read(preferencesProvider).clearRunningTimer();
+    _ref.read(runningTimerProvider.notifier).state = null;
+    final elapsed = DateTime.now().difference(running.startedAt);
+    final hours =
+        (elapsed.inSeconds / 3600).clamp(0.01, 24.0);
+    return (
+      budgetId: running.budgetId,
+      hours: double.parse(hours.toStringAsFixed(2)),
+    );
+  }
 
   Future<void> createBudget({
     required String name,
@@ -173,5 +245,5 @@ class TimeController {
 }
 
 final timeControllerProvider = Provider<TimeController>(
-  (ref) => TimeController(ref.watch(timeRepositoryProvider)),
+  (ref) => TimeController(ref, ref.watch(timeRepositoryProvider)),
 );

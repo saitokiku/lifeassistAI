@@ -20,6 +20,8 @@ class HabitsRepository {
     return query.watch();
   }
 
+  Future<List<Habit>> getHabits() => _db.select(_db.habits).get();
+
   /// Logs newest-first, bounded to a trailing window — enough for streaks
   /// and the heatmap without streaming the whole table forever.
   Stream<List<HabitLog>> watchRecentLogs(

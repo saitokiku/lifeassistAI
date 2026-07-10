@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/result.dart';
+import '../../../core/notifications/habit_reminder_scheduler.dart';
 import '../../../core/notifications/reminder_scheduler.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../habits/application/habits_controller.dart';
 import '../../settings/application/settings_controller.dart';
 import '../data/reminders_repository.dart';
 import 'reminders_state.dart';
@@ -93,7 +95,8 @@ class RemindersController {
     return _resync();
   }
 
-  /// Requests OS permission, stores the app-level toggle, and syncs.
+  /// Requests OS permission, stores the app-level toggle, and syncs both
+  /// reminder spaces (standalone reminders + per-habit nudges).
   /// Returns whether notifications ended up enabled.
   Future<bool> enableNotifications() async {
     final granted =
@@ -101,17 +104,25 @@ class RemindersController {
     await _ref
         .read(settingsControllerProvider)
         .setNotificationsEnabled(granted);
-    if (granted) await _resync();
+    if (granted) {
+      await _resync();
+      final habits = await _ref.read(habitsRepositoryProvider).getHabits();
+      await _ref
+          .read(habitReminderSchedulerProvider)
+          .syncAll(habits, appEnabled: true);
+    }
     return granted;
   }
 
   Future<void> disableNotifications() async {
     await _ref.read(settingsControllerProvider).setNotificationsEnabled(false);
-    // Cancel only ids owned by reminders — habit nudges and other id
-    // spaces are managed by their own subsystems.
+    // Cancel only ids this app's subsystems own — reminders and habits.
     final reminders = await _repo.getReminders();
-    await _ref.read(notificationServiceProvider).cancelMany(
-        [for (final r in reminders) ...ReminderScheduler.allIdsFor(r)]);
+    final habits = await _ref.read(habitsRepositoryProvider).getHabits();
+    await _ref.read(notificationServiceProvider).cancelMany([
+      for (final r in reminders) ...ReminderScheduler.allIdsFor(r),
+      for (final h in habits) ...HabitReminderScheduler.allIdsFor(h),
+    ]);
   }
 }
 

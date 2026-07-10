@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
+import '../../../../core/utils/weekdays.dart';
 import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
+import '../../../../shared/widgets/weekday_picker.dart';
 import '../../application/habits_controller.dart';
 import '../../domain/habit.dart';
 
@@ -35,12 +38,30 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
   late HabitType _type = widget.habit == null
       ? HabitType.boolean
       : HabitType.parse(widget.habit!.type);
+  late int _weekdays = widget.habit?.weekdays ?? WeekdayMask.all;
+  late TimeOfDay? _reminder = widget.habit?.reminderHour == null
+      ? null
+      : TimeOfDay(
+          hour: widget.habit!.reminderHour!,
+          minute: widget.habit!.reminderMinute ?? 0,
+        );
 
   @override
   void dispose() {
     _name.dispose();
     _unit.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickReminder() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminder ?? const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (picked != null) {
+      Haptics.select();
+      setState(() => _reminder = picked);
+    }
   }
 
   bool get _typeChanged =>
@@ -63,12 +84,18 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
           name: _name.text.trim(),
           type: _type.name,
           unit: unit,
+          weekdays: _weekdays,
+          reminderHour: _reminder?.hour,
+          reminderMinute: _reminder?.minute,
         );
       } else {
         await controller.updateHabit(widget.habit!.copyWith(
           name: _name.text.trim(),
           type: _type.name,
           unit: Value(unit),
+          weekdays: _weekdays,
+          reminderHour: Value(_reminder?.hour),
+          reminderMinute: Value(_reminder?.minute),
         ));
       }
     } catch (_) {
@@ -157,6 +184,95 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
                   controller: _unit,
                 ),
               ],
+              const SizedBox(height: AppSpace.lg),
+              Text(
+                'Days',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.sm,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Every day'),
+                    selected: _weekdays == WeekdayMask.all,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      Haptics.select();
+                      setState(() => _weekdays = WeekdayMask.all);
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Some days'),
+                    selected: _weekdays != WeekdayMask.all,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      Haptics.select();
+                      setState(() {
+                        if (_weekdays == WeekdayMask.all) {
+                          _weekdays = WeekdayMask.weekdaysOnly;
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (_weekdays != WeekdayMask.all) ...[
+                const SizedBox(height: AppSpace.md),
+                WeekdayPicker(
+                  mask: _weekdays,
+                  onChanged: (mask) => setState(() => _weekdays = mask),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Off days don\'t nag and don\'t break the streak.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.textTertiary,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpace.lg),
+              Text(
+                'Reminder',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.sm,
+                children: [
+                  ChoiceChip(
+                    label: const Text('No reminder'),
+                    selected: _reminder == null,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      Haptics.select();
+                      setState(() => _reminder = null);
+                    },
+                  ),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.notifications_outlined,
+                      size: 16,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    label: Text(
+                      _reminder == null
+                          ? 'Pick a time'
+                          : Formatters.timeOfDay(
+                              _reminder!.hour, _reminder!.minute),
+                    ),
+                    selected: _reminder != null,
+                    showCheckmark: false,
+                    onSelected: (_) => _pickReminder(),
+                  ),
+                ],
+              ),
               if (hasLogs && _typeChanged) ...[
                 const SizedBox(height: AppSpace.md),
                 Row(

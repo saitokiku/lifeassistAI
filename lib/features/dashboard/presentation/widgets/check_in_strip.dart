@@ -61,6 +61,8 @@ class CheckInStrip extends ConsumerWidget {
 
     if (state.showsArea(DashboardArea.habits)) {
       for (final h in habits?.habits ?? const <HabitView>[]) {
+        // Off-schedule habits sit out of today's check-in strip entirely.
+        if (!h.dueToday) continue;
         chips.add(_CheckChip(
           label: _habitLabel(h),
           checked: h.doneToday,

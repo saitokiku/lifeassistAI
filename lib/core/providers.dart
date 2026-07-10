@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'notifications/habit_reminder_scheduler.dart';
 import 'notifications/notification_service.dart';
 import 'notifications/reminder_scheduler.dart';
 import 'storage/app_database.dart';
@@ -21,6 +22,10 @@ final notificationServiceProvider =
 
 final reminderSchedulerProvider = Provider<ReminderScheduler>(
   (ref) => ReminderScheduler(ref.watch(notificationServiceProvider)),
+);
+
+final habitReminderSchedulerProvider = Provider<HabitReminderScheduler>(
+  (ref) => HabitReminderScheduler(ref.watch(notificationServiceProvider)),
 );
 
 /// A ticking clock so time-derived providers roll over without a restart.
