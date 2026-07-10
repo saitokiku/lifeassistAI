@@ -1,6 +1,15 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/capture/capture_launcher.dart';
+import '../../core/capture/capture_request.dart';
+import '../../core/notifications/notification_service.dart';
+import '../../core/providers.dart';
 import '../haptics.dart';
 import 'adaptive_navigation.dart';
 import 'responsive_scaffold.dart';
@@ -9,15 +18,114 @@ import 'responsive_scaffold.dart';
 ///
 /// Compact shows five tabs (Today · Focus · Money · Time · You) backed by
 /// an indexed stack, so each tab keeps its scroll position and state.
-class AppShell extends StatelessWidget {
+///
+/// The shell is also the capture bus terminal: deep links, app shortcuts,
+/// and notification taps all funnel into [pendingCaptureProvider] /
+/// [pendingRouteProvider], and this widget — which always has a live
+/// context above the tabs — opens the matching sheet or route.
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  StreamSubscription<Uri>? _linkSub;
+
+  /// Captured at init so dispose() can unhook without touching ref.
+  NotificationService? _notifications;
+
+  /// The engine's deep-link navigation and the app_links stream can both
+  /// deliver the same URI; remember the last one briefly to fire once.
+  Uri? _lastUri;
+  DateTime _lastUriAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _wireCaptureSources();
+    // The router's /capture redirect may have parked a request before this
+    // widget existed (cold-start deep link) — drain it on first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _drainPending());
+  }
+
+  Future<void> _wireCaptureSources() async {
+    final notifications = ref.read(notificationServiceProvider);
+    _notifications = notifications;
+    // Notification taps while the app runs (or is backgrounded).
+    notifications.onTap = _handlePayload;
+    // Deep links; the stream also emits the link that launched the app.
+    if (!kIsWeb) {
+      _linkSub = AppLinks().uriLinkStream.listen(_handleUri, onError: (_) {});
+    }
+    // Notification that cold-started the app.
+    final payload = await notifications.launchPayload();
+    if (payload != null && payload.isNotEmpty) _handlePayload(payload);
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    _notifications?.onTap = null;
+    super.dispose();
+  }
+
+  /// Notification payloads: `route:/money` navigates; anything else is
+  /// tried as a capture URI.
+  void _handlePayload(String payload) {
+    if (payload.startsWith('route:')) {
+      ref.read(pendingRouteProvider.notifier).state =
+          payload.substring('route:'.length);
+      return;
+    }
+    final uri = Uri.tryParse(payload);
+    if (uri != null) _handleUri(uri);
+  }
+
+  void _handleUri(Uri uri) {
+    final now = DateTime.now();
+    if (uri == _lastUri &&
+        now.difference(_lastUriAt) < const Duration(seconds: 2)) {
+      return; // duplicate delivery of the same link
+    }
+    _lastUri = uri;
+    _lastUriAt = now;
+    final request = CaptureRequest.fromUri(uri);
+    if (request != null) {
+      ref.read(pendingCaptureProvider.notifier).state = request;
+    }
+  }
+
+  void _drainPending() {
+    if (!mounted) return;
+    final capture = ref.read(pendingCaptureProvider);
+    if (capture != null) {
+      ref.read(pendingCaptureProvider.notifier).state = null;
+      CaptureLauncher.open(context, ref, capture);
+    }
+    final route = ref.read(pendingRouteProvider);
+    if (route != null) {
+      ref.read(pendingRouteProvider.notifier).state = null;
+      context.go(route);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen(pendingCaptureProvider, (previous, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _drainPending());
+    });
+    ref.listen(pendingRouteProvider, (previous, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _drainPending());
+    });
+
     return ResponsiveScaffold(
-      body: shell,
+      body: widget.shell,
       railBuilder: (context) => _buildRail(context),
       bottomBarBuilder: (context) => _buildBottomBar(context),
     );
@@ -59,11 +167,14 @@ class AppShell extends StatelessWidget {
 
   Widget _buildBottomBar(BuildContext context) {
     return NavigationBar(
-      selectedIndex: shell.currentIndex,
+      selectedIndex: widget.shell.currentIndex,
       onDestinationSelected: (index) {
         Haptics.select();
         // Re-tapping the active tab pops that branch back to its root.
-        shell.goBranch(index, initialLocation: index == shell.currentIndex);
+        widget.shell.goBranch(
+          index,
+          initialLocation: index == widget.shell.currentIndex,
+        );
       },
       destinations: [
         for (final d in AppDestinations.compact)

@@ -26,14 +26,36 @@ import 'reminder_type_visuals.dart';
 /// The message is either the rotating line (stored empty, previewed here)
 /// or custom text — the substitution rules live in [_save].
 class ReminderEditor extends ConsumerStatefulWidget {
-  const ReminderEditor({super.key, this.reminder});
+  const ReminderEditor({
+    super.key,
+    this.reminder,
+    this.initialTitle,
+    this.initialHour,
+    this.initialMinute,
+  });
 
   final Reminder? reminder;
 
-  static Future<void> show(BuildContext context, {Reminder? reminder}) =>
+  /// Capture-bus prefills ("remind me to stretch at 3pm" via voice).
+  final String? initialTitle;
+  final int? initialHour;
+  final int? initialMinute;
+
+  static Future<void> show(
+    BuildContext context, {
+    Reminder? reminder,
+    String? initialTitle,
+    int? initialHour,
+    int? initialMinute,
+  }) =>
       showAppSheet<void>(
         context,
-        builder: (_) => ReminderEditor(reminder: reminder),
+        builder: (_) => ReminderEditor(
+          reminder: reminder,
+          initialTitle: initialTitle,
+          initialHour: initialHour,
+          initialMinute: initialMinute,
+        ),
       );
 
   @override
@@ -42,15 +64,19 @@ class ReminderEditor extends ConsumerStatefulWidget {
 
 class _ReminderEditorState extends ConsumerState<ReminderEditor> {
   final _formKey = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.reminder?.title ?? '');
+  late final _title = TextEditingController(
+      text: widget.reminder?.title ?? widget.initialTitle ?? '');
   late final _message =
       TextEditingController(text: widget.reminder?.message ?? '');
   late ReminderType _type = widget.reminder == null
       ? ReminderType.custom
       : ReminderType.parse(widget.reminder!.type);
-  late TimeOfDay _time = widget.reminder == null
-      ? _type.typicalTime
-      : TimeOfDay(hour: widget.reminder!.hour, minute: widget.reminder!.minute);
+  late TimeOfDay _time = widget.reminder != null
+      ? TimeOfDay(hour: widget.reminder!.hour, minute: widget.reminder!.minute)
+      : widget.initialHour != null
+          ? TimeOfDay(
+              hour: widget.initialHour!, minute: widget.initialMinute ?? 0)
+          : _type.typicalTime;
 
   /// Empty stored message = rotating template. New reminders start on the
   /// rotating line so the feature is actually discoverable.

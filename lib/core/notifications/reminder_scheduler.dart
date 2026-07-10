@@ -70,8 +70,18 @@ class ReminderScheduler {
     return Result.success(scheduled);
   }
 
+  /// Where a tap on this reminder's notification lands. The daily step
+  /// opens the capture sheet itself — the nudge IS the input.
+  static String payloadFor(Reminder reminder) => switch (reminder.type) {
+        'dailyAction' => 'lifeassist://capture?type=step',
+        'moneyCheck' => 'route:/money',
+        'morningCommand' || 'nightReview' => 'route:/today',
+        _ => 'route:/reminders',
+      };
+
   Future<Result<void>> _scheduleOne(Reminder reminder) async {
     final body = ReminderMessageBuilder.bodyFor(reminder);
+    final payload = payloadFor(reminder);
 
     // One-shot: fire once on its date; expired dates are the repository's
     // job to disable (see RemindersRepository.disableExpiredOneShots).
@@ -87,6 +97,7 @@ class ReminderScheduler {
         body: body,
         when: DateTime(
             date.year, date.month, date.day, reminder.hour, reminder.minute),
+        payload: payload,
       );
     }
 
@@ -98,6 +109,7 @@ class ReminderScheduler {
         body: body,
         hour: reminder.hour,
         minute: reminder.minute,
+        payload: payload,
       );
     }
 
@@ -116,6 +128,7 @@ class ReminderScheduler {
         weekday: weekday,
         hour: reminder.hour,
         minute: reminder.minute,
+        payload: payload,
       );
       if (result case Failure(:final message)) {
         firstFailure ??= Result.failure(message);

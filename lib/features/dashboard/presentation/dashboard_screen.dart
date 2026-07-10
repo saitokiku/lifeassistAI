@@ -2,21 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/capture/capture_launcher.dart';
+import '../../../core/capture/capture_request.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/quick_add_sheet.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../focus/application/focus_controller.dart';
-import '../../focus/presentation/widgets/action_log_form.dart';
 import '../../focus/presentation/widgets/growth_metric_entry_form.dart';
 import '../../habits/application/habits_controller.dart';
-import '../../ideas/presentation/widgets/idea_capture_form.dart';
-import '../../money/application/money_controller.dart';
-import '../../money/presentation/widgets/transaction_entry_form.dart';
 import '../../settings/domain/user_settings.dart';
-import '../../time/application/time_controller.dart';
-import '../../time/presentation/widgets/time_block_log_form.dart';
 import '../application/dashboard_controller.dart';
 import '../application/dashboard_state.dart';
 import 'widgets/check_in_strip.dart';
@@ -113,15 +109,15 @@ class DashboardScreen extends ConsumerWidget {
     );
     if (action == null || !context.mounted) return;
 
+    // Everything except the metric value rides the shared capture
+    // dispatch — same path as deep links, shortcuts, and Siri.
     switch (action) {
       case QuickAddAction.timeBlock:
-        final time = ref.read(timeStateProvider);
-        if (time == null) return;
-        await TimeBlockLogForm.show(context, budgets: time.budgets);
+        await CaptureLauncher.open(
+            context, ref, const CaptureRequest(type: CaptureType.time));
       case QuickAddAction.transaction:
-        final money = ref.read(moneyStateProvider);
-        if (money == null) return;
-        await TransactionEntryForm.show(context, categories: money.categories);
+        await CaptureLauncher.open(
+            context, ref, const CaptureRequest(type: CaptureType.expense));
       case QuickAddAction.metricValue:
         final metric = ref.read(focusStateProvider)?.activeMetric;
         if (metric == null) {
@@ -130,10 +126,11 @@ class DashboardScreen extends ConsumerWidget {
         }
         await GrowthMetricEntryForm.show(context, metric: metric);
       case QuickAddAction.goalStep:
-        final focus = ref.read(focusStateProvider);
-        await ActionLogForm.show(context, action: focus?.todayAction);
+        await CaptureLauncher.open(
+            context, ref, const CaptureRequest(type: CaptureType.step));
       case QuickAddAction.idea:
-        await IdeaCaptureForm.show(context);
+        await CaptureLauncher.open(
+            context, ref, const CaptureRequest(type: CaptureType.idea));
     }
   }
 }

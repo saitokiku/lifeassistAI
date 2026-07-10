@@ -20,17 +20,25 @@ import '../../domain/daily_action.dart';
 /// quietly pads the "worked" column. Saving for a day that already has an
 /// entry updates that day instead of inserting a duplicate.
 class ActionLogForm extends ConsumerStatefulWidget {
-  const ActionLogForm({super.key, this.action});
+  const ActionLogForm({super.key, this.action, this.initialActionText});
 
   final DailyExperiment? action;
+
+  /// Capture-bus prefill for the "what did you do" field (voice input).
+  /// The verdict stays the user's call — voice never pads the outcome.
+  final String? initialActionText;
 
   static Future<void> show(
     BuildContext context, {
     DailyExperiment? action,
+    String? initialActionText,
   }) async {
     final message = await showAppSheet<String>(
       context,
-      builder: (_) => ActionLogForm(action: action),
+      builder: (_) => ActionLogForm(
+        action: action,
+        initialActionText: initialActionText,
+      ),
     );
     if (message != null && context.mounted) {
       showSuccessSnack(context, message);
@@ -43,8 +51,8 @@ class ActionLogForm extends ConsumerStatefulWidget {
 
 class _ActionLogFormState extends ConsumerState<ActionLogForm> {
   final _formKey = GlobalKey<FormState>();
-  late final _action =
-      TextEditingController(text: widget.action?.actionTaken ?? '');
+  late final _action = TextEditingController(
+      text: widget.action?.actionTaken ?? widget.initialActionText ?? '');
   late final _result = TextEditingController(text: widget.action?.result ?? '');
   late final _hypothesis =
       TextEditingController(text: widget.action?.hypothesis ?? '');

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/capture/capture_launcher.dart';
+import '../core/capture/capture_request.dart';
 import '../core/providers.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/focus/presentation/focus_screen.dart';
@@ -20,6 +22,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/today',
     redirect: (context, state) {
+      // A raw lifeassist:// URI can reach the router when the engine
+      // forwards a platform deep link; normalize it onto /capture.
+      if (state.uri.scheme == 'lifeassist') {
+        return Uri(
+          path: '/capture',
+          queryParameters: state.uri.queryParameters,
+        ).toString();
+      }
       final path = state.uri.path;
       final onboarding = path == '/onboarding';
       if (!prefs.onboardingComplete && !onboarding) return '/onboarding';
@@ -34,6 +44,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      // The capture bus: never builds a page. Parses the request into
+      // pendingCaptureProvider and lands on the owning tab; AppShell
+      // opens the prefilled sheet from there.
+      GoRoute(
+        path: '/capture',
+        redirect: (context, state) {
+          final request = CaptureRequest.fromUri(state.uri);
+          if (request == null) return '/today';
+          ref.read(pendingCaptureProvider.notifier).state = request;
+          return CaptureLauncher.tabFor(request.type);
+        },
       ),
       // Indexed-stack shell: each tab keeps its scroll position and state.
       StatefulShellRoute.indexedStack(

@@ -20,14 +20,21 @@ import 'idea_snacks.dart';
 /// Editing opens with everything visible, and says nothing about cooling:
 /// editing never restarts the clock, so we say nothing rather than lie.
 class IdeaCaptureForm extends ConsumerStatefulWidget {
-  const IdeaCaptureForm({super.key, this.idea});
+  const IdeaCaptureForm({super.key, this.idea, this.initialTitle});
 
   final ParkedIdea? idea;
 
-  static Future<void> show(BuildContext context, {ParkedIdea? idea}) =>
+  /// Capture-bus prefill (voice/shortcut capture).
+  final String? initialTitle;
+
+  static Future<void> show(
+    BuildContext context, {
+    ParkedIdea? idea,
+    String? initialTitle,
+  }) =>
       showAppSheet<void>(
         context,
-        builder: (_) => IdeaCaptureForm(idea: idea),
+        builder: (_) => IdeaCaptureForm(idea: idea, initialTitle: initialTitle),
       );
 
   @override
@@ -36,7 +43,8 @@ class IdeaCaptureForm extends ConsumerStatefulWidget {
 
 class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
   final _formKey = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.idea?.title ?? '');
+  late final _title = TextEditingController(
+      text: widget.idea?.title ?? widget.initialTitle ?? '');
   late final _description =
       TextEditingController(text: widget.idea?.description ?? '');
   late final _category =
