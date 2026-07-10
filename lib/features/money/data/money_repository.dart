@@ -82,17 +82,61 @@ class MoneyRepository {
     required double amount,
     required String description,
     String? categoryId,
+    String? accountId,
+    String? sourceRecurringId,
     bool isIntentional = false,
   }) =>
       _db.into(_db.transactionEntries).insert(TransactionEntry(
             id: _uuid.v4(),
             categoryId: categoryId,
+            accountId: accountId,
+            sourceRecurringId: sourceRecurringId,
             date: AppDateUtils.dateKey(date),
             amount: amount,
             description: description,
             isIntentional: isIntentional,
             createdAt: DateTime.now(),
           ));
+
+  /// Inserts many rows in one transaction (statement import).
+  Future<void> addTransactionsBatch(
+    List<({DateTime date, double amount, String description})> rows, {
+    String? accountId,
+    String? categoryId,
+  }) async {
+    final now = DateTime.now();
+    await _db.batch((batch) {
+      batch.insertAll(_db.transactionEntries, [
+        for (final row in rows)
+          TransactionEntry(
+            id: _uuid.v4(),
+            categoryId: categoryId,
+            accountId: accountId,
+            sourceRecurringId: null,
+            date: AppDateUtils.dateKey(row.date),
+            amount: row.amount,
+            description: row.description,
+            isIntentional: false,
+            createdAt: now,
+          ),
+      ]);
+    });
+  }
+
+  /// Duplicate-detection index for statement import: keys of every
+  /// transaction in [months] recent months (see CsvImport.duplicateKey).
+  Future<Set<String>> recentDuplicateKeys({int days = 400}) async {
+    final from = AppDateUtils.dateKey(
+        DateTime.now().subtract(Duration(days: days)));
+    final rows = await (_db.select(_db.transactionEntries)
+          ..where((t) => t.date.isBiggerOrEqualValue(from)))
+        .get();
+    return {
+      for (final r in rows)
+        '${r.date}|${r.amount.toStringAsFixed(2)}|'
+            '${r.description.trim().toLowerCase()}',
+    };
+  }
 
   Future<void> updateTransaction(TransactionEntry entry) =>
       _db.update(_db.transactionEntries).replace(entry);
