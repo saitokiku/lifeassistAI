@@ -15,7 +15,7 @@ final ideasProvider = StreamProvider<List<ParkedIdea>>(
 );
 
 final ideasStateProvider = Provider<IdeasState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final ideas = ref.watch(ideasProvider).valueOrNull;
   if (ideas == null) return null;
   return IdeasState(ideas: ideas, today: AppDateUtils.dateOnly(now));

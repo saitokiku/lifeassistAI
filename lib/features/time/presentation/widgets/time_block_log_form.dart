@@ -20,23 +20,30 @@ import 'time_kind_icon.dart';
 
 /// Log or edit hours against a category — the app's core input.
 /// Quick chips cover the common cases; the keyboard is a fallback.
+/// The initial* fields let the capture bus (deep links, Siri) prefill.
 class TimeBlockLogForm extends ConsumerStatefulWidget {
   const TimeBlockLogForm({
     super.key,
     required this.budgets,
     this.block,
     this.initialBudgetId,
+    this.initialHours,
+    this.initialNote,
   });
 
   final List<TimeBudget> budgets;
   final TimeBlock? block;
   final String? initialBudgetId;
+  final double? initialHours;
+  final String? initialNote;
 
   static Future<void> show(
     BuildContext context, {
     required List<TimeBudget> budgets,
     TimeBlock? block,
     String? initialBudgetId,
+    double? initialHours,
+    String? initialNote,
   }) =>
       showAppSheet<void>(
         context,
@@ -44,6 +51,8 @@ class TimeBlockLogForm extends ConsumerStatefulWidget {
           budgets: budgets,
           block: block,
           initialBudgetId: initialBudgetId,
+          initialHours: initialHours,
+          initialNote: initialNote,
         ),
       );
 
@@ -56,8 +65,13 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
 
   final _formKey = GlobalKey<FormState>();
   late final _hours = TextEditingController(
-      text: widget.block == null ? '' : Formatters.number(widget.block!.hours));
-  late final _note = TextEditingController(text: widget.block?.note ?? '');
+      text: widget.block != null
+          ? Formatters.number(widget.block!.hours)
+          : widget.initialHours != null
+              ? Formatters.number(widget.initialHours!)
+              : '');
+  late final _note = TextEditingController(
+      text: widget.block?.note ?? widget.initialNote ?? '');
   String? _budgetId;
   late DateTime _date = widget.block == null
       ? DateTime.now()
@@ -102,6 +116,24 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
     final controller = ref.read(timeControllerProvider);
     final navigator = Navigator.of(context);
     final note = _note.text.trim().isEmpty ? null : _note.text.trim();
+
+    // A calendar day holds 24 hours — the cap covers the day's total, not
+    // just this one entry, so stacked logs can't quietly invent time.
+    final newHours = Validators.parseNumber(_hours.text);
+    final already = await ref.read(timeRepositoryProvider).hoursOnDate(
+          _date,
+          excludeBlockId: widget.block?.id,
+        );
+    if (already + newHours > 24) {
+      if (!mounted) return;
+      final room = (24 - already).clamp(0.0, 24.0);
+      showErrorSnack(
+        context,
+        '${Formatters.hours(already)} already logged that day — '
+        '${room <= 0 ? 'it\'s full' : 'only ${Formatters.hours(room)} left'}.',
+      );
+      return;
+    }
     try {
       if (isNew) {
         await controller.logBlock(

@@ -5,9 +5,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../../shared/widgets/progress_bar_card.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../focus/application/focus_controller.dart';
+import '../../../focus/domain/main_goal.dart';
 import '../../application/ideas_controller.dart';
 import '../../domain/idea_decision.dart';
 import '../../domain/parked_idea.dart';
@@ -193,9 +196,16 @@ class IdeaReviewCard extends ConsumerWidget {
     // this card the moment the decision lands.
     final messenger = ScaffoldMessenger.of(context);
     final textTheme = Theme.of(context).textTheme;
+    final hasGoal = ref.read(mainGoalProvider).valueOrNull?.isActive ?? false;
     Haptics.medium();
     try {
       await controller.setDecision(idea.id, d.name);
+      // Integrate is a beginning, not a filing action — offer to fold the
+      // idea into the plan as a real milestone so it isn't a dead end.
+      if (d == IdeaDecision.integrate && hasGoal && context.mounted) {
+        await _offerMilestone(context, ref, messenger, textTheme);
+        return;
+      }
       showIdeaUndoSnack(
         messenger,
         textTheme,
@@ -212,6 +222,70 @@ class IdeaReviewCard extends ConsumerWidget {
       );
     } catch (_) {
       showIdeaErrorSnack(messenger, textTheme, "That didn't save. Try again.");
+    }
+  }
+
+  Future<void> _offerMilestone(
+    BuildContext context,
+    WidgetRef ref,
+    ScaffoldMessengerState messenger,
+    TextTheme textTheme,
+  ) async {
+    final focus = ref.read(focusControllerProvider);
+    final added = await showAppSheet<bool>(
+      context,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return AppSheet(
+          title: 'Fold it into the plan?',
+          subtitle: 'Integrated ideas become real work, not a filed verdict.',
+          footer: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetButton(
+                label: 'Add as milestone',
+                onPressed: () async {
+                  Navigator.of(sheetContext).pop(true);
+                },
+              ),
+              const SizedBox(height: AppSpace.sm),
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(false),
+                child: const Text('Just mark integrated'),
+              ),
+            ],
+          ),
+          children: [
+            Text('“${idea.title}”', style: theme.textTheme.titleMedium),
+            if (idea.potentialValue?.isNotEmpty ?? false) ...[
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                idea.potentialValue!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+    if (added != true) {
+      showIdeaSuccessSnack(messenger, textTheme, 'Marked integrated.');
+      return;
+    }
+    try {
+      await focus.createMilestone(
+        title: idea.title,
+        description: (idea.description?.isNotEmpty ?? false)
+            ? idea.description
+            : idea.potentialValue,
+      );
+      showIdeaSuccessSnack(
+          messenger, textTheme, 'Added to your milestones. Go get it.');
+    } catch (_) {
+      showIdeaErrorSnack(
+          messenger, textTheme, "The milestone didn't save. Try again.");
     }
   }
 }

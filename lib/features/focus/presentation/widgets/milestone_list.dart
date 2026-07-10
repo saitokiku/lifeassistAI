@@ -18,23 +18,64 @@ import 'milestone_editor.dart';
 
 /// Milestones as one grouped list: check off a step, tap to edit, menu for
 /// the rest. Measurable milestones show a progress bar that opens a quick
-/// value update. Done milestones sink to the bottom, dimmed.
+/// value update. Open milestones reorder by long-press drag; done ones
+/// sink to the bottom, dimmed, in a fixed order.
 class MilestoneList extends ConsumerWidget {
   const MilestoneList({super.key, required this.milestones, this.today});
 
   final List<Goal> milestones;
   final DateTime? today;
 
+  /// [newIndex] arrives pre-adjusted (onReorderItem semantics).
+  void _onReorder(WidgetRef ref, List<Goal> open, int oldIndex, int newIndex) {
+    final ordered = open.map((m) => m.id).toList();
+    final moved = ordered.removeAt(oldIndex);
+    ordered.insert(newIndex, moved);
+    Haptics.select();
+    // Done milestones keep their positions after the open ones.
+    ref.read(focusControllerProvider).reorderMilestones([
+      ...ordered,
+      ...milestones.where((m) => m.isDone).map((m) => m.id),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (milestones.isEmpty) return const SizedBox.shrink();
+
+    final open = milestones.where((m) => !m.isDone).toList();
+    final done = milestones.where((m) => m.isDone).toList();
 
     return AppCard(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Column(
         children: [
-          for (final (i, m) in milestones.indexed) ...[
-            if (i > 0)
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            onReorderItem: (a, b) => _onReorder(ref, open, a, b),
+            children: [
+              for (final (i, m) in open.indexed)
+                ReorderableDelayedDragStartListener(
+                  key: ValueKey(m.id),
+                  index: i,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (i > 0)
+                        const Divider(
+                          height: 1,
+                          indent: AppSpace.lg + 26 + AppSpace.md,
+                        ),
+                      _MilestoneRow(milestone: m, today: today),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          for (final (i, m) in done.indexed) ...[
+            if (i > 0 || open.isNotEmpty)
               const Divider(height: 1, indent: AppSpace.lg + 26 + AppSpace.md),
             _MilestoneRow(milestone: m, today: today),
           ],

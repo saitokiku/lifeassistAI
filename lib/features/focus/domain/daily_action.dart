@@ -10,6 +10,7 @@ export 'action_verdict.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../habits/domain/habit_log.dart';
 import 'action_verdict.dart';
 
 extension DailyActionX on DailyExperiment {
@@ -21,18 +22,10 @@ class DailyActionStats {
 
   /// Consecutive days with a logged action, ending today (or yesterday
   /// when today isn't logged yet — an open day doesn't break the streak).
-  static int streak(Set<String> loggedDateKeys, DateTime today) {
-    var day = AppDateUtils.dateOnly(today);
-    if (!loggedDateKeys.contains(AppDateUtils.dateKey(day))) {
-      day = day.subtract(const Duration(days: 1));
-    }
-    var streak = 0;
-    while (loggedDateKeys.contains(AppDateUtils.dateKey(day))) {
-      streak++;
-      day = day.subtract(const Duration(days: 1));
-    }
-    return streak;
-  }
+  /// One missed day per calendar week is forgiven — life happens; the
+  /// grace rules live in [HabitStats.streak].
+  static int streak(Set<String> loggedDateKeys, DateTime today) =>
+      HabitStats.streak(loggedDateKeys, today);
 
   /// Days in the last [window] days (ending today) with no action logged.
   static int missedDays(Set<String> loggedDateKeys, DateTime today,

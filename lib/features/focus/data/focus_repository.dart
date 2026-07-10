@@ -122,6 +122,19 @@ class FocusRepository {
   Future<void> deleteMilestone(String id) =>
       (_db.delete(_db.goals)..where((t) => t.id.equals(id))).go();
 
+  /// Rewrites sortOrder to match [orderedIds] (position = order).
+  Future<void> reorderMilestones(List<String> orderedIds) =>
+      _db.transaction(() async {
+        final now = DateTime.now();
+        for (final (i, id) in orderedIds.indexed) {
+          await (_db.update(_db.goals)..where((t) => t.id.equals(id)))
+              .write(GoalsCompanion(
+            sortOrder: Value(i),
+            updatedAt: Value(now),
+          ));
+        }
+      });
+
   // --- Progress measures (growth metrics) -----------------------------------
 
   Stream<List<GrowthMetric>> watchMetrics() => (_db.select(_db.growthMetrics)
@@ -252,10 +265,20 @@ class FocusRepository {
 
   // --- Daily actions --------------------------------------------------------
 
-  Stream<List<DailyExperiment>> watchActions() =>
-      (_db.select(_db.dailyExperiments)
-            ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-          .watch();
+  /// Actions newest-first. When [sinceDays] is set, only rows within that
+  /// trailing window (from [today]) are streamed — the date index makes
+  /// this cheap no matter how long the log grows.
+  Stream<List<DailyExperiment>> watchActions(
+      {int? sinceDays, DateTime? today}) {
+    final query = _db.select(_db.dailyExperiments)
+      ..orderBy([(t) => OrderingTerm.desc(t.date)]);
+    if (sinceDays != null) {
+      final from = (today ?? DateTime.now()).subtract(Duration(days: sinceDays));
+      query.where(
+          (t) => t.date.isBiggerOrEqualValue(AppDateUtils.dateKey(from)));
+    }
+    return query.watch();
+  }
 
   Future<void> logAction({
     required DateTime date,

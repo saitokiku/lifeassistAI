@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
@@ -6,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../application/time_controller.dart';
 import '../../domain/countdown.dart';
 import 'birthday_sheet.dart';
 import 'countdown_editor.dart';
@@ -51,31 +53,58 @@ class _CountdownTile extends StatelessWidget {
 
   final ResolvedCountdown rc;
 
+  /// The main goal's deadline, injected at read time — edited on Focus,
+  /// not through the countdown editor.
+  bool get _isGoalTarget =>
+      rc.countdown.dynamicKey == goalTargetCountdownKey;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpace.tilePadding),
-      onTap: rc.needsBirthday
-          ? () => BirthdaySheet.show(context)
-          : () => CountdownEditor.show(context, countdown: rc.countdown),
+      onTap: _isGoalTarget
+          ? () => context.go('/focus')
+          : rc.needsBirthday
+              ? () => BirthdaySheet.show(context)
+              : () => CountdownEditor.show(context, countdown: rc.countdown),
       onLongPress: rc.needsBirthday
           ? () => CountdownEditor.show(context, countdown: rc.countdown)
           : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            rc.countdown.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          Row(
+            children: [
+              if (_isGoalTarget) ...[
+                Icon(
+                  Icons.outlined_flag,
+                  size: 14,
+                  color: theme.colorScheme.brandLabel,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(
+                  rc.countdown.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpace.sm),
-          _value(theme),
+          // scaleDown keeps huge accessibility text sizes from overflowing
+          // the fixed-width tile.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: _value(theme),
+          ),
           const SizedBox(height: 2),
           _caption(theme),
         ],
@@ -134,6 +163,10 @@ class _CountdownTile extends StatelessWidget {
     final style = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.textTertiary,
     );
+    if (_isGoalTarget && rc.targetDate != null) {
+      return Text('Your goal · ${Formatters.shortDate(rc.targetDate!)}',
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+    }
     if (rc.needsBirthday) {
       return Text('Needed to start this clock.',
           maxLines: 1, overflow: TextOverflow.ellipsis, style: style);

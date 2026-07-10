@@ -28,18 +28,25 @@ final activeMetricProvider = StreamProvider<GrowthMetric?>(
   (ref) => ref.watch(focusRepositoryProvider).watchActiveMetric(),
 );
 
+/// autoDispose: keyed by metric id — switching the active metric must
+/// release the old metric's drift subscription.
 final metricEntriesProvider =
-    StreamProvider.family<List<GrowthMetricEntry>, String>(
+    StreamProvider.autoDispose.family<List<GrowthMetricEntry>, String>(
   (ref, metricId) => ref.watch(focusRepositoryProvider).watchEntries(metricId),
 );
 
-final dailyActionsProvider = StreamProvider<List<DailyExperiment>>(
-  (ref) => ref.watch(focusRepositoryProvider).watchActions(),
-);
+/// Bounded to the trailing year — enough for streaks and the history list
+/// without dragging every action ever logged through memory.
+final dailyActionsProvider = StreamProvider<List<DailyExperiment>>((ref) {
+  final today = readToday(ref);
+  return ref
+      .watch(focusRepositoryProvider)
+      .watchActions(sinceDays: 366, today: today);
+});
 
 /// Combined Focus view state; null while any source is still loading.
 final focusStateProvider = Provider<FocusState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final goal = ref.watch(mainGoalProvider);
   final milestones = ref.watch(milestonesProvider);
   final metrics = ref.watch(activeMetricProvider);
@@ -133,6 +140,9 @@ class FocusController {
       _repo.setMilestoneDone(id, done);
 
   Future<void> deleteMilestone(String id) => _repo.deleteMilestone(id);
+
+  Future<void> reorderMilestones(List<String> orderedIds) =>
+      _repo.reorderMilestones(orderedIds);
 
   // Progress measures
 

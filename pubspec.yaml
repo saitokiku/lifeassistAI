@@ -38,6 +38,16 @@ dev_dependencies:
   build_runner: ^2.4.13
   flutter_launcher_icons: ^0.14.1
 
+# The launcher icon: the day-score ring on the console's dark surface.
+# Regenerate with `dart run flutter_launcher_icons` after editing the PNGs.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/icon/app_icon.png
+  adaptive_icon_background: "#10141B"
+  adaptive_icon_foreground: assets/icon/app_icon_foreground.png
+
 flutter:
   uses-material-design: true
 

@@ -20,14 +20,14 @@ final budgetCategoriesProvider = StreamProvider<List<BudgetCategory>>(
 
 /// Transactions for the current month; re-created when the month rolls over.
 final monthTransactionsProvider = StreamProvider<List<TransactionEntry>>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final month = DateTime(now.year, now.month);
   return ref.watch(moneyRepositoryProvider).watchMonthTransactions(month);
 });
 
 /// Combined money view state; null while sources are loading.
 final moneyStateProvider = Provider<MoneyState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final settings = ref.watch(settingsProvider).valueOrNull;
   final categories = ref.watch(budgetCategoriesProvider).valueOrNull;
   final transactions = ref.watch(monthTransactionsProvider).valueOrNull;
@@ -83,8 +83,10 @@ class MonthlySurplusPoint {
 /// How many months of history the money chart shows.
 const int kMonthlyHistoryMonths = 6;
 
-final _txSinceProvider =
-    StreamProvider.family<List<TransactionEntry>, DateTime>((ref, since) {
+/// autoDispose: the `since` argument advances as months roll over, so old
+/// instances must release their drift subscriptions instead of leaking.
+final _txSinceProvider = StreamProvider.autoDispose
+    .family<List<TransactionEntry>, DateTime>((ref, since) {
   return ref.watch(moneyRepositoryProvider).watchTransactionsSince(since);
 });
 
@@ -99,7 +101,7 @@ final incomeSnapshotsProvider = StreamProvider<Map<String, double>>(
 /// Null while sources load.
 final monthlySurplusHistoryProvider =
     Provider<List<MonthlySurplusPoint>?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final settings = ref.watch(settingsProvider).valueOrNull;
   final snapshots = ref.watch(incomeSnapshotsProvider).valueOrNull;
   final firstMonth =

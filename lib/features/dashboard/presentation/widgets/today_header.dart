@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -13,27 +15,26 @@ import '../../application/dashboard_state.dart';
 
 /// Greeting (by name when known), date, the user's line if they wrote one,
 /// and the day score ring. Tapping the ring opens the score breakdown.
-class TodayHeader extends StatelessWidget {
+class TodayHeader extends ConsumerWidget {
   const TodayHeader({super.key, required this.state});
 
   final DashboardState state;
 
-  String get _greeting {
-    final hour = state.time.now.hour;
+  String _greeting(DayPart part) {
     final name = state.settings.displayName;
-    final base = hour < 5
-        ? 'Up late'
-        : hour < 12
-            ? 'Good morning'
-            : hour < 17
-                ? 'Good afternoon'
-                : 'Good evening';
+    final base = switch (part) {
+      DayPart.late_ => 'Up late',
+      DayPart.morning => 'Good morning',
+      DayPart.afternoon => 'Good afternoon',
+      DayPart.evening => 'Good evening',
+    };
     return name.isEmpty ? '$base.' : '$base, $name.';
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final dayPart = ref.watch(dayPartProvider);
     final score = state.focusScore;
     final status = ScoreUtils.focusScoreStatus(score.total);
     final date = DateFormat('EEEE, MMM d').format(state.time.now);
@@ -46,7 +47,7 @@ class TodayHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting, style: theme.textTheme.headlineSmall),
+              Text(_greeting(dayPart), style: theme.textTheme.headlineSmall),
               const SizedBox(height: AppSpace.xs),
               Text(
                 date,

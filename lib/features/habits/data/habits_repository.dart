@@ -20,9 +20,17 @@ class HabitsRepository {
     return query.watch();
   }
 
-  Stream<List<HabitLog>> watchAllLogs() =>
-      (_db.select(_db.habitLogs)..orderBy([(t) => OrderingTerm.desc(t.date)]))
-          .watch();
+  /// Logs newest-first, bounded to a trailing window — enough for streaks
+  /// and the heatmap without streaming the whole table forever.
+  Stream<List<HabitLog>> watchRecentLogs(
+      {required DateTime today, int sinceDays = 190}) {
+    final from = AppDateUtils.dateKey(
+        today.subtract(Duration(days: sinceDays)));
+    return (_db.select(_db.habitLogs)
+          ..where((t) => t.date.isBiggerOrEqualValue(from))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
 
   Future<void> createHabit({
     required String name,

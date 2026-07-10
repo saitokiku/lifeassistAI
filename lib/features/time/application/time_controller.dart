@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../focus/application/focus_controller.dart';
+import '../../focus/domain/main_goal.dart';
 import '../../settings/application/settings_controller.dart';
 import '../data/time_repository.dart';
 import '../domain/time_category.dart';
@@ -18,7 +20,7 @@ final timeBudgetsProvider = StreamProvider<List<TimeBudget>>(
 
 /// Blocks in the week containing "now"; rolls over with the clock.
 final weekTimeBlocksProvider = StreamProvider<List<TimeBlock>>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   return ref.watch(timeRepositoryProvider).watchWeekBlocks(now);
 });
 
@@ -30,20 +32,38 @@ final countdownsProvider = StreamProvider<List<Countdown>>(
   (ref) => ref.watch(timeRepositoryProvider).watchCountdowns(),
 );
 
+/// Synthetic countdown key for the main goal's target date. Not a stored
+/// row — injected at read time so the deadline the user actually committed
+/// to is always on the clock.
+const String goalTargetCountdownKey = 'goalTarget';
+
 /// Combined time view state; null while sources are loading.
 final timeStateProvider = Provider<TimeState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final budgets = ref.watch(timeBudgetsProvider).valueOrNull;
   final blocks = ref.watch(weekTimeBlocksProvider).valueOrNull;
   final countdowns = ref.watch(countdownsProvider).valueOrNull;
   final settings = ref.watch(settingsProvider).valueOrNull;
+  final goal = ref.watch(mainGoalProvider).valueOrNull;
   if (budgets == null || blocks == null || countdowns == null) return null;
+
+  final withGoal = [
+    if (goal != null && goal.isActive && goal.targetDate != null)
+      Countdown(
+        id: 'goal-target',
+        title: goal.title,
+        targetDate: goal.targetDate,
+        dynamicKey: goalTargetCountdownKey,
+        sortOrder: -1,
+      ),
+    ...countdowns,
+  ];
 
   return TimeState.compute(
     now: now,
     budgets: budgets,
     weekBlocks: blocks,
-    countdowns: countdowns,
+    countdowns: withGoal,
     birthday: settings?.birthday,
   );
 });
@@ -64,15 +84,17 @@ class WeeklyHoursPoint {
 /// How many weeks of history the time chart shows.
 const int kWeeklyHistoryWeeks = 8;
 
-final _blocksSinceProvider =
-    StreamProvider.family<List<TimeBlock>, DateTime>((ref, since) {
+/// autoDispose: the `since` argument advances as weeks roll over, so old
+/// instances must release their drift subscriptions instead of leaking.
+final _blocksSinceProvider = StreamProvider.autoDispose
+    .family<List<TimeBlock>, DateTime>((ref, since) {
   return ref.watch(timeRepositoryProvider).watchBlocksSince(since);
 });
 
 /// Last [kWeeklyHistoryWeeks] weeks of total vs main-goal hours (oldest first).
 /// Null while sources load.
 final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final budgets = ref.watch(timeBudgetsProvider).valueOrNull;
   final firstWeekStart = AppDateUtils.startOfWeek(now)
       .subtract(const Duration(days: 7 * (kWeeklyHistoryWeeks - 1)));
