@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../../focus/application/focus_controller.dart';
 import '../../habits/application/habits_controller.dart';
 import '../../ideas/application/ideas_controller.dart';
 import '../../money/application/money_controller.dart';
+import '../../review/application/review_controller.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../time/application/time_controller.dart';
 import 'dashboard_state.dart';
@@ -17,6 +19,8 @@ final dashboardStateProvider = Provider<DashboardState?>((ref) {
   final settings = ref.watch(settingsProvider).valueOrNull;
   final habits = ref.watch(habitsStateProvider);
   final ideas = ref.watch(ideasStateProvider);
+  final dayPart = ref.watch(dayPartProvider);
+  final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
 
   if (focus == null ||
       money == null ||
@@ -39,5 +43,7 @@ final dashboardStateProvider = Provider<DashboardState?>((ref) {
     exerciseOrMeditationToday: exerciseOrMeditationToday,
     parkedIdeaCount: ideas.parkedCount,
     ideasDueForReview: ideas.dueForReview.length,
+    dayPart: dayPart,
+    weeklyReviewDone: weeklyReview != null,
   );
 });

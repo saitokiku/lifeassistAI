@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
 import '../../../core/providers.dart';
+import '../../../core/security/app_lock.dart';
 import '../../../core/storage/seed_service.dart';
 import '../../../core/storage/settings_keys.dart';
 import '../../../core/theme/app_colors.dart';
@@ -156,6 +157,8 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.go('/reminders'),
             ),
           ]),
+          const SectionHeader(title: 'Privacy'),
+          const _SettingsGroup(children: [_AppLockRow()]),
           const SectionHeader(title: 'Data'),
           const _SettingsGroup(children: [
             _ExportRow(),
@@ -441,6 +444,50 @@ class _NotificationsRowState extends ConsumerState<_NotificationsRow> {
         onChanged: supported && !_busy ? _toggle : null,
       ),
       onTap: supported && !_busy ? () => _toggle(!enabled) : null,
+    );
+  }
+}
+
+/// Biometric/PIN gate on open. Hidden on unsupported devices instead of
+/// showing a switch that can't work.
+class _AppLockRow extends ConsumerStatefulWidget {
+  const _AppLockRow();
+
+  @override
+  ConsumerState<_AppLockRow> createState() => _AppLockRowState();
+}
+
+class _AppLockRowState extends ConsumerState<_AppLockRow> {
+  Future<void> _toggle(bool value) async {
+    Haptics.select();
+    await ref.read(preferencesProvider).setAppLockEnabled(value);
+    if (!mounted) return;
+    setState(() {});
+    showSuccessSnack(
+      context,
+      value ? 'App lock on. Locks when you leave the app.' : 'App lock off.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supported =
+        ref.watch(appLockSupportedProvider).valueOrNull ?? false;
+    final enabled = ref.read(preferencesProvider).appLockEnabled;
+
+    return _SettingsRow(
+      icon: Icons.lock_outline_rounded,
+      title: 'App lock',
+      subtitle: !supported
+          ? 'No screen lock set up on this device.'
+          : enabled
+              ? 'Asks for Face ID / fingerprint / PIN on open.'
+              : 'Off. The app opens without asking.',
+      trailing: Switch(
+        value: enabled && supported,
+        onChanged: supported ? _toggle : null,
+      ),
+      onTap: supported ? () => _toggle(!enabled) : null,
     );
   }
 }

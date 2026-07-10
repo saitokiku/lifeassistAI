@@ -10,6 +10,8 @@ import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
+import '../../features/settings/data/auto_backup_service.dart';
+import '../../features/settings/data/backup_service.dart';
 import '../haptics.dart';
 import 'adaptive_navigation.dart';
 import 'responsive_scaffold.dart';
@@ -49,7 +51,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     _wireCaptureSources();
     // The router's /capture redirect may have parked a request before this
     // widget existed (cold-start deep link) — drain it on first frame.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _drainPending());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _drainPending();
+      // Weekly local safety copy; never blocks and never throws.
+      AutoBackupService(
+        BackupService(ref.read(databaseProvider)),
+        ref.read(preferencesProvider),
+      ).maybeRun();
+    });
   }
 
   Future<void> _wireCaptureSources() async {

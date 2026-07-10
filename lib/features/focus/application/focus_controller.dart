@@ -16,6 +16,11 @@ final mainGoalProvider = StreamProvider<MainGoal?>(
   (ref) => ref.watch(focusRepositoryProvider).watchCurrentGoal(),
 );
 
+/// Every goal ever set, newest first — the chapters of this pursuit.
+final allGoalsProvider = StreamProvider<List<MainGoal>>(
+  (ref) => ref.watch(focusRepositoryProvider).watchAllGoals(),
+);
+
 final milestonesProvider = StreamProvider<List<Goal>>(
   (ref) => ref.watch(focusRepositoryProvider).watchMilestones(),
 );

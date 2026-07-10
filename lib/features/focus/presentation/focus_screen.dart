@@ -22,6 +22,7 @@ import '../domain/growth_metric.dart';
 import '../domain/growth_metric_entry.dart';
 import '../domain/main_goal.dart';
 import 'widgets/action_history_list.dart';
+import 'widgets/chapters_sheet.dart';
 import 'widgets/growth_metric_chart.dart';
 import 'widgets/action_log_form.dart';
 import 'widgets/growth_metric_editor.dart';
@@ -395,6 +396,8 @@ class _GoalHeader extends ConsumerWidget {
                     await _complete(context, ref);
                   case 'new':
                     await _startNew(context, ref);
+                  case 'chapters':
+                    await ChaptersSheet.show(context);
                 }
               },
               itemBuilder: (_) => [
@@ -407,6 +410,8 @@ class _GoalHeader extends ConsumerWidget {
                     value: 'complete', child: Text('Mark complete')),
                 const PopupMenuItem(
                     value: 'new', child: Text('Start a new goal')),
+                const PopupMenuItem(
+                    value: 'chapters', child: Text('Past chapters')),
               ],
             ),
           ],
@@ -487,9 +492,18 @@ class _CompletedCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpace.lg),
-          FilledButton(
-            onPressed: () => MainGoalEditor.show(context),
-            child: const Text('Set a new goal'),
+          Row(
+            children: [
+              FilledButton(
+                onPressed: () => MainGoalEditor.show(context),
+                child: const Text('Set a new goal'),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              TextButton(
+                onPressed: () => ChaptersSheet.show(context),
+                child: const Text('Past chapters'),
+              ),
+            ],
           ),
         ],
       ),

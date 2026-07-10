@@ -15,6 +15,9 @@ import '../../identity/presentation/widgets/statement_editor.dart';
 import '../../identity/presentation/widgets/statement_list.dart';
 import '../../ideas/application/ideas_controller.dart';
 import '../../reminders/application/reminders_controller.dart';
+import '../../review/application/review_controller.dart';
+import '../../review/presentation/weekly_review_sheet.dart';
+import '../../search/presentation/search_sheet.dart';
 import '../../settings/application/settings_controller.dart';
 
 /// The You tab: who this is for, in their own words — a personal line,
@@ -31,6 +34,7 @@ class YouScreen extends ConsumerWidget {
     final habits = ref.watch(habitsStateProvider);
     final ideas = ref.watch(ideasStateProvider);
     final reminders = ref.watch(remindersStateProvider);
+    final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
 
     final doneToday = habits?.habits.where((h) => h.doneToday).length;
     final habitCount = habits?.habits.length;
@@ -50,9 +54,20 @@ class YouScreen extends ConsumerWidget {
               AppSpace.xxl,
             ),
             children: [
-              Text(
-                name.isEmpty ? 'You' : name,
-                style: theme.textTheme.headlineSmall,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name.isEmpty ? 'You' : name,
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Search everything',
+                    onPressed: () => SearchSheet.show(context),
+                    icon: const Icon(Icons.search_rounded),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpace.xs),
               Text(
@@ -72,6 +87,8 @@ class YouScreen extends ConsumerWidget {
                 ),
               ),
               StatementList(statements: identity?.statements ?? const []),
+              const SectionHeader(title: 'Rituals'),
+              _ReviewRow(done: weeklyReview != null),
               const SectionHeader(title: 'Systems'),
               _HubRow(
                 icon: Icons.check_circle_outline,
@@ -120,6 +137,69 @@ class YouScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The weekly review ritual entry, with an honest status line.
+class _ReviewRow extends StatelessWidget {
+  const _ReviewRow({required this.done});
+
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return AppCard(
+      onTap: () => WeeklyReviewSheet.show(context),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: scheme.primaryTint,
+              borderRadius: BorderRadius.circular(AppRadius.chip + 2),
+            ),
+            child: const Icon(
+              Icons.history_edu_outlined,
+              size: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpace.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Weekly review', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  done
+                      ? 'This week is written. Edit any time.'
+                      : 'Five minutes to close the week — due Sunday.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: scheme.textTertiary,
+          ),
+        ],
       ),
     );
   }

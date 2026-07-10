@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers.dart' show DayPart;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -8,6 +9,7 @@ import '../../../focus/domain/main_goal.dart';
 import '../../../focus/presentation/widgets/action_log_form.dart';
 import '../../../focus/presentation/widgets/growth_metric_entry_form.dart';
 import '../../../focus/presentation/widgets/main_goal_editor.dart';
+import '../../../review/presentation/weekly_review_sheet.dart';
 import '../../../settings/domain/user_settings.dart';
 import '../../application/dashboard_state.dart';
 
@@ -95,8 +97,11 @@ class UpNextCard extends StatelessWidget {
         );
       case UpNextKind.logAction:
         return _Directive(
-          text: 'Take one small step toward $goalTitle today — '
-              'then log how it went.',
+          text: state.dayPart == DayPart.evening
+              ? "Before the day closes: what was today's step toward "
+                  '$goalTitle? Log the honest version.'
+              : 'Take one small step toward $goalTitle today — '
+                  'then log how it went.',
           actionLabel: 'Log a step',
           onTap: () => ActionLogForm.show(context),
         );
@@ -115,6 +120,13 @@ class UpNextCard extends StatelessWidget {
           onTap: metric == null
               ? () => context.go('/focus')
               : () => GrowthMetricEntryForm.show(context, metric: metric),
+        );
+      case UpNextKind.weeklyReview:
+        return _Directive(
+          text: "It's Sunday. Five minutes closes the week: what happened, "
+              'and what next week leans on.',
+          actionLabel: 'Review the week',
+          onTap: () => WeeklyReviewSheet.show(context),
         );
       case UpNextKind.protectRecovery:
         return _Directive(
@@ -143,7 +155,10 @@ class UpNextCard extends StatelessWidget {
           text: state.goal?.isPaused ?? false
               ? '${state.goal!.title} is paused. Resume it whenever '
                   "you're ready — everything else still works."
-              : "You're on pace today. Nothing urgent is waiting.",
+              : state.dayPart == DayPart.evening
+                  ? "The day's work is in. Wind down — tomorrow starts "
+                      'from a clean board.'
+                  : "You're on pace today. Nothing urgent is waiting.",
           onTap: () => context.go('/focus'),
         );
     }

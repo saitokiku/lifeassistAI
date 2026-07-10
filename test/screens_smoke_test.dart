@@ -77,9 +77,11 @@ void main() {
   }
 
   Future<void> openHubRow(WidgetTester tester, String label) async {
-    // Hub rows can sit below the fold on a phone-sized You screen.
+    // Hub rows can sit below the fold (and outside the lazy ListView's
+    // build window) on a phone-sized You screen — scroll with a plain
+    // finder, which tolerates zero matches while off-screen.
     await tester.scrollUntilVisible(
-      find.text(label).first,
+      find.text(label),
       200,
       scrollable: find.byType(Scrollable).first,
     );

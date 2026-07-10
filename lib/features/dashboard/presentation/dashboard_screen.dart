@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -157,17 +159,21 @@ class _EntranceState extends State<_Entrance>
   );
   late final CurvedAnimation _curve =
       CurvedAnimation(parent: _controller, curve: AppMotion.easeOut);
+  Timer? _stagger;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(milliseconds: 40 * widget.index), () {
+    // A cancellable timer, not Future.delayed — unmounting mid-stagger
+    // must not leave a pending callback behind.
+    _stagger = Timer(Duration(milliseconds: 40 * widget.index), () {
       if (mounted) _controller.forward();
     });
   }
 
   @override
   void dispose() {
+    _stagger?.cancel();
     _curve.dispose();
     _controller.dispose();
     super.dispose();

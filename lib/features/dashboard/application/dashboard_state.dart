@@ -1,3 +1,4 @@
+import '../../../core/providers.dart' show DayPart;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/score_utils.dart';
 import '../../focus/application/focus_state.dart';
@@ -15,6 +16,7 @@ enum UpNextKind {
   logAction,
   logGoalTime,
   logMetric,
+  weeklyReview,
   protectRecovery,
   reviewIdeas,
   nextMilestone,
@@ -31,6 +33,8 @@ class DashboardState {
     required this.exerciseOrMeditationToday,
     required this.parkedIdeaCount,
     required this.ideasDueForReview,
+    this.dayPart = DayPart.morning,
+    this.weeklyReviewDone = false,
   }) {
     focusScore = ScoreUtils.focusScore(FocusScoreInput(
       goalHoursThisWeek: time.goalHoursThisWeek,
@@ -55,6 +59,12 @@ class DashboardState {
   final bool exerciseOrMeditationToday;
   final int parkedIdeaCount;
   final int ideasDueForReview;
+
+  /// Coarse time of day — morning plans, evening closes.
+  final DayPart dayPart;
+
+  /// Whether this week's review has been written.
+  final bool weeklyReviewDone;
 
   late final FocusScoreBreakdown focusScore;
   late final UpNextKind upNext;
@@ -90,6 +100,10 @@ class DashboardState {
         targetSurplusLow: money.snapshot.targetSurplusLow,
       );
 
+  /// Sunday is review day: the week is effectively written.
+  bool get weeklyReviewDue =>
+      focus.today.weekday == DateTime.sunday && !weeklyReviewDone;
+
   /// The one thing most worth doing right now.
   UpNextKind _resolveUpNext() {
     if (goal == null) return UpNextKind.setGoal;
@@ -104,6 +118,7 @@ class DashboardState {
         return UpNextKind.logMetric;
       }
     }
+    if (weeklyReviewDue) return UpNextKind.weeklyReview;
     if (showsArea(DashboardArea.time) && time.recoveryHoursThisWeek <= 0) {
       return UpNextKind.protectRecovery;
     }
