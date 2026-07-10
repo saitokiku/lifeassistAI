@@ -43,8 +43,7 @@ class WeeklyTimeBudgetCard extends StatelessWidget {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(64, 40),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpace.xl),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
                 ),
                 onPressed: () => TimeBudgetEditor.show(context),
                 child: const Text('Create category'),
@@ -55,8 +54,8 @@ class WeeklyTimeBudgetCard extends StatelessWidget {
       );
     }
 
-    final recoveryAtZero = state.recoveryWeeklyTarget > 0 &&
-        state.recoveryHoursThisWeek <= 0;
+    final recoveryAtZero =
+        state.recoveryWeeklyTarget > 0 && state.recoveryHoursThisWeek <= 0;
 
     return AppCard(
       child: Column(

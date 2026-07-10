@@ -56,7 +56,8 @@ class IdentityController {
 
   Future<void> deleteFreedomTarget(String id) => _repo.deleteFreedomTarget(id);
 
-  Future<void> createStatement(String content) => _repo.createStatement(content);
+  Future<void> createStatement(String content) =>
+      _repo.createStatement(content);
 
   Future<void> updateStatement(IdentityStatement statement) =>
       _repo.updateStatement(statement);

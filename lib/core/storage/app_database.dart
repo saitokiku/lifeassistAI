@@ -53,7 +53,8 @@ class BudgetCategories extends Table {
   RealColumn get monthlyTarget => real().withDefault(const Constant(0))();
   // none | warnOverTarget | warnOverZero | warnOverZeroUnlessIntentional |
   // criticalOverZero  (see BudgetFlagType)
-  TextColumn get flagType => text().withDefault(const Constant('warnOverTarget'))();
+  TextColumn get flagType =>
+      text().withDefault(const Constant('warnOverTarget'))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -64,11 +65,12 @@ class BudgetCategories extends Table {
 
 class TransactionEntries extends Table {
   TextColumn get id => text()();
-  TextColumn get categoryId => text().nullable()(); // null = uncategorized fog
+  TextColumn get categoryId => text().nullable()(); // null = uncategorized
   TextColumn get date => text()(); // yyyy-MM-dd
   RealColumn get amount => real()();
   TextColumn get description => text().withDefault(const Constant(''))();
-  BoolColumn get isIntentional => boolean().withDefault(const Constant(false))();
+  BoolColumn get isIntentional =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -78,8 +80,9 @@ class TransactionEntries extends Table {
 class TimeBudgets extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
-  // sleep | job | kaizen | admin | decompress | meals | exercise |
-  // volunteering | toastmasters | meditation | other  (see TimeCategoryKind)
+  // sleep | job | goal | admin | decompress | meals | exercise |
+  // volunteering | meditation | other (see TimeCategoryKind; legacy rows
+  // may still carry pre-v2 values — parse() maps them)
   TextColumn get kind => text().withDefault(const Constant('other'))();
   RealColumn get weeklyTargetHours => real().withDefault(const Constant(0))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
@@ -116,7 +119,8 @@ class Countdowns extends Table {
 class Habits extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
-  TextColumn get type => text().withDefault(const Constant('boolean'))(); // boolean | numeric | duration
+  TextColumn get type => text()
+      .withDefault(const Constant('boolean'))(); // boolean | numeric | duration
   TextColumn get unit => text().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
@@ -147,7 +151,8 @@ class ParkedIdeas extends Table {
   TextColumn get potentialValue => text().nullable()();
   TextColumn get dateCaptured => text()(); // yyyy-MM-dd
   TextColumn get reviewDate => text()(); // yyyy-MM-dd, captured + 7 days
-  TextColumn get decision => text().withDefault(const Constant('undecided'))(); // undecided | ignore | later | integrate
+  TextColumn get decision => text().withDefault(
+      const Constant('undecided'))(); // undecided | ignore | later | integrate
   // SQL name predates the universal main-goal system; kept for data compat.
   BoolColumn get helpsMainGoal => boolean()
       .named('directly_helps_kaizen_this_week')
@@ -204,7 +209,8 @@ class FreedomTargets extends Table {
   TextColumn get description => text().nullable()();
   RealColumn get targetMonthlyPassiveIncome =>
       real().withDefault(const Constant(0))();
-  RealColumn get targetLiquidNetWorth => real().withDefault(const Constant(0))();
+  RealColumn get targetLiquidNetWorth =>
+      real().withDefault(const Constant(0))();
   RealColumn get currentMonthlyPassiveIncome =>
       real().withDefault(const Constant(0))();
   RealColumn get currentLiquidNetWorth =>
@@ -221,7 +227,7 @@ class Reminders extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
-  // morningCommand | kaizenExperiment | moneyCheck | nightReview | custom
+  // morningCommand | dailyAction | moneyCheck | nightReview | custom
   TextColumn get type => text().withDefault(const Constant('custom'))();
   IntColumn get hour => integer()();
   IntColumn get minute => integer()();

@@ -5,8 +5,8 @@ TestFlight → App Review. Nothing is automated; each item is a manual step.
 
 ## Identity
 
-- [ ] App name: **Life Dashboard** (check availability in App Store
-      Connect; fall back to e.g. "Life Dashboard — Operator" if taken)
+- [ ] App name: **Life Assist** (check availability in App Store
+      Connect; fall back to e.g. "Life Assist — Personal OS" if taken)
 - [ ] Bundle ID: `com.kaizen.lifedashboard` (placeholder — register the
       final one at developer.apple.com → Identifiers and set it in Xcode;
       it cannot change after the first upload)
@@ -18,7 +18,7 @@ TestFlight → App Review. Nothing is automated; each item is a manual step.
 - [ ] App icon 1024×1024 (no alpha) + generated icon set
       (see `assets/app_icon/placeholder_readme.md`)
 - [ ] Screenshots: 6.9" (iPhone 16 Pro Max class) and 6.5" sizes minimum;
-      capture Dashboard, Kaizen, Money, Time in dark mode
+      capture Today, Focus, Money, Time in dark mode
 - [ ] Optional: iPad screenshots if iPad is enabled (rail layout already works)
 
 ## Metadata

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/haptics.dart';
@@ -42,8 +43,8 @@ class _IdeaParkingLotListState extends State<IdeaParkingLotList> {
         child: EmptyState(
           icon: Icons.lightbulb_outline,
           title: 'The lot is empty.',
-          message: 'When the next shiny idea shows up, park it here — '
-              'it keeps your focus clean.',
+          message: 'Park the next idea that grabs you. '
+              '${AppCopy.ideasCoolingExplainer}',
           actionLabel: 'Park an idea',
           onAction: () => IdeaCaptureForm.show(context),
         ),

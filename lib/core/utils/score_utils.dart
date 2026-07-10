@@ -101,10 +101,11 @@ class ScoreUtils {
     return 'Needs attention';
   }
 
+  /// The day score never turns red — a quiet morning isn't an emergency.
+  /// Red is reserved for genuinely critical signals (money flags).
   static StatusLevel focusScoreStatus(int score) {
     if (score >= 80) return StatusLevel.aligned;
-    if (score >= 40) return StatusLevel.watch;
-    return StatusLevel.critical;
+    return StatusLevel.watch;
   }
 
   /// Weekly goal hours against their target: 80%+ on track, 50%+ watch.

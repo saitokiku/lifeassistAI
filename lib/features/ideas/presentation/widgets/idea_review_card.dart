@@ -203,8 +203,7 @@ class IdeaReviewCard extends ConsumerWidget {
         // Undo is a write too — it must be able to report failure.
         onUndo: () async {
           try {
-            await controller.setDecision(
-                idea.id, IdeaDecision.undecided.name);
+            await controller.setDecision(idea.id, IdeaDecision.undecided.name);
           } catch (_) {
             showIdeaErrorSnack(
                 messenger, textTheme, "That didn't undo. Try again.");
@@ -384,8 +383,7 @@ class _LockedIntegrate extends StatelessWidget {
     final days = daysLeft < 1 ? 1 : daysLeft;
 
     return Tooltip(
-      message:
-          'Unlocks when cooling ends — or when it directly helps '
+      message: 'Unlocks when cooling ends — or when it directly helps '
           'your main goal.',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),

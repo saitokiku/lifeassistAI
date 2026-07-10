@@ -27,21 +27,20 @@ class IncomeTargetsSheet extends ConsumerStatefulWidget {
       );
 
   @override
-  ConsumerState<IncomeTargetsSheet> createState() =>
-      _IncomeTargetsSheetState();
+  ConsumerState<IncomeTargetsSheet> createState() => _IncomeTargetsSheetState();
 }
 
 class _IncomeTargetsSheetState extends ConsumerState<IncomeTargetsSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _income = TextEditingController(
-      text: Formatters.number(widget.snapshot.monthlyNetIncome,
-          maxDecimals: 2));
+      text:
+          Formatters.number(widget.snapshot.monthlyNetIncome, maxDecimals: 2));
   late final _low = TextEditingController(
-      text: Formatters.number(widget.snapshot.targetSurplusLow,
-          maxDecimals: 2));
+      text:
+          Formatters.number(widget.snapshot.targetSurplusLow, maxDecimals: 2));
   late final _high = TextEditingController(
-      text: Formatters.number(widget.snapshot.targetSurplusHigh,
-          maxDecimals: 2));
+      text:
+          Formatters.number(widget.snapshot.targetSurplusHigh, maxDecimals: 2));
 
   @override
   void dispose() {

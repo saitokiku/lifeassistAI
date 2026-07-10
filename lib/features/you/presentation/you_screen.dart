@@ -44,7 +44,10 @@ class YouScreen extends ConsumerWidget {
         child: ContentWidth(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpace.screen, AppSpace.lg, AppSpace.screen, AppSpace.xxl,
+              AppSpace.screen,
+              AppSpace.lg,
+              AppSpace.screen,
+              AppSpace.xxl,
             ),
             children: [
               Text(

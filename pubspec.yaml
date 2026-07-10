@@ -1,5 +1,5 @@
 name: life_dashboard
-description: "Life Dashboard — a personal life operating system. Money = scoreboard. Curiosity = engine. Freedom = goal."
+description: "Life Assist — one quiet place to run your life. The Dart package keeps its original name (life_dashboard) so imports stay stable."
 publish_to: "none"
 version: 0.2.0+2
 

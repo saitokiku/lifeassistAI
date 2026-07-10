@@ -86,8 +86,7 @@ class LongTermTargetCard extends ConsumerWidget {
                     final confirmed = await showConfirmDialog(
                       context,
                       title: 'Delete this target?',
-                      message:
-                          'Removes "${t.title}" and both progress lines. '
+                      message: 'Removes "${t.title}" and both progress lines. '
                           'You can set a new target anytime.',
                     );
                     if (confirmed) {
@@ -139,8 +138,7 @@ class LongTermTargetCard extends ConsumerWidget {
     return QuickUpdateSheet.show(
       context,
       title: 'Passive income',
-      subtitle:
-          'Target ${Formatters.money(t.targetMonthlyPassiveIncome)}/mo.',
+      subtitle: 'Target ${Formatters.money(t.targetMonthlyPassiveIncome)}/mo.',
       label: 'Current monthly passive income',
       suffixText: '/mo',
       initialValue: t.currentMonthlyPassiveIncome,

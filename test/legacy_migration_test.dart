@@ -202,8 +202,7 @@ void main() {
           },
         });
 
-    test('normalizes a pre-v2 envelope and derives the Kaizen goal',
-        () async {
+    test('normalizes a pre-v2 envelope and derives the Kaizen goal', () async {
       final result = await BackupService(db).importJson(v1Envelope());
       expect(result.isSuccess, isTrue, reason: result.errorOrNull ?? '');
 
@@ -218,8 +217,7 @@ void main() {
 
       // Enum values are rewritten and the goal is derived.
       expect((await db.select(db.timeBudgets).get()).single.kind, 'goal');
-      expect(
-          (await db.select(db.reminders).get()).single.type, 'dailyAction');
+      expect((await db.select(db.reminders).get()).single.type, 'dailyAction');
       final goal = (await db.select(db.mainGoals).get()).single;
       expect(goal.title, 'Kaizen');
 

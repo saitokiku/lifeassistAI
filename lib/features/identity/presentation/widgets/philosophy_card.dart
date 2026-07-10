@@ -43,8 +43,7 @@ class PhilosophyCard extends ConsumerWidget {
                 tooltip: 'Edit your line',
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => _edit(context),
                 icon: Icon(
                   Icons.edit_outlined,

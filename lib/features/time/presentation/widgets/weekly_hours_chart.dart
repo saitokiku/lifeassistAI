@@ -34,7 +34,8 @@ class WeeklyHoursChart extends ConsumerWidget {
 
     return MetricCard(
       title: 'Weekly hours',
-      supportText: 'Last ${history.length} weeks · goal hours vs everything else.',
+      supportText:
+          'Last ${history.length} weeks · goal hours vs everything else.',
       child: !hasData
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -68,8 +69,8 @@ class WeeklyHoursChart extends ConsumerWidget {
                               horizontalLines: [
                                 HorizontalLine(
                                   y: target,
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.6),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.6),
                                   strokeWidth: 1,
                                   dashArray: [5, 4],
                                 ),

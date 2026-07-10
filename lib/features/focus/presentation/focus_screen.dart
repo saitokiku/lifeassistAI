@@ -117,7 +117,10 @@ class _NoGoalContent extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpace.screen, AppSpace.lg, AppSpace.screen, AppSpace.xxl,
+        AppSpace.screen,
+        AppSpace.lg,
+        AppSpace.screen,
+        AppSpace.xxl,
       ),
       children: [
         Text('Focus', style: theme.textTheme.headlineSmall),
@@ -195,7 +198,10 @@ class _GoalContent extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpace.screen, AppSpace.lg, AppSpace.screen, 96,
+        AppSpace.screen,
+        AppSpace.lg,
+        AppSpace.screen,
+        96,
       ),
       children: [
         _GoalHeader(state: state),
@@ -280,8 +286,7 @@ class _GoalContent extends StatelessWidget {
                   value: '$streak ${streak == 1 ? 'day' : 'days'}',
                   caption: 'one step a day',
                   icon: Icons.local_fire_department,
-                  level:
-                      streak > 0 ? StatusLevel.aligned : StatusLevel.neutral,
+                  level: streak > 0 ? StatusLevel.aligned : StatusLevel.neutral,
                 ),
               ),
               const SizedBox(width: AppSpace.cardGap),
@@ -747,7 +752,10 @@ class _MeasureRow extends ConsumerWidget {
     return AppCard(
       tinted: active,
       padding: const EdgeInsets.fromLTRB(
-        AppSpace.lg, AppSpace.md, AppSpace.xs, AppSpace.md,
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.xs,
+        AppSpace.md,
       ),
       onTap: active ? null : () => _activate(context, ref),
       child: Row(

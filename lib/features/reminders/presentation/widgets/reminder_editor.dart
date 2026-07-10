@@ -283,8 +283,8 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
           padding: const EdgeInsets.only(left: AppSpace.xs),
           child: Text(
             'Fires daily around this time.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: scheme.textTertiary),
+            style:
+                theme.textTheme.bodySmall?.copyWith(color: scheme.textTertiary),
           ),
         ),
         const SizedBox(height: AppSpace.xl),

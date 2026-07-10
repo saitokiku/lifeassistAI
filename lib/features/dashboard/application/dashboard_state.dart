@@ -3,6 +3,7 @@ import '../../../core/utils/score_utils.dart';
 import '../../focus/application/focus_state.dart';
 import '../../focus/domain/main_goal.dart';
 import '../../money/application/money_state.dart';
+import '../../money/domain/money_flag.dart';
 import '../../settings/domain/user_settings.dart';
 import '../../time/application/time_state.dart';
 
@@ -66,7 +67,8 @@ class DashboardState {
       showsArea(DashboardArea.money) &&
       settings.hasIncome &&
       (money.snapshot.projectedSurplus < 0 ||
-          money.snapshot.flags.any((f) => f.severity.name == 'critical'));
+          money.snapshot.flags
+              .any((f) => f.severity == MoneyFlagSeverity.critical));
 
   bool get goalHoursBehind =>
       time.goalWeeklyTarget > 0 &&

@@ -63,7 +63,10 @@ class SettingsScreen extends ConsumerWidget {
     } else {
       body = ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.screen, AppSpace.lg, AppSpace.screen, AppSpace.xxl,
+          AppSpace.screen,
+          AppSpace.lg,
+          AppSpace.screen,
+          AppSpace.xxl,
         ),
         children: [
           Row(
@@ -74,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpace.xs),
           Text(
-            'Targets, appearance, and your data.',
+            AppCopy.settingsTagline,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -171,7 +174,8 @@ class SettingsScreen extends ConsumerWidget {
           const SectionHeader(title: 'About'),
           const _SettingsGroup(children: [_AboutRow()]),
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.lg, AppSpace.xs, 0),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpace.xs, AppSpace.lg, AppSpace.xs, 0),
             child: Text(
               'Local-first. No account, no cloud, no analytics.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -288,8 +292,8 @@ class _SettingsRow extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: titleColor),
+                    style:
+                        theme.textTheme.bodyMedium?.copyWith(color: titleColor),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
@@ -352,7 +356,10 @@ class _ThemeCard extends ConsumerWidget {
           const _SettingsRow(icon: Icons.dark_mode_outlined, title: 'Theme'),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpace.lg, 0, AppSpace.lg, AppSpace.lg - AppSpace.xs,
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.lg - AppSpace.xs,
             ),
             child: SegmentedButton<ThemeMode>(
               expandedInsets: EdgeInsets.zero,
@@ -509,7 +516,7 @@ class _AboutRowState extends State<_AboutRow> {
         final info = snapshot.data;
         return _SettingsRow(
           icon: Icons.info_outline,
-          title: 'Life Dashboard',
+          title: AppConstants.appName,
           trailing: AnimatedOpacity(
             opacity: info == null ? 0 : 1,
             duration: AppMotion.standard,
@@ -533,8 +540,7 @@ class _AboutRowState extends State<_AboutRow> {
 Future<void> _runExport(BuildContext context, WidgetRef ref) async {
   // Anchor the share popover (required by iPad; ignored elsewhere).
   final box = context.findRenderObject() as RenderBox?;
-  final origin =
-      box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+  final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
 
   final String json;
   try {
@@ -561,7 +567,7 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
       );
       result = await Share.shareXFiles(
         [xfile],
-        text: 'Life Dashboard backup',
+        text: '${AppConstants.appName} backup',
         sharePositionOrigin: origin,
       );
     } else {
@@ -570,7 +576,7 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
       await file.writeAsString(json);
       result = await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Life Dashboard backup',
+        text: '${AppConstants.appName} backup',
         sharePositionOrigin: origin,
       );
     }
@@ -806,7 +812,10 @@ class _AreasCard extends ConsumerWidget {
     final theme = Theme.of(context);
     return AppCard(
       padding: const EdgeInsets.fromLTRB(
-        AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg,
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        AppSpace.lg,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1008,10 +1017,13 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
   String? _staticCheck(String raw) {
     final envelope = _Envelope.tryParse(raw);
     if (envelope == null || !envelope.hasData) {
-      return "That file doesn't look like a Life Dashboard backup.";
+      return "That file doesn't look like a ${AppConstants.appName} backup.";
     }
-    if (envelope.schemaVersion != null &&
-        envelope.schemaVersion != AppConstants.exportSchemaVersion) {
+    final version = int.tryParse(envelope.schemaVersion ?? '');
+    final current = int.parse(AppConstants.exportSchemaVersion);
+    // Older backups import fine (they're normalized on the way in); only a
+    // backup from a NEWER app is unreadable.
+    if (version != null && version > current) {
       return 'This backup is from a newer version of the app.';
     }
     return null;
@@ -1051,9 +1063,8 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     setState(() {
       _fileName = null;
       _fileContent = null;
-      _envelope = _paste.text.trim().isEmpty
-          ? null
-          : _Envelope.tryParse(_paste.text);
+      _envelope =
+          _paste.text.trim().isEmpty ? null : _Envelope.tryParse(_paste.text);
       _error = null;
     });
   }
@@ -1073,8 +1084,7 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Replace everything?',
-      message:
-          'Your current data is deleted and replaced with this backup. '
+      message: 'Your current data is deleted and replaced with this backup. '
           'There is no undo.',
       confirmLabel: 'Replace data',
     );
@@ -1105,7 +1115,8 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
       case Failure<int>():
         // Human copy only — never surface exception internals.
         setState(
-          () => _error = "That backup couldn't be restored. Nothing was changed.",
+          () =>
+              _error = "That backup couldn't be restored. Nothing was changed.",
         );
     }
   }
@@ -1125,7 +1136,9 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
           onPressed: _pickFile,
           icon: const Icon(Icons.folder_open_outlined, size: 20),
           label: Text(
-            _fileName == null ? 'Choose a backup file' : 'Choose a different file',
+            _fileName == null
+                ? 'Choose a backup file'
+                : 'Choose a different file',
           ),
         ),
         if (_fileName != null) ...[

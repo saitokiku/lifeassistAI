@@ -65,8 +65,7 @@ void main() {
     });
 
     test('with no surplus floor set, any non-negative surplus earns 15', () {
-      expect(
-          ScoreUtils.focusScore(input(surplus: 0, surplusLow: 0)).moneyScore,
+      expect(ScoreUtils.focusScore(input(surplus: 0, surplusLow: 0)).moneyScore,
           15);
       expect(
           ScoreUtils.focusScore(input(surplus: -1, surplusLow: 0)).moneyScore,

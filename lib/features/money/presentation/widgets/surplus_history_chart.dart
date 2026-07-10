@@ -144,8 +144,8 @@ class SurplusHistoryChart extends ConsumerWidget {
                             width: 16,
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
-                            color: _colorFor(history[i])
-                                .withValues(alpha: 0.18),
+                            color:
+                                _colorFor(history[i]).withValues(alpha: 0.18),
                             borderSide: BorderSide(
                               color: _colorFor(history[i]),
                               width: 1.4,

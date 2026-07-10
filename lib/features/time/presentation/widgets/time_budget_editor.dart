@@ -84,7 +84,8 @@ class _TimeBudgetEditorState extends ConsumerState<TimeBudgetEditor> {
 
     return AppSheet(
       title: isNew ? 'New category' : 'Edit category',
-      subtitle: isNew ? 'A name, a weekly target, and what it counts as.' : null,
+      subtitle:
+          isNew ? 'A name, a weekly target, and what it counts as.' : null,
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
         Form(

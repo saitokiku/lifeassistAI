@@ -71,8 +71,7 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
   String _dayLabel(DateTime day) {
     final now = widget.state.now;
     if (AppDateUtils.isSameDay(day, now)) return 'Today';
-    if (AppDateUtils.isSameDay(
-        day, now.subtract(const Duration(days: 1)))) {
+    if (AppDateUtils.isSameDay(day, now.subtract(const Duration(days: 1)))) {
       return 'Yesterday';
     }
     return Formatters.shortDate(day);
@@ -82,8 +81,7 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
   Widget build(BuildContext context) {
     final all = widget.state.monthTransactions;
     // Ids that have left the stream no longer need filtering.
-    _pendingDelete
-        .removeWhere((id) => !all.any((t) => t.id == id));
+    _pendingDelete.removeWhere((id) => !all.any((t) => t.id == id));
     final transactions = [
       for (final t in all)
         if (!_pendingDelete.contains(t.id)) t,
@@ -216,9 +214,7 @@ class _TransactionRow extends StatelessWidget {
                       Flexible(
                         child: MoneyChip(
                           label: categoryName ?? 'Uncategorized',
-                          color: categoryName == null
-                              ? AppColors.watch
-                              : null,
+                          color: categoryName == null ? AppColors.watch : null,
                         ),
                       ),
                       if (tx.isIntentional) ...[
@@ -228,8 +224,7 @@ class _TransactionRow extends StatelessWidget {
                           child: Icon(
                             Icons.task_alt,
                             size: 14,
-                            color: AppColors.primary
-                                .withValues(alpha: 0.85),
+                            color: AppColors.primary.withValues(alpha: 0.85),
                           ),
                         ),
                       ],

@@ -160,7 +160,8 @@ class MoneyController {
       .read(settingsRepositoryProvider)
       .setNumber(SettingsKeys.monthlyNetIncome, value);
 
-  Future<void> setTargetSurplus({required double low, required double high}) async {
+  Future<void> setTargetSurplus(
+      {required double low, required double high}) async {
     final repo = _ref.read(settingsRepositoryProvider);
     await repo.setNumber(SettingsKeys.targetSurplusLow, low);
     await repo.setNumber(SettingsKeys.targetSurplusHigh, high);

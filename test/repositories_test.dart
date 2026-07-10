@@ -60,8 +60,7 @@ void main() {
   });
 
   group('FocusRepository — main goal', () {
-    test('create/watch/status transitions, one open goal at a time',
-        () async {
+    test('create/watch/status transitions, one open goal at a time', () async {
       final repo = FocusRepository(db);
       final first = await repo.createGoal(title: 'Kaizen', why: 'because');
       expect((await repo.watchCurrentGoal().first)!.id, first.id);

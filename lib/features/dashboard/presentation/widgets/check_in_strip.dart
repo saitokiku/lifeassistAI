@@ -29,8 +29,7 @@ class CheckInStrip extends ConsumerWidget {
 
   /// Whether any chip would render (the screen hides the header otherwise).
   static bool hasChips(DashboardState state, {required bool anyHabits}) =>
-      state.goalActive ||
-      (state.showsArea(DashboardArea.habits) && anyHabits);
+      state.goalActive || (state.showsArea(DashboardArea.habits) && anyHabits);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,8 +89,7 @@ class CheckInStrip extends ConsumerWidget {
     final log = h.todayLog;
     final type = HabitType.parse(h.habit.type);
     if (log == null || type == HabitType.boolean) return h.habit.name;
-    final unit =
-        type == HabitType.duration ? 'min' : (h.habit.unit ?? '');
+    final unit = type == HabitType.duration ? 'min' : (h.habit.unit ?? '');
     final value = Formatters.number(log.value);
     return '${h.habit.name} · $value${unit.isEmpty ? '' : ' $unit'}';
   }
@@ -231,9 +229,7 @@ class _CheckChip extends StatelessWidget {
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: checked
-                      ? scheme.onSurface
-                      : scheme.onSurfaceVariant,
+                  color: checked ? scheme.onSurface : scheme.onSurfaceVariant,
                 ),
               ),
             ],

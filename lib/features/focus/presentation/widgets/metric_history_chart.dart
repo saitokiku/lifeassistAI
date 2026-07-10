@@ -99,10 +99,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
     final spots = [
       for (final e in inRange)
         FlSpot(
-          AppDateUtils.parseDateKey(e.date)
-              .difference(start)
-              .inDays
-              .toDouble(),
+          AppDateUtils.parseDateKey(e.date).difference(start).inDays.toDouble(),
           e.value,
         ),
     ];
@@ -131,8 +128,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval:
-              ((maxY - minY) / 3).clamp(0.001, double.infinity),
+          horizontalInterval: ((maxY - minY) / 3).clamp(0.001, double.infinity),
           getDrawingHorizontalLine: (_) =>
               FlLine(color: scheme.outlineFaint, strokeWidth: 1),
         ),

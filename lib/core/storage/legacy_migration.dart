@@ -34,8 +34,7 @@ class LegacyMigration {
   }
 
   Future<void> _rewriteLegacyKinds() async {
-    await (_db.update(_db.timeBudgets)
-          ..where((t) => t.kind.equals('kaizen')))
+    await (_db.update(_db.timeBudgets)..where((t) => t.kind.equals('kaizen')))
         .write(const TimeBudgetsCompanion(kind: Value('goal')));
     await (_db.update(_db.reminders)
           ..where((t) => t.type.equals('kaizenExperiment')))

@@ -42,18 +42,21 @@ void main() {
   group('MoneyMath projections', () {
     test('projected spend extrapolates linearly', () {
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 10, daysInMonth: 30),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 10, daysInMonth: 30),
         300,
       );
     });
 
     test('guards day zero and invalid inputs', () {
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 0, daysInMonth: 30),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 0, daysInMonth: 30),
         100,
       );
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 5, daysInMonth: 0),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 5, daysInMonth: 0),
         100,
       );
     });
@@ -67,11 +70,13 @@ void main() {
 
     test('within target pace', () {
       expect(
-        MoneyMath.withinTargetPace(projectedSurplus: 3200, targetSurplusLow: 3200),
+        MoneyMath.withinTargetPace(
+            projectedSurplus: 3200, targetSurplusLow: 3200),
         isTrue,
       );
       expect(
-        MoneyMath.withinTargetPace(projectedSurplus: 3100, targetSurplusLow: 3200),
+        MoneyMath.withinTargetPace(
+            projectedSurplus: 3100, targetSurplusLow: 3200),
         isFalse,
       );
     });
@@ -80,8 +85,8 @@ void main() {
   group('Category flag rules', () {
     test('warnOverTarget: spending past the target warns', () {
       final flag = MoneyFlagRules.evaluateCategory(
-        category: category(
-            name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
+        category:
+            category(name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
         spent: 259,
         allIntentional: false,
       );
@@ -197,8 +202,7 @@ void main() {
 
       expect(snapshot.spendSoFar, 370);
       expect(snapshot.projectedSpend, closeTo(370 / 10 * 31, 0.001));
-      expect(snapshot.projectedSurplus,
-          closeTo(6942 - 370 / 10 * 31, 0.001));
+      expect(snapshot.projectedSurplus, closeTo(6942 - 370 / 10 * 31, 0.001));
       expect(snapshot.uncategorizedCount, 1);
       expect(snapshot.retirementProgress, 0.5);
 

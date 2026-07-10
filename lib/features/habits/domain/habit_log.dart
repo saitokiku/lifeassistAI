@@ -25,7 +25,5 @@ class HabitStats {
 
   /// Days logged in the week containing [today].
   static int weeklyCount(Set<String> loggedDateKeys, DateTime today) =>
-      AppDateUtils.weekDateKeys(today)
-          .where(loggedDateKeys.contains)
-          .length;
+      AppDateUtils.weekDateKeys(today).where(loggedDateKeys.contains).length;
 }

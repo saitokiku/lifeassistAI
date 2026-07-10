@@ -121,8 +121,7 @@ class DashboardScreen extends ConsumerWidget {
       case QuickAddAction.transaction:
         final money = ref.read(moneyStateProvider);
         if (money == null) return;
-        await TransactionEntryForm.show(context,
-            categories: money.categories);
+        await TransactionEntryForm.show(context, categories: money.categories);
       case QuickAddAction.metricValue:
         final metric = ref.read(focusStateProvider)?.activeMetric;
         if (metric == null) {

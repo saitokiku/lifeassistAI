@@ -29,8 +29,7 @@ class BudgetCategoryList extends ConsumerWidget {
       return EmptyState(
         icon: Icons.donut_small_outlined,
         title: 'No categories yet',
-        message:
-            'Give the money lanes. Categories turn raw spend into signal.',
+        message: 'Give the money lanes. Categories turn raw spend into signal.',
         actionLabel: 'Add category',
         onAction: () => BudgetCategoryEditor.show(context),
       );
@@ -152,8 +151,7 @@ class _CategoryRow extends ConsumerWidget {
             ),
             onSelected: (value) async {
               if (value == 'edit') {
-                await BudgetCategoryEditor.show(context,
-                    category: cs.category);
+                await BudgetCategoryEditor.show(context, category: cs.category);
               } else if (value == 'delete') {
                 await _delete(context, ref);
               }

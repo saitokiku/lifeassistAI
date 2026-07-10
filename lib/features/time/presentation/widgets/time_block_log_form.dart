@@ -56,9 +56,7 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
 
   final _formKey = GlobalKey<FormState>();
   late final _hours = TextEditingController(
-      text: widget.block == null
-          ? ''
-          : Formatters.number(widget.block!.hours));
+      text: widget.block == null ? '' : Formatters.number(widget.block!.hours));
   late final _note = TextEditingController(text: widget.block?.note ?? '');
   String? _budgetId;
   late DateTime _date = widget.block == null
@@ -69,8 +67,7 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
   @override
   void initState() {
     super.initState();
-    final budgets =
-        ref.read(timeBudgetsProvider).valueOrNull ?? widget.budgets;
+    final budgets = ref.read(timeBudgetsProvider).valueOrNull ?? widget.budgets;
     final recent = ref.read(recentTimeBlocksProvider).valueOrNull;
     // Default to the most recently logged category, then the first one.
     var candidate = widget.block?.budgetId ??
@@ -409,18 +406,14 @@ class _SelectChip extends StatelessWidget {
                 Icon(
                   icon,
                   size: 14,
-                  color: selected
-                      ? scheme.onSurface
-                      : scheme.onSurfaceVariant,
+                  color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
               ],
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: selected
-                      ? scheme.onSurface
-                      : scheme.onSurfaceVariant,
+                  color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
                 ),
               ),
             ],

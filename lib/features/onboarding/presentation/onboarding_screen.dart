@@ -178,7 +178,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget _footer(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpace.screen, AppSpace.md, AppSpace.screen, AppSpace.lg,
+        AppSpace.screen,
+        AppSpace.md,
+        AppSpace.screen,
+        AppSpace.lg,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -220,7 +223,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _wrap(List<Widget> children) => ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.screen, AppSpace.xl, AppSpace.screen, AppSpace.xxl,
+          AppSpace.screen,
+          AppSpace.xl,
+          AppSpace.screen,
+          AppSpace.xxl,
         ),
         children: children,
       );

@@ -30,10 +30,10 @@ void main() {
       // 2026-07-07 is a Tuesday; the week starts Monday 2026-07-06.
       final start = AppDateUtils.startOfWeek(DateTime(2026, 7, 7));
       expect(start, DateTime(2026, 7, 6));
-      expect(AppDateUtils.weekDateKeys(DateTime(2026, 7, 7)).first,
-          '2026-07-06');
-      expect(AppDateUtils.weekDateKeys(DateTime(2026, 7, 7)).last,
-          '2026-07-12');
+      expect(
+          AppDateUtils.weekDateKeys(DateTime(2026, 7, 7)).first, '2026-07-06');
+      expect(
+          AppDateUtils.weekDateKeys(DateTime(2026, 7, 7)).last, '2026-07-12');
     });
 
     test('daysInMonth handles leap years', () {
@@ -156,7 +156,8 @@ void main() {
       expect(resolved.needsBirthday, isFalse);
     });
 
-    test('end of year / month / legacy retirement deadline compute from now', () {
+    test('end of year / month / legacy retirement deadline compute from now',
+        () {
       expect(
         ResolvedCountdown.resolve(countdown(dynamicKey: 'endOfYear'),
                 now: now, birthday: null)

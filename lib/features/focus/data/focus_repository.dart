@@ -106,10 +106,9 @@ class FocusRepository {
     return milestone;
   }
 
-  Future<void> updateMilestone(Goal milestone) =>
-      _db.update(_db.goals).replace(
-            milestone.copyWith(updatedAt: DateTime.now()),
-          );
+  Future<void> updateMilestone(Goal milestone) => _db.update(_db.goals).replace(
+        milestone.copyWith(updatedAt: DateTime.now()),
+      );
 
   Future<void> setMilestoneDone(String id, bool done) async {
     await (_db.update(_db.goals)..where((t) => t.id.equals(id)))

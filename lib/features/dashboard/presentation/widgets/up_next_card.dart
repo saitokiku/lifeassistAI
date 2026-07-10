@@ -47,8 +47,7 @@ class UpNextCard extends StatelessWidget {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(64, 40),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpace.xl),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
                 ),
                 onPressed: hero.onTap,
                 child: Text(hero.actionLabel!),

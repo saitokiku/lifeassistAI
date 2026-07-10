@@ -35,8 +35,7 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
   late final _target = TextEditingController(
       text: widget.category == null
           ? ''
-          : Formatters.number(widget.category!.monthlyTarget,
-              maxDecimals: 2));
+          : Formatters.number(widget.category!.monthlyTarget, maxDecimals: 2));
   late BudgetFlagType _flagType = widget.category == null
       ? BudgetFlagType.warnOverTarget
       : BudgetFlagType.parse(widget.category!.flagType);

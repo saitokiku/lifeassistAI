@@ -30,8 +30,7 @@ void main() {
 
   group('7-day cooling rule', () {
     test('idea is cooling until its review date', () {
-      final cooling =
-          idea(captured: '2026-07-05', review: '2026-07-12');
+      final cooling = idea(captured: '2026-07-05', review: '2026-07-12');
       expect(cooling.isCooling(today), isTrue);
       expect(cooling.daysUntilReview(today), 5);
       expect(cooling.canActivate(today), isFalse);

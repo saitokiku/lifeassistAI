@@ -1,5 +1,10 @@
 # Life philosophy
 
+> **Historical (v1).** This document describes the original
+> single-owner build. The v2 revamp made the product universal —
+> see `README.md`, `docs/data_model.md`, and `docs/roadmap.md`
+> for current behavior.
+
 **Money = scoreboard. Curiosity = engine. Freedom = actual goal.**
 
 This app exists for one reason: to keep the operator pointed at the thing

@@ -41,8 +41,7 @@ class BudgetManagerSheet extends ConsumerWidget {
         budgetsAsync.when(
           data: (budgets) => budgets.isEmpty
               ? Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpace.lg),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
                   child: Text(
                     'No categories yet. Create one below to start '
                     'pointing hours somewhere.',
@@ -53,8 +52,7 @@ class BudgetManagerSheet extends ConsumerWidget {
                 )
               : Column(
                   children: [
-                    for (final budget in budgets)
-                      _BudgetRow(budget: budget),
+                    for (final budget in budgets) _BudgetRow(budget: budget),
                   ],
                 ),
           loading: () => const Column(

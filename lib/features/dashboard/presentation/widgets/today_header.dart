@@ -105,8 +105,7 @@ class TodayHeader extends StatelessWidget {
         final theme = Theme.of(sheetContext);
         return AppSheet(
           title: "Today's score",
-          subtitle:
-              'Five honest signals of whether today moved you forward.',
+          subtitle: 'Five honest signals of whether today moved you forward.',
           children: [
             Row(
               children: [

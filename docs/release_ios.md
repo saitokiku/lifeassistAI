@@ -27,7 +27,7 @@ In Runner → Targets → Runner:
 - **General → Identity**: set Bundle Identifier to
   `com.kaizen.lifedashboard` (placeholder — any reverse-DNS id you own
   works; keep it consistent forever once TestFlight sees it). Set the
-  Display Name to "Life Dashboard".
+  Display Name to "Life Assist".
 - **Signing & Capabilities**: check "Automatically manage signing", pick
   your Team (create one by signing into Xcode → Settings → Accounts with
   your Apple ID). Xcode creates the provisioning profile.
@@ -70,7 +70,7 @@ Xcode first — Flutter uses the same settings.
 ## 6. TestFlight (later, manual)
 
 1. appstoreconnect.apple.com → My Apps → "+" → New App. Pick the same
-   bundle id, name "Life Dashboard", primary language, SKU.
+   bundle id, name "Life Assist", primary language, SKU.
 2. Upload the build: Xcode Organizer → Distribute App → App Store Connect,
    or `xcrun altool`/Transporter with the `.ipa`.
 3. Wait for processing, answer the export-compliance question (this app

@@ -70,8 +70,7 @@ class _MilestoneRow extends ConsumerWidget {
 
   Future<void> _quickUpdate(BuildContext context, WidgetRef ref) {
     final controller = ref.read(focusControllerProvider);
-    final unit =
-        milestone.metricName == null ? '' : ' ${milestone.metricName}';
+    final unit = milestone.metricName == null ? '' : ' ${milestone.metricName}';
     return QuickUpdateSheet.show(
       context,
       title: milestone.title,
@@ -111,7 +110,10 @@ class _MilestoneRow extends ConsumerWidget {
       onTap: () => MilestoneEditor.show(context, milestone: milestone),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.md, AppSpace.xs, AppSpace.md,
+          AppSpace.lg,
+          AppSpace.md,
+          AppSpace.xs,
+          AppSpace.md,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

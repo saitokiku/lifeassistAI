@@ -9,7 +9,9 @@ class Validators {
 
   static String? number(String? value, {String label = 'Value'}) {
     if (value == null || value.trim().isEmpty) return '$label is required.';
-    if (double.tryParse(value.trim()) == null) return '$label must be a number.';
+    if (double.tryParse(value.trim()) == null) {
+      return '$label must be a number.';
+    }
     return null;
   }
 
@@ -30,12 +32,16 @@ class Validators {
   /// Optional field: valid when empty, otherwise must parse as a number.
   static String? optionalNumber(String? value, {String label = 'Value'}) {
     if (value == null || value.trim().isEmpty) return null;
-    if (double.tryParse(value.trim()) == null) return '$label must be a number.';
+    if (double.tryParse(value.trim()) == null) {
+      return '$label must be a number.';
+    }
     return null;
   }
 
   static double parseNumber(String value) => double.parse(value.trim());
 
   static double? tryParseNumber(String? value) =>
-      value == null || value.trim().isEmpty ? null : double.tryParse(value.trim());
+      value == null || value.trim().isEmpty
+          ? null
+          : double.tryParse(value.trim());
 }

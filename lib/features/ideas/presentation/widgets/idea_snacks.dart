@@ -82,8 +82,8 @@ void showIdeaUndoSnack(
         duration: const Duration(seconds: 4),
         content: Text(
           message,
-          style: textTheme.bodyMedium
-              ?.copyWith(color: AppColors.textPrimaryDark),
+          style:
+              textTheme.bodyMedium?.copyWith(color: AppColors.textPrimaryDark),
         ),
         action: SnackBarAction(
           label: 'Undo',

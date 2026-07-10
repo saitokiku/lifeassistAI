@@ -70,9 +70,8 @@ class RemindersController {
   }
 
   Future<void> deleteReminder(String id) async {
-    final reminder = (await _repo.getReminders())
-        .where((r) => r.id == id)
-        .firstOrNull;
+    final reminder =
+        (await _repo.getReminders()).where((r) => r.id == id).firstOrNull;
     await _repo.deleteReminder(id);
     if (reminder != null) {
       await _ref

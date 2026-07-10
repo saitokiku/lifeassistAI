@@ -5,7 +5,7 @@ public URL before App Store submission._
 
 ## Summary
 
-Life Dashboard is a local-first personal dashboard. Your data stays on
+Life Assist is a local-first personal app. Your data stays on
 your device. We don't collect it, we can't see it, and we don't sell it.
 
 ## What the app stores

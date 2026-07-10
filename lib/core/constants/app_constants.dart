@@ -26,8 +26,6 @@ class AppCopy {
   AppCopy._();
 
   // Screen orientation lines
-  static const String todayTagline = 'What matters today.';
-  static const String focusTagline = 'Your main goal, one step at a time.';
   static const String moneyTagline = 'Where the month stands.';
   static const String timeTagline = 'Your week, in hours.';
   static const String youTagline = 'Principles, systems, and settings.';
@@ -37,8 +35,6 @@ class AppCopy {
   static const String settingsTagline = 'Targets, appearance, and your data.';
 
   // Shared feedback
-  static const String saved = 'Saved.';
-  static const String saveFailed = "That didn't save. Try again.";
   static const String dataSafeRetry = 'Your data is safe. Give it another try.';
 
   // Concept explanations, used in empty states and helper text

@@ -86,10 +86,10 @@ class MonthlyMoneySnapshot {
       ),
       for (final cs in categorySpends)
         if (MoneyFlagRules.evaluateCategory(
-              category: cs.category,
-              spent: cs.spent,
-              allIntentional: cs.allIntentional,
-            )
+          category: cs.category,
+          spent: cs.spent,
+          allIntentional: cs.allIntentional,
+        )
             case final flag?)
           flag,
       ...MoneyFlagRules.uncategorizedFlag(uncategorizedCount),

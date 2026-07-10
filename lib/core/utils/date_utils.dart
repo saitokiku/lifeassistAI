@@ -25,7 +25,8 @@ class AppDateUtils {
   static DateTime endOfWeek(DateTime date) =>
       startOfWeek(date).add(const Duration(days: 6));
 
-  static DateTime startOfMonth(DateTime date) => DateTime(date.year, date.month);
+  static DateTime startOfMonth(DateTime date) =>
+      DateTime(date.year, date.month);
 
   static int daysInMonth(DateTime date) =>
       DateTime(date.year, date.month + 1, 0).day;

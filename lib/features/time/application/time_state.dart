@@ -91,13 +91,13 @@ class TimeState {
         .toSet();
     final todayKey = AppDateUtils.dateKey(now);
     return weekBlocks
-        .where((b) => b.date == todayKey && healthBudgetIds.contains(b.budgetId))
+        .where(
+            (b) => b.date == todayKey && healthBudgetIds.contains(b.budgetId))
         .fold(0.0, (sum, b) => sum + b.hours);
   }
 
   /// The unlogged remainder of today. Available time is the real budget.
-  double get availableHoursToday =>
-      (24 - hoursLoggedToday).clamp(0.0, 24.0);
+  double get availableHoursToday => (24 - hoursLoggedToday).clamp(0.0, 24.0);
 
   double get totalTargetHours =>
       progress.fold(0.0, (sum, p) => sum + p.targetHours);

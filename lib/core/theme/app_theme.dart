@@ -24,18 +24,21 @@ class AppTheme {
       primaryContainer: isDark ? AppColors.primaryDim : const Color(0xFFB8EAE4),
       onPrimaryContainer:
           isDark ? const Color(0xFFCFF7F2) : const Color(0xFF0A2E2A),
-      secondary: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+      secondary:
+          isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
       onSecondary: isDark ? AppColors.bgDark : Colors.white,
       error: AppColors.critical,
       onError: const Color(0xFF33090B),
       surface: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-      onSurface: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+      onSurface:
+          isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
       onSurfaceVariant:
           isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
       outline: isDark ? AppColors.outlineDark : AppColors.outlineLight,
       outlineVariant:
           isDark ? AppColors.outlineFaintDark : AppColors.outlineFaintLight,
-      surfaceContainerHighest: isDark ? AppColors.cardDark : AppColors.cardLight,
+      surfaceContainerHighest:
+          isDark ? AppColors.cardDark : AppColors.cardLight,
       surfaceContainerLow: isDark ? AppColors.surfaceDark : AppColors.bgLight,
       inverseSurface: isDark ? AppColors.textPrimaryDark : AppColors.bgDark,
       onInverseSurface: isDark ? AppColors.bgDark : Colors.white,
@@ -107,23 +110,29 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.critical, width: 1.5),
         ),
         labelStyle: textTheme.bodyMedium?.copyWith(color: textSecondary),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.textTertiary),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        hintStyle:
+            textTheme.bodyMedium?.copyWith(color: colorScheme.textTertiary),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark ? AppColors.elevatedDark : AppColors.bgDark,
-        contentTextStyle: textTheme.bodyMedium
-            ?.copyWith(color: AppColors.textPrimaryDark),
+        contentTextStyle:
+            textTheme.bodyMedium?.copyWith(color: AppColors.textPrimaryDark),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.snack),
         ),
         insetPadding: const EdgeInsets.fromLTRB(
-          AppSpace.screen, 0, AppSpace.screen, AppSpace.lg,
+          AppSpace.screen,
+          0,
+          AppSpace.screen,
+          AppSpace.lg,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        backgroundColor:
+            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         indicatorColor: AppColors.primary.withValues(alpha: 0.14),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         height: 64,
@@ -138,7 +147,8 @@ class AppTheme {
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        backgroundColor:
+            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         indicatorColor: AppColors.primary.withValues(alpha: 0.14),
         selectedIconTheme: IconThemeData(
           color: isDark ? AppColors.primaryBright : AppColors.primaryDim,
@@ -175,7 +185,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: isDark ? AppColors.primaryBright : AppColors.primaryDim,
+          foregroundColor:
+              isDark ? AppColors.primaryBright : AppColors.primaryDim,
           minimumSize: const Size(48, 40),
           shape: pillShape,
           textStyle: textTheme.labelLarge,
@@ -226,11 +237,13 @@ class AppTheme {
         contentTextStyle: textTheme.bodyMedium,
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        backgroundColor:
+            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         modalBackgroundColor:
             isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
         ),
         showDragHandle: false,
         clipBehavior: Clip.antiAlias,

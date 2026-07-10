@@ -130,8 +130,7 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
                       label: Text(_typeLabel(type)),
                       selected: _type == type,
                       showCheckmark: false,
-                      selectedColor:
-                          AppColors.primary.withValues(alpha: 0.16),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.16),
                       side: BorderSide(
                         color: _type == type
                             ? scheme.primaryTintBorder

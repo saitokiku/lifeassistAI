@@ -1,5 +1,10 @@
 # Scoring rules
 
+> **Historical (v1).** This document describes the original
+> single-owner build. The v2 revamp made the product universal —
+> see `README.md`, `docs/data_model.md`, and `docs/roadmap.md`
+> for current behavior.
+
 All formulas are implemented in `lib/core/utils/score_utils.dart` and
 `lib/core/utils/money_math.dart`, and unit-tested in `test/`.
 

@@ -34,8 +34,7 @@ class HabitChecklist extends ConsumerWidget {
         for (final (index, view) in state.habits.indexed)
           Padding(
             padding: EdgeInsets.only(
-              bottom:
-                  index == state.habits.length - 1 ? 0 : AppSpace.cardGap,
+              bottom: index == state.habits.length - 1 ? 0 : AppSpace.cardGap,
             ),
             child: _HabitRow(
               view: view,
@@ -312,9 +311,8 @@ class _HabitRow extends StatelessWidget {
     final log = view.todayLog;
     final type = HabitType.parse(view.habit.type);
     if (log == null || type == HabitType.boolean) return null;
-    final unit = type == HabitType.duration
-        ? 'min'
-        : (view.habit.unit?.trim() ?? '');
+    final unit =
+        type == HabitType.duration ? 'min' : (view.habit.unit?.trim() ?? '');
     final value = Formatters.number(log.value);
     return unit.isEmpty ? value : '$value $unit';
   }

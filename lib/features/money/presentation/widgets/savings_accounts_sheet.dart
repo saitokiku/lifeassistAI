@@ -41,11 +41,10 @@ class _SavingsAccountsSheetState extends ConsumerState<SavingsAccountsSheet> {
       text: Formatters.number(widget.snapshot.retirementContributed,
           maxDecimals: 2));
   late final _brokerage = TextEditingController(
-      text: Formatters.number(widget.snapshot.brokerageBalance,
-          maxDecimals: 2));
-  late final _savings = TextEditingController(
       text:
-          Formatters.number(widget.snapshot.savingsBalance, maxDecimals: 2));
+          Formatters.number(widget.snapshot.brokerageBalance, maxDecimals: 2));
+  late final _savings = TextEditingController(
+      text: Formatters.number(widget.snapshot.savingsBalance, maxDecimals: 2));
 
   @override
   void dispose() {

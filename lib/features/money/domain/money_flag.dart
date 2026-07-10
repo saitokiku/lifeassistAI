@@ -4,16 +4,21 @@ import 'budget_category.dart';
 
 enum MoneyFlagSeverity { warning, critical }
 
+/// What a flag is about — lets UI route taps without parsing messages.
+enum MoneyFlagKind { category, surplus, uncategorized }
+
 /// A leak/violation surfaced on the Money screen and dashboard.
 class MoneyFlag {
   const MoneyFlag({
     required this.severity,
     required this.message,
+    required this.kind,
     this.categoryId,
   });
 
   final MoneyFlagSeverity severity;
   final String message;
+  final MoneyFlagKind kind;
   final String? categoryId;
 
   StatusLevel get status => severity == MoneyFlagSeverity.critical
@@ -41,6 +46,7 @@ class MoneyFlagRules {
         if (spent > category.monthlyTarget) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
+            kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
                 '${category.name} is over target: ${Formatters.money(spent)} of ${Formatters.money(category.monthlyTarget)}.',
@@ -51,6 +57,7 @@ class MoneyFlagRules {
         if (spent > 0) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
+            kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
                 '${category.name} spend is ${Formatters.money(spent)}. Target is \$0.',
@@ -61,6 +68,7 @@ class MoneyFlagRules {
         if (spent > 0 && !allIntentional) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
+            kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
                 '${category.name} spend is ${Formatters.money(spent)} and not marked intentional.',
@@ -71,6 +79,7 @@ class MoneyFlagRules {
         if (spent > 0) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.critical,
+            kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
                 '${category.name} spend is ${Formatters.money(spent)}. Hard floor is \$0.',
@@ -88,8 +97,9 @@ class MoneyFlagRules {
       return [
         MoneyFlag(
           severity: MoneyFlagSeverity.critical,
+          kind: MoneyFlagKind.surplus,
           message:
-              'Projected surplus is negative (${Formatters.moneySigned(projectedSurplus)}). Spending exceeds income pace.',
+              'Spending is on pace to end the month ${Formatters.money(-projectedSurplus)} past income.',
         ),
       ];
     }
@@ -97,8 +107,9 @@ class MoneyFlagRules {
       return [
         MoneyFlag(
           severity: MoneyFlagSeverity.warning,
+          kind: MoneyFlagKind.surplus,
           message:
-              'Projected surplus ${Formatters.money(projectedSurplus)} is below the ${Formatters.money(targetSurplusLow)} floor.',
+              'Projected surplus ${Formatters.money(projectedSurplus)} is below your ${Formatters.money(targetSurplusLow)} target.',
         ),
       ];
     }
@@ -110,8 +121,9 @@ class MoneyFlagRules {
     return [
       MoneyFlag(
         severity: MoneyFlagSeverity.warning,
+        kind: MoneyFlagKind.uncategorized,
         message:
-            '$uncategorizedCount uncategorized transaction${uncategorizedCount == 1 ? '' : 's'} this month. Undefined misc is fog. Categorize it.',
+            '$uncategorizedCount transaction${uncategorizedCount == 1 ? '' : 's'} without a category this month — patterns hide there.',
       ),
     ];
   }

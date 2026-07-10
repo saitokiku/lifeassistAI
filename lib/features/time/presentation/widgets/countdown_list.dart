@@ -94,22 +94,19 @@ class _CountdownTile extends StatelessWidget {
     if (rc.targetDate == null || daysLeft == null) {
       return Text(
         '—',
-        style: theme.textTheme.numberMedium
-            .copyWith(color: AppColors.neutral),
+        style: theme.textTheme.numberMedium.copyWith(color: AppColors.neutral),
       );
     }
     if (daysLeft < 0) {
       return Text(
         'Passed',
-        style: theme.textTheme.numberMedium
-            .copyWith(color: AppColors.neutral),
+        style: theme.textTheme.numberMedium.copyWith(color: AppColors.neutral),
       );
     }
     if (daysLeft == 0) {
       return Text(
         'Today',
-        style:
-            theme.textTheme.numberMedium.copyWith(color: AppColors.watch),
+        style: theme.textTheme.numberMedium.copyWith(color: AppColors.watch),
       );
     }
     return Row(

@@ -20,9 +20,9 @@ class HabitsRepository {
     return query.watch();
   }
 
-  Stream<List<HabitLog>> watchAllLogs() => (_db.select(_db.habitLogs)
-        ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-      .watch();
+  Stream<List<HabitLog>> watchAllLogs() =>
+      (_db.select(_db.habitLogs)..orderBy([(t) => OrderingTerm.desc(t.date)]))
+          .watch();
 
   Future<void> createHabit({
     required String name,
@@ -41,7 +41,8 @@ class HabitsRepository {
         ));
   }
 
-  Future<void> updateHabit(Habit habit) => _db.update(_db.habits).replace(habit);
+  Future<void> updateHabit(Habit habit) =>
+      _db.update(_db.habits).replace(habit);
 
   Future<void> deleteHabit(String id) => _db.transaction(() async {
         await (_db.delete(_db.habitLogs)..where((t) => t.habitId.equals(id)))

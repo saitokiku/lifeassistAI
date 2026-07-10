@@ -44,9 +44,8 @@ class _ReminderListState extends ConsumerState<ReminderList> {
     // Drop stale ids once the stream catches up with a delete.
     _pendingDismiss.retainAll(widget.reminders.map((r) => r.id).toSet());
 
-    final visible = widget.reminders
-        .where((r) => !_pendingDismiss.contains(r.id))
-        .toList();
+    final visible =
+        widget.reminders.where((r) => !_pendingDismiss.contains(r.id)).toList();
     final morning = visible.where((r) => r.hour < 12).toList();
     final afternoon =
         visible.where((r) => r.hour >= 12 && r.hour < 17).toList();

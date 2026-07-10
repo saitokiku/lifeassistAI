@@ -49,8 +49,7 @@ extension MainGoalX on MainGoal {
   }
 
   /// Days since the goal was created (age of the pursuit).
-  int daysIn(DateTime today) =>
-      AppDateUtils.dateOnly(today)
-          .difference(AppDateUtils.dateOnly(createdAt))
-          .inDays;
+  int daysIn(DateTime today) => AppDateUtils.dateOnly(today)
+      .difference(AppDateUtils.dateOnly(createdAt))
+      .inDays;
 }

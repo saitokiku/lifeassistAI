@@ -66,9 +66,8 @@ class _AppCardState extends State<AppCard> {
         child: InkWell(
           onTap: widget.onTap,
           onLongPress: widget.onLongPress,
-          onHighlightChanged: interactive
-              ? (value) => setState(() => _pressed = value)
-              : null,
+          onHighlightChanged:
+              interactive ? (value) => setState(() => _pressed = value) : null,
           child: Padding(padding: widget.padding, child: widget.child),
         ),
       ),

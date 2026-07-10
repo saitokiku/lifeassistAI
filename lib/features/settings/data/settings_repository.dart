@@ -29,8 +29,8 @@ class SettingsRepository {
 
     return UserSettings(
       displayName: map[SettingsKeys.displayName]?.trim() ?? '',
-      monthlyNetIncome: parse(
-          SettingsKeys.monthlyNetIncome, DefaultTargets.monthlyNetIncome),
+      monthlyNetIncome:
+          parse(SettingsKeys.monthlyNetIncome, DefaultTargets.monthlyNetIncome),
       targetSurplusLow:
           parse(SettingsKeys.targetSurplusLow, DefaultTargets.targetSurplusLow),
       targetSurplusHigh: parse(
@@ -42,8 +42,7 @@ class SettingsRepository {
       brokerageBalance: parse(SettingsKeys.brokerageBalance, 0),
       savingsBalance: parse(SettingsKeys.savingsBalance, 0),
       philosophyText: map[SettingsKeys.philosophyText] ?? '',
-      dashboardAreas:
-          DashboardArea.parseList(map[SettingsKeys.dashboardAreas]),
+      dashboardAreas: DashboardArea.parseList(map[SettingsKeys.dashboardAreas]),
     );
   }
 

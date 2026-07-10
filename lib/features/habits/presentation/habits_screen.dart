@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -66,7 +67,7 @@ class HabitsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpace.xs),
                         Text(
-                          'Small daily supports.',
+                          AppCopy.habitsTagline,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -76,9 +77,8 @@ class HabitsScreen extends ConsumerWidget {
                           EmptyState(
                             icon: Icons.check_circle_outline,
                             title: 'Nothing to check off yet.',
-                            message:
-                                'Start with one habit you want to keep '
-                                    'showing up for.',
+                            message: 'Start with one habit you want to keep '
+                                'showing up for.',
                             actionLabel: 'New habit',
                             onAction: () => HabitEditor.show(context),
                           )

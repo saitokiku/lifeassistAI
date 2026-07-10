@@ -52,10 +52,12 @@ class BackupService {
           r.toJson(),
       ],
       'dailyExperiments': [
-        for (final r in await _db.select(_db.dailyExperiments).get()) r.toJson(),
+        for (final r in await _db.select(_db.dailyExperiments).get())
+          r.toJson(),
       ],
       'budgetCategories': [
-        for (final r in await _db.select(_db.budgetCategories).get()) r.toJson(),
+        for (final r in await _db.select(_db.budgetCategories).get())
+          r.toJson(),
       ],
       'transactions': [
         for (final r in await _db.select(_db.transactionEntries).get())
@@ -139,7 +141,8 @@ class BackupService {
           }
         }
 
-        await insertAll(_db.settingsEntries, 'settings', SettingsEntry.fromJson);
+        await insertAll(
+            _db.settingsEntries, 'settings', SettingsEntry.fromJson);
         await insertAll(_db.mainGoals, 'mainGoals', MainGoal.fromJson);
         await insertAll(
             _db.growthMetrics, 'growthMetrics', GrowthMetric.fromJson);

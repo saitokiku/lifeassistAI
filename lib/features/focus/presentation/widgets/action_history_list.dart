@@ -186,7 +186,10 @@ class _ActionRow extends StatelessWidget {
       },
       child: AppCard(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.md, AppSpace.xs, AppSpace.md,
+          AppSpace.lg,
+          AppSpace.md,
+          AppSpace.xs,
+          AppSpace.md,
         ),
         onTap: onEdit,
         child: Row(

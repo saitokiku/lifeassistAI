@@ -1,48 +1,42 @@
-# Life Dashboard
+# Life Assist
 
-A personal life operating system. Not a habit tracker — an operator dashboard.
+One quiet place to run your life.
 
-> **Money = scoreboard · Curiosity = engine · Freedom = actual goal**
+Life Assist is a local-first personal operating system built around a
+simple idea: **pick one main goal, keep it in front of you, and keep the
+rest of life — money, time, habits, ideas — honest with light logging.**
 
-One glance should answer: *am I pointing my hours and money at the one thing
-that compounds (Kaizen growth), and am I sustainable?*
+## How it's organized
 
-## What it does
-
-Five tabs — **Today · Kaizen · Money · Time · You** — on a shared design
+Five tabs — **Today · Focus · Money · Time · You** — on a shared design
 system (bundled Inter + Space Grotesk, dark-first, one component library).
 
-- **Today** — the command center: greeting + focus-score ring, a single
-  prioritized "Today's focus" directive with a direct action, one-tap
-  check-in chips (habits, experiment, metric value), a 2×2 scoreboard
-  (Kaizen hours, surplus, recovery, streak), the active growth metric with
-  7-day trend and inline logging, freedom progress, loose ends, and a
-  global quick-add for time/spend/metric/experiment/idea capture.
-- **Kaizen** — growth metrics (one active hunt at a time), dated metric
-  entries with a 30/90-day trend chart, daily experiments with
-  kill/confirm/iterate verdicts, streaks, missed days.
-- **Money** — income, budget categories with leak-flag rules, transactions,
-  month-to-date and projected spend, surplus targets, a monthly-surplus
-  history chart, Roth IRA and manual balances.
-- **Time** — weekly time budgets (actual vs target), time block logging,
-  available time today, a weekly-hours history chart (Kaizen vs other),
-  countdowns (age-28 lock-in, end of year/month, Roth IRA deadline, custom).
-- **Habits** — boolean/numeric/duration habits, today's checklist, streaks.
-- **Ideas** — anti-diffusion parking lot with a 7-day cooling rule.
-- **Identity** — philosophy, operating identity statements, goals, freedom
-  target.
-- **Reminders** — editable daily local notifications (morning command,
-  experiment nudge, money check, night review, custom), grouped by time of
-  day, with rotating or custom message lines.
-- **You** — the hub for Identity, Habits, Ideas, Reminders, and Settings,
-  each row with a live one-line status.
-- **Settings** — everything editable; share-sheet JSON export and
-  file-picker/paste import (with envelope preview and human error copy);
-  full reset; app version.
+- **Today** — what matters now: a greeting, one "Up next" action chosen
+  from your real state, one-tap check-ins (goal step, tracked measure,
+  habits), the week's key numbers, a snapshot of your goal, and the long
+  game. Modules appear only for areas you've chosen to manage.
+- **Focus** — your main goal, in your words ("Kaizen", "Finish nursing
+  school", "Become debt-free"…): why it matters, timeframe, milestones to
+  check off, an optional progress measure with trend charts, and a daily
+  step log with honest worked / adjust / didn't-work reviews. Goals can be
+  edited, paused, completed, or replaced; history stays.
+- **Money** — monthly income vs spending: projected surplus, leak flags,
+  budget categories, a transaction log, surplus history, and the long
+  game (retirement pace, balances, an optional long-term target). Until
+  income is set, the screen invites setup instead of guessing.
+- **Time** — weekly hours against targets, available time today, a
+  goal-vs-everything-else history chart, countdowns, and the time log.
+- **You** — the person behind the data: your personal line, operating
+  principles, and the supporting systems — Habits, Ideas (a 7-day cooling
+  parking lot), Reminders, and Settings — each with a live status line.
+
+First launch runs a four-step onboarding: what the app is → your main
+goal (skippable) → your name and areas → a light daily rhythm. Every
+answer is optional and everything can be changed later.
 
 All data persists locally in SQLite (drift). No cloud, no account, no
-analytics. Seed defaults are inserted once on first launch and become
-ordinary editable records.
+analytics. Seed defaults are neutral starting points that become ordinary
+editable records.
 
 ## Tech stack
 
@@ -59,13 +53,29 @@ Design system: tokens in `lib/core/theme/` (spacing, radii, motion,
 palette, type scale) and a shared component library in
 `lib/shared/widgets/` (cards, tiles, sheet scaffold with busy-state
 buttons, check rings, status pills, progress, skeletons, empty/error
-states, undo snacks, haptics).
+states, undo snacks, haptics). Motion respects the platform's
+reduced-motion preference.
 
 Architecture: clean-ish layers per feature — `data/` (repositories over
 drift), `domain/` (models + pure rules), `application/` (Riverpod providers
 + derived state), `presentation/` (screens/widgets). Drift's generated data
 classes serve as the domain row types; domain files add enums, rules, and
 computed models on top.
+
+### Data schema & migrations
+
+Schema v2 introduced the universal main-goal system. Upgrading from v1
+(and importing v1 backup files) is handled automatically:
+
+- `MainGoals` table added; the old free-standing `goals` become
+  milestones (`isDone`, `sortOrder` columns added).
+- Stored legacy values are rewritten (`kaizen` time kind → `goal`,
+  `kaizenExperiment` reminder type → `dailyAction`).
+- A database that contains pre-v2 activity gets its original goal
+  ("Kaizen") created as real user data — nothing is lost.
+
+See `lib/core/storage/legacy_migration.dart` and
+`test/legacy_migration_test.dart`.
 
 ## Run it
 
@@ -91,9 +101,11 @@ Useful scripts (all in `scripts/`):
 flutter test
 ```
 
-Covers the Focus Integrity Score, money projections and flag rules, time
-budget math and recovery logic, the idea cooling rule, and repository
-persistence (in-memory SQLite), including JSON export/import round-trips.
+Covers the focus score, money projections and flag rules, time budget
+math and recovery logic, the idea cooling rule, repository persistence
+(in-memory SQLite) including JSON export/import round-trips, the
+Kaizen-era → main-goal migration, and end-to-end smoke tests for
+navigation, goal setup, and onboarding.
 
 ## Build for iPhone / IPA
 
@@ -104,8 +116,8 @@ flutter build ios --release   # archive-ready build
 flutter build ipa --release   # .ipa in build/ios/ipa/
 ```
 
-Full walkthrough (signing, bundle id `com.kaizen.lifedashboard`, TestFlight):
-see [docs/release_ios.md](docs/release_ios.md) and
+Full walkthrough (signing, TestFlight): see
+[docs/release_ios.md](docs/release_ios.md) and
 [docs/app_store_checklist.md](docs/app_store_checklist.md).
 
 ## Project structure
@@ -113,33 +125,33 @@ see [docs/release_ios.md](docs/release_ios.md) and
 ```
 lib/
 ├── main.dart / app.dart / bootstrap.dart
-├── core/            constants, theme, utils, storage (drift), notifications, errors
+├── core/            constants, theme, utils, storage (drift + migrations), notifications, errors
 ├── routing/         go_router config
 ├── shared/          layout (adaptive nav) + reusable widgets
 └── features/
-    ├── dashboard/   Today — aggregated state + command center
-    ├── kaizen/      metrics + experiments
-    ├── money/       budgets + transactions + flags
+    ├── dashboard/   Today — aggregated state + the Up-next engine
+    ├── focus/       the main goal: milestones, measures, daily steps
+    ├── money/       budgets + transactions + flags + the long game
     ├── time/        budgets + blocks + countdowns
     ├── habits/      habits + logs
-    ├── ideas/       parking lot
-    ├── identity/    philosophy, goals, freedom target
+    ├── ideas/       parking lot with the 7-day cooling rule
+    ├── identity/    personal line + operating principles (+ long-term target data)
     ├── reminders/   local notifications
     ├── settings/    settings + backup (export/import)
-    ├── you/         the You hub (compact-layout home for the above)
+    ├── you/         the You hub
     └── onboarding/  first-launch flow
-docs/                product spec, data model, scoring rules, release docs
+docs/                product docs, AI roadmap, release docs
 scripts/             analyze/test/run/build helpers
-test/                unit + repository tests
+test/                unit + repository + smoke tests
 ```
 
-## Current limitations (v1.1)
+## Current limitations
 
 - Web: `drift_worker.js` is committed; drop `web/sqlite3.wasm` in for
   persistence (one download — see `web/README.md`). Without it the web
   build runs but data is in-memory. Local notifications don't exist on web
   (the UI says so and degrades gracefully). iOS/Android are the real targets.
-- No bank/CSV import, calendar integration, or cloud sync (roadmap v1.2+).
+- No bank/CSV import, calendar integration, or cloud sync (roadmap).
   Cloud sync is intentionally deferred — it needs a backend + auth and would
   compromise the local-first, no-account privacy stance if rushed.
 - App icon is a placeholder; signing/bundle id must be configured in Xcode
@@ -147,4 +159,6 @@ test/                unit + repository tests
 - Reminders use inexact Android alarms; on iOS times are exact but require
   notification permission.
 
-See [docs/roadmap.md](docs/roadmap.md) for what's next.
+See [docs/roadmap.md](docs/roadmap.md) for what's next and
+[docs/AI_PRODUCT_ROADMAP.md](docs/AI_PRODUCT_ROADMAP.md) for how AI may
+(carefully) join later.

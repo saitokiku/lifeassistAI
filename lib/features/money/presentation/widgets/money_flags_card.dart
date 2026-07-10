@@ -48,7 +48,7 @@ class MoneyFlagsCard extends StatelessWidget {
       return () =>
           CategoryDetailSheet.show(context, categoryId: flag.categoryId);
     }
-    if (flag.message.contains('uncategorized')) {
+    if (flag.kind == MoneyFlagKind.uncategorized) {
       return () => CategoryDetailSheet.show(context);
     }
     return null;

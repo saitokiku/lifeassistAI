@@ -149,8 +149,7 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
                 label: 'Amount',
                 controller: _amount,
                 autofocus: true,
-                validator: (v) =>
-                    Validators.positiveNumber(v, label: 'Amount'),
+                validator: (v) => Validators.positiveNumber(v, label: 'Amount'),
               ),
               const SizedBox(height: AppSpace.md),
               AppTextField(label: 'Description', controller: _description),
@@ -164,8 +163,7 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
                     child: Text('Uncategorized'),
                   ),
                   for (final c in widget.categories)
-                    DropdownMenuItem<String?>(
-                        value: c.id, child: Text(c.name)),
+                    DropdownMenuItem<String?>(value: c.id, child: Text(c.name)),
                 ],
                 onChanged: (v) {
                   Haptics.select();

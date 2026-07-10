@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -61,7 +62,7 @@ class RemindersScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpace.xs),
                         Text(
-                          'Gentle nudges through the day.',
+                          AppCopy.remindersTagline,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

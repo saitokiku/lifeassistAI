@@ -45,12 +45,10 @@ class _ActionLogFormState extends ConsumerState<ActionLogForm> {
   final _formKey = GlobalKey<FormState>();
   late final _action =
       TextEditingController(text: widget.action?.actionTaken ?? '');
-  late final _result =
-      TextEditingController(text: widget.action?.result ?? '');
+  late final _result = TextEditingController(text: widget.action?.result ?? '');
   late final _hypothesis =
       TextEditingController(text: widget.action?.hypothesis ?? '');
-  late final _notes =
-      TextEditingController(text: widget.action?.notes ?? '');
+  late final _notes = TextEditingController(text: widget.action?.notes ?? '');
 
   /// Null until the user commits — new entries never default an outcome.
   late ActionVerdict? _verdict = widget.action?.verdictEnum;
