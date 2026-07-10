@@ -28,6 +28,7 @@ class SettingsRepository {
     }
 
     return UserSettings(
+      displayName: map[SettingsKeys.displayName]?.trim() ?? '',
       monthlyNetIncome: parse(
           SettingsKeys.monthlyNetIncome, DefaultTargets.monthlyNetIncome),
       targetSurplusLow:
@@ -35,13 +36,14 @@ class SettingsRepository {
       targetSurplusHigh: parse(
           SettingsKeys.targetSurplusHigh, DefaultTargets.targetSurplusHigh),
       birthday: birthday,
-      rothIraAnnualTarget: parse(
-          SettingsKeys.rothIraAnnualTarget, DefaultTargets.rothIraAnnualTarget),
-      rothIraContributed: parse(SettingsKeys.rothIraContributed, 0),
+      retirementAnnualTarget: parse(SettingsKeys.retirementAnnualTarget,
+          DefaultTargets.retirementAnnualTarget),
+      retirementContributed: parse(SettingsKeys.retirementContributed, 0),
       brokerageBalance: parse(SettingsKeys.brokerageBalance, 0),
       savingsBalance: parse(SettingsKeys.savingsBalance, 0),
-      philosophyText: map[SettingsKeys.philosophyText] ??
-          'Money = scoreboard · Curiosity = engine · Freedom = goal',
+      philosophyText: map[SettingsKeys.philosophyText] ?? '',
+      dashboardAreas:
+          DashboardArea.parseList(map[SettingsKeys.dashboardAreas]),
     );
   }
 

@@ -14,7 +14,7 @@ import 'widgets/idea_capture_form.dart';
 import 'widgets/idea_parking_lot_list.dart';
 
 /// Ideas — the anti-diffusion parking lot. Shiny things get parked,
-/// cooled for a week, then given one verdict. The hunt stays clean.
+/// cooled for a week, then given one decision. Focus stays clean.
 class IdeasScreen extends ConsumerWidget {
   const IdeasScreen({super.key});
 
@@ -54,7 +54,7 @@ class IdeasScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpace.xs),
             Text(
-              AppCopy.curiosityCaptured,
+              AppCopy.ideasTagline,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

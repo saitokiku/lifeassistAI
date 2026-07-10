@@ -6,7 +6,7 @@ import 'package:life_dashboard/features/ideas/domain/parked_idea.dart';
 ParkedIdea idea({
   required String captured,
   required String review,
-  bool helpsKaizen = false,
+  bool helpsGoal = false,
   String decision = 'undecided',
   String id = 'i',
 }) =>
@@ -20,7 +20,7 @@ ParkedIdea idea({
       dateCaptured: captured,
       reviewDate: review,
       decision: decision,
-      directlyHelpsKaizenThisWeek: helpsKaizen,
+      helpsMainGoal: helpsGoal,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
@@ -43,11 +43,11 @@ void main() {
       expect(due.canActivate(today), isTrue);
     });
 
-    test('directly-helps-Kaizen bypasses cooling', () {
+    test('directly-helps-the-goal bypasses cooling', () {
       final helper = idea(
         captured: '2026-07-07',
         review: '2026-07-14',
-        helpsKaizen: true,
+        helpsGoal: true,
       );
       expect(helper.isCooling(today), isTrue);
       expect(helper.canActivate(today), isTrue);

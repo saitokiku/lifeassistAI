@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
@@ -10,14 +9,15 @@ import '../../../../shared/widgets/app_number_field.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
-import '../../application/kaizen_controller.dart';
+import '../../application/focus_controller.dart';
 import '../../domain/growth_metric.dart';
 
-/// Create or edit a growth metric.
+/// Create or edit a progress measure — the number that shows the main goal
+/// is actually moving.
 ///
-/// When nothing is currently the hunt, the active switch defaults ON so a
-/// first metric never lands in a dead end. The currently-active metric shows
-/// a locked switch — the hunt only moves by activating another metric.
+/// When no measure is tracked yet, the active switch defaults ON so a first
+/// measure never lands in a dead end. The currently-tracked measure shows a
+/// locked switch — tracking moves by activating another measure.
 class GrowthMetricEditor extends ConsumerStatefulWidget {
   const GrowthMetricEditor({super.key, this.metric});
 
@@ -51,9 +51,9 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
   @override
   void initState() {
     super.initState();
-    final hasActiveHunt = ref.read(activeMetricProvider).valueOrNull != null;
-    // New metric with no hunt running → default to active, never a dead end.
-    _makeActive = widget.metric?.isActive ?? !hasActiveHunt;
+    final hasTracked = ref.read(activeMetricProvider).valueOrNull != null;
+    // First measure → default to active, never a dead end.
+    _makeActive = widget.metric?.isActive ?? !hasTracked;
   }
 
   @override
@@ -66,7 +66,7 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final controller = ref.read(kaizenControllerProvider);
+    final controller = ref.read(focusControllerProvider);
     final navigator = Navigator.of(context);
     final isNew = widget.metric == null;
     try {
@@ -88,7 +88,7 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
         }
       }
       Haptics.medium();
-      navigator.pop(isNew ? 'Metric created.' : 'Saved.');
+      navigator.pop(isNew ? 'Measure created.' : 'Saved.');
     } catch (_) {
       if (mounted) showErrorSnack(context, "That didn't save. Try again.");
     }
@@ -97,11 +97,11 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
   @override
   Widget build(BuildContext context) {
     final isNew = widget.metric == null;
-    final isTheActiveHunt = widget.metric?.isActive ?? false;
+    final isTracked = widget.metric?.isActive ?? false;
 
     return AppSheet(
-      title: isNew ? 'New growth metric' : 'Edit growth metric',
-      subtitle: AppCopy.oneHunt,
+      title: isNew ? 'New measure' : 'Edit measure',
+      subtitle: 'One number that shows your goal is moving.',
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
         Form(
@@ -111,7 +111,7 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
             children: [
               AppTextField(
                 label: 'Name',
-                hint: 'The number that proves growth',
+                hint: 'e.g. Pages written, Pounds lost, Savings',
                 controller: _name,
                 validator: (v) => Validators.required(v, label: 'Name'),
                 autofocus: isNew,
@@ -119,7 +119,7 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
               const SizedBox(height: AppSpace.md),
               AppTextField(
                 label: 'Unit',
-                hint: r'users, $, signups…',
+                hint: r'pages, lbs, $, signups…',
                 controller: _unit,
                 validator: (v) => Validators.required(v, label: 'Unit'),
               ),
@@ -133,15 +133,15 @@ class _GrowthMetricEditorState extends ConsumerState<GrowthMetricEditor> {
               const SizedBox(height: AppSpace.sm),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active metric'),
+                title: const Text('Track this measure'),
                 subtitle: Text(
-                  isTheActiveHunt
-                      ? 'This is the active hunt. Activate another metric '
+                  isTracked
+                      ? 'Currently tracked. Activate another measure '
                           'to switch.'
-                      : 'Only one metric is the hunt at a time.',
+                      : 'One measure is tracked at a time.',
                 ),
                 value: _makeActive,
-                onChanged: isTheActiveHunt
+                onChanged: isTracked
                     ? null
                     : (v) {
                         Haptics.select();

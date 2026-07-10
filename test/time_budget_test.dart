@@ -3,6 +3,7 @@ import 'package:life_dashboard/core/storage/app_database.dart';
 import 'package:life_dashboard/core/utils/date_utils.dart';
 import 'package:life_dashboard/features/time/application/time_state.dart';
 import 'package:life_dashboard/features/time/domain/countdown.dart';
+import 'package:life_dashboard/features/time/domain/time_category.dart';
 import 'package:life_dashboard/features/time/domain/weekly_time_budget.dart';
 
 TimeBudget budget(String id, String name, String kind, double target) =>
@@ -63,25 +64,25 @@ void main() {
   group('TimeState.compute', () {
     final now = DateTime(2026, 7, 7); // Tuesday
     final budgets = [
-      budget('kaizen', 'Kaizen', 'kaizen', 42),
-      budget('decompress', 'Decompress', 'decompress', 10.5),
+      budget('goal', 'Main goal', 'goal', 42),
+      budget('decompress', 'Downtime', 'decompress', 10.5),
       budget('exercise', 'Exercise', 'exercise', 5),
     ];
 
-    test('sums kaizen and recovery hours for the current week', () {
+    test('sums goal and recovery hours for the current week', () {
       final state = TimeState.compute(
         now: now,
         budgets: budgets,
         weekBlocks: [
-          block('kaizen', '2026-07-06', 6),
-          block('kaizen', '2026-07-07', 4),
+          block('goal', '2026-07-06', 6),
+          block('goal', '2026-07-07', 4),
           block('decompress', '2026-07-06', 2),
         ],
         countdowns: const [],
         birthday: null,
       );
-      expect(state.kaizenHoursThisWeek, 10);
-      expect(state.kaizenWeeklyTarget, 42);
+      expect(state.goalHoursThisWeek, 10);
+      expect(state.goalWeeklyTarget, 42);
       expect(state.recoveryHoursThisWeek, 2);
       expect(state.recoveryWeeklyTarget, 10.5);
     });
@@ -91,9 +92,9 @@ void main() {
         now: now,
         budgets: budgets,
         weekBlocks: [
-          block('kaizen', '2026-07-07', 5),
+          block('goal', '2026-07-07', 5),
           block('exercise', '2026-07-07', 1),
-          block('kaizen', '2026-07-06', 8), // yesterday, not counted today
+          block('goal', '2026-07-06', 8), // yesterday, not counted today
         ],
         countdowns: const [],
         birthday: null,
@@ -108,12 +109,21 @@ void main() {
         budgets: budgets,
         weekBlocks: [
           block('exercise', '2026-07-07', 0.5),
-          block('kaizen', '2026-07-07', 3),
+          block('goal', '2026-07-07', 3),
         ],
         countdowns: const [],
         birthday: null,
       );
       expect(state.healthHoursToday, 0.5);
+    });
+  });
+
+  group('Legacy kind parsing', () {
+    test("stored 'kaizen' and 'toastmasters' kinds still parse", () {
+      expect(TimeCategoryKind.parse('kaizen'), TimeCategoryKind.goal);
+      expect(TimeCategoryKind.parse('toastmasters'), TimeCategoryKind.other);
+      expect(TimeCategoryKind.parse('goal'), TimeCategoryKind.goal);
+      expect(TimeCategoryKind.parse('nonsense'), TimeCategoryKind.other);
     });
   });
 
@@ -146,7 +156,7 @@ void main() {
       expect(resolved.needsBirthday, isFalse);
     });
 
-    test('end of year / month / roth deadline compute from now', () {
+    test('end of year / month / legacy retirement deadline compute from now', () {
       expect(
         ResolvedCountdown.resolve(countdown(dynamicKey: 'endOfYear'),
                 now: now, birthday: null)
@@ -159,7 +169,7 @@ void main() {
             .targetDate,
         DateTime(2026, 7, 31),
       );
-      // After April 15, the Roth deadline rolls to next year.
+      // After April 15, the legacy retirement deadline rolls to next year.
       expect(
         ResolvedCountdown.resolve(countdown(dynamicKey: 'rothIraDeadline'),
                 now: now, birthday: null)

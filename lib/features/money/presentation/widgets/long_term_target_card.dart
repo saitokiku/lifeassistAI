@@ -9,15 +9,15 @@ import '../../../../core/utils/validation.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../../shared/widgets/progress_bar_card.dart';
-import '../../application/identity_controller.dart';
-import '../../domain/freedom_target.dart';
-import 'freedom_target_editor.dart';
-import 'quick_update_sheet.dart';
+import '../../../identity/application/identity_controller.dart';
+import '../../../identity/domain/freedom_target.dart';
+import 'long_term_target_editor.dart';
+import '../../../../shared/widgets/quick_update_sheet.dart';
 
-/// The freedom target: the two numbers the whole app points at.
-/// Each progress row is tappable — one tap, one field, updated.
-class FreedomTargetCard extends ConsumerWidget {
-  const FreedomTargetCard({super.key, required this.target});
+/// The long-term target: optional passive-income and net-worth marks to
+/// aim at over years. Each progress row is tappable — one tap, one field.
+class LongTermTargetCard extends ConsumerWidget {
+  const LongTermTargetCard({super.key, required this.target});
 
   final FreedomTarget? target;
 
@@ -80,7 +80,7 @@ class FreedomTargetCard extends ConsumerWidget {
                 ),
                 onSelected: (value) async {
                   if (value == 'edit') {
-                    await FreedomTargetEditor.show(context, target: t);
+                    await LongTermTargetEditor.show(context, target: t);
                   } else if (value == 'delete') {
                     final controller = ref.read(identityControllerProvider);
                     final confirmed = await showConfirmDialog(
@@ -88,7 +88,7 @@ class FreedomTargetCard extends ConsumerWidget {
                       title: 'Delete this target?',
                       message:
                           'Removes "${t.title}" and both progress lines. '
-                          'Freedom stays the goal — this just clears the number.',
+                          'You can set a new target anytime.',
                     );
                     if (confirmed) {
                       await controller.deleteFreedomTarget(t.id);
@@ -258,13 +258,13 @@ class _EmptyTargetCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Freedom needs a number.',
+                      'Where is all this heading?',
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Set the passive income and net worth marks '
-                      'everything else points at.',
+                      'Optional: set passive-income and net-worth marks '
+                      'to aim at over the years.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         height: 1.45,
@@ -279,7 +279,7 @@ class _EmptyTargetCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: FilledButton(
-              onPressed: () => FreedomTargetEditor.show(context),
+              onPressed: () => LongTermTargetEditor.show(context),
               child: const Text('Set target'),
             ),
           ),

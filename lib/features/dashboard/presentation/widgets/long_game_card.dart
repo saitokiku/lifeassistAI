@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -6,22 +7,30 @@ import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/progress_bar_card.dart';
+import '../../../identity/application/identity_controller.dart';
 import '../../application/dashboard_state.dart';
 
-/// The long game, condensed: annual projection, Roth IRA, freedom target.
-class FreedomProgressCard extends StatelessWidget {
-  const FreedomProgressCard({super.key, required this.state});
+/// The long game, condensed: this year's savings pace, retirement progress,
+/// and the long-term target. Lives on Money; this is the one-glance summary.
+class LongGameCard extends ConsumerWidget {
+  const LongGameCard({super.key, required this.state});
 
   final DashboardState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final snapshot = state.money.snapshot;
-    final target = state.identity.primaryFreedomTarget;
+    final target = ref.watch(freedomTargetsProvider).valueOrNull?.firstOrNull;
+
+    final hasRetirement = snapshot.retirementAnnualTarget > 0;
+    // Nothing long-term is configured yet — stay out of the way.
+    if (!state.settings.hasIncome && !hasRetirement && target == null) {
+      return const SizedBox.shrink();
+    }
 
     return AppCard(
-      onTap: () => context.go('/identity'),
+      onTap: () => context.go('/money'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -29,7 +38,7 @@ class FreedomProgressCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'FREEDOM',
+                  'THE LONG GAME',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.textTertiary,
                   ),
@@ -42,26 +51,30 @@ class FreedomProgressCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpace.sm),
-          Text(
-            Formatters.moneySigned(snapshot.annualSavingsProjection),
-            style: theme.textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'projected savings this year',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          if (state.settings.hasIncome) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(
+              Formatters.moneySigned(snapshot.annualSavingsProjection),
+              style: theme.textTheme.headlineMedium,
             ),
-          ),
-          const SizedBox(height: AppSpace.lg),
-          LabeledProgressBar(
-            progress: snapshot.rothIraProgress,
-            color: AppColors.primary,
-            leading: 'Roth IRA',
-            trailing:
-                '${Formatters.money(snapshot.rothIraContributed)} of ${Formatters.money(snapshot.rothIraAnnualTarget)}',
-          ),
+            const SizedBox(height: 2),
+            Text(
+              'projected savings this year',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (hasRetirement) ...[
+            const SizedBox(height: AppSpace.lg),
+            LabeledProgressBar(
+              progress: snapshot.retirementProgress,
+              color: AppColors.primary,
+              leading: 'Retirement',
+              trailing:
+                  '${Formatters.money(snapshot.retirementContributed)} of ${Formatters.money(snapshot.retirementAnnualTarget)}',
+            ),
+          ],
           if (target != null) ...[
             const SizedBox(height: AppSpace.md),
             Row(

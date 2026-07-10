@@ -4,13 +4,11 @@ import '../../../core/storage/app_database.dart';
 class IdentityState {
   const IdentityState({
     required this.statements,
-    required this.goals,
     required this.freedomTargets,
     required this.philosophyText,
   });
 
   final List<IdentityStatement> statements;
-  final List<Goal> goals;
   final List<FreedomTarget> freedomTargets;
   final String philosophyText;
 

@@ -74,9 +74,9 @@ class AppDateUtils {
     return dateOnly(target).difference(a).inDays;
   }
 
-  /// Roth IRA contribution deadline for the tax year containing [now]:
-  /// April 15 of the following year.
-  static DateTime rothIraDeadline(DateTime now) {
+  /// Retirement-contribution deadline for the tax year containing [now]:
+  /// April 15 of the following year (used by a legacy dynamic countdown).
+  static DateTime retirementContributionDeadline(DateTime now) {
     final thisYearDeadline = DateTime(now.year, 4, 15);
     if (!dateOnly(now).isAfter(thisYearDeadline)) return thisYearDeadline;
     return DateTime(now.year + 1, 4, 15);

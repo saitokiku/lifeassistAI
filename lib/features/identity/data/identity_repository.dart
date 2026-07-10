@@ -4,48 +4,13 @@ import 'package:uuid/uuid.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
 
-/// Persistence for goals, freedom targets, and identity statements.
+/// Persistence for long-term (freedom) targets and identity statements.
+/// Milestones under the main goal live in FocusRepository.
 class IdentityRepository {
   IdentityRepository(this._db);
 
   final AppDatabase _db;
   final _uuid = const Uuid();
-
-  // --- Goals ----------------------------------------------------------------
-
-  Stream<List<Goal>> watchGoals() => (_db.select(_db.goals)
-        ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-      .watch();
-
-  Future<void> createGoal({
-    required String title,
-    String? description,
-    String? metricName,
-    required double currentValue,
-    required double targetValue,
-    DateTime? targetDate,
-  }) async {
-    final now = DateTime.now();
-    await _db.into(_db.goals).insert(Goal(
-          id: _uuid.v4(),
-          title: title,
-          description: description,
-          metricName: metricName,
-          currentValue: currentValue,
-          targetValue: targetValue,
-          targetDate:
-              targetDate == null ? null : AppDateUtils.dateKey(targetDate),
-          createdAt: now,
-          updatedAt: now,
-        ));
-  }
-
-  Future<void> updateGoal(Goal goal) => _db.update(_db.goals).replace(
-        goal.copyWith(updatedAt: DateTime.now()),
-      );
-
-  Future<void> deleteGoal(String id) =>
-      (_db.delete(_db.goals)..where((t) => t.id.equals(id))).go();
 
   // --- Freedom targets ------------------------------------------------------
 

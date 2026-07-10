@@ -3,20 +3,20 @@ import 'package:life_dashboard/core/theme/app_colors.dart';
 import 'package:life_dashboard/core/utils/score_utils.dart';
 
 void main() {
-  group('Focus Integrity Score', () {
+  group('Focus score', () {
     FocusScoreInput input({
-      double kaizenHours = 0,
-      double kaizenTarget = 42,
-      bool experiment = false,
+      double goalHours = 0,
+      double goalTarget = 42,
+      bool action = false,
       double surplus = 0,
       double surplusLow = 3200,
       bool health = false,
       double recovery = 0,
     }) =>
         FocusScoreInput(
-          kaizenHoursThisWeek: kaizenHours,
-          kaizenWeeklyTarget: kaizenTarget,
-          todayExperimentLogged: experiment,
+          goalHoursThisWeek: goalHours,
+          goalWeeklyTarget: goalTarget,
+          todayActionLogged: action,
           projectedSurplus: surplus,
           targetSurplusLow: surplusLow,
           exerciseOrMeditationToday: health,
@@ -25,15 +25,15 @@ void main() {
 
     test('perfect week scores 100', () {
       final score = ScoreUtils.focusScore(input(
-        kaizenHours: 42,
-        experiment: true,
+        goalHours: 42,
+        action: true,
         surplus: 3500,
         health: true,
         recovery: 10.5,
       ));
       expect(score.total, 100);
-      expect(score.kaizenScore, 35);
-      expect(score.experimentScore, 20);
+      expect(score.goalScore, 35);
+      expect(score.actionScore, 20);
       expect(score.moneyScore, 15);
       expect(score.healthScore, 15);
       expect(score.recoveryScore, 15);
@@ -43,10 +43,18 @@ void main() {
       expect(ScoreUtils.focusScore(input()).total, 0);
     });
 
-    test('kaizen hours are proportional and capped', () {
-      expect(ScoreUtils.focusScore(input(kaizenHours: 21)).kaizenScore,
+    test('goal hours are proportional and capped', () {
+      expect(ScoreUtils.focusScore(input(goalHours: 21)).goalScore,
           closeTo(17.5, 0.001));
-      expect(ScoreUtils.focusScore(input(kaizenHours: 84)).kaizenScore, 35);
+      expect(ScoreUtils.focusScore(input(goalHours: 84)).goalScore, 35);
+    });
+
+    test('goal hours scale to a small weekly target too', () {
+      // 5 of a 10-hour target = half of the 35 points.
+      expect(
+        ScoreUtils.focusScore(input(goalHours: 5, goalTarget: 10)).goalScore,
+        closeTo(17.5, 0.001),
+      );
     });
 
     test('money score scales below the floor and clamps negative', () {
@@ -56,6 +64,15 @@ void main() {
       expect(ScoreUtils.focusScore(input(surplus: 3200)).moneyScore, 15);
     });
 
+    test('with no surplus floor set, any non-negative surplus earns 15', () {
+      expect(
+          ScoreUtils.focusScore(input(surplus: 0, surplusLow: 0)).moneyScore,
+          15);
+      expect(
+          ScoreUtils.focusScore(input(surplus: -1, surplusLow: 0)).moneyScore,
+          0);
+    });
+
     test('recovery gives 15 at 5h, 7 when above zero, 0 at zero', () {
       expect(ScoreUtils.focusScore(input(recovery: 5)).recoveryScore, 15);
       expect(ScoreUtils.focusScore(input(recovery: 2)).recoveryScore, 7);
@@ -63,25 +80,32 @@ void main() {
     });
 
     test('labels match spec bands', () {
-      expect(ScoreUtils.focusScoreLabel(85), 'Aligned');
-      expect(ScoreUtils.focusScoreLabel(80), 'Aligned');
-      expect(ScoreUtils.focusScoreLabel(79), 'Acceptable');
-      expect(ScoreUtils.focusScoreLabel(60), 'Acceptable');
-      expect(ScoreUtils.focusScoreLabel(59), 'Drifting');
-      expect(ScoreUtils.focusScoreLabel(40), 'Drifting');
-      expect(ScoreUtils.focusScoreLabel(39), 'Correction needed');
-      expect(ScoreUtils.focusScoreLabel(0), 'Correction needed');
+      expect(ScoreUtils.focusScoreLabel(85), 'On track');
+      expect(ScoreUtils.focusScoreLabel(80), 'On track');
+      expect(ScoreUtils.focusScoreLabel(79), 'Steady');
+      expect(ScoreUtils.focusScoreLabel(60), 'Steady');
+      expect(ScoreUtils.focusScoreLabel(59), 'Slipping');
+      expect(ScoreUtils.focusScoreLabel(40), 'Slipping');
+      expect(ScoreUtils.focusScoreLabel(39), 'Needs attention');
+      expect(ScoreUtils.focusScoreLabel(0), 'Needs attention');
     });
   });
 
-  group('Kaizen hours status', () {
-    test('35+ aligned, 25-34.9 watch, below 25 drifting', () {
-      expect(ScoreUtils.kaizenHoursStatus(42), StatusLevel.aligned);
-      expect(ScoreUtils.kaizenHoursStatus(35), StatusLevel.aligned);
-      expect(ScoreUtils.kaizenHoursStatus(34.9), StatusLevel.watch);
-      expect(ScoreUtils.kaizenHoursStatus(25), StatusLevel.watch);
-      expect(ScoreUtils.kaizenHoursStatus(24.9), StatusLevel.critical);
-      expect(ScoreUtils.kaizenHoursLabel(24), 'Drifting');
+  group('Goal hours status', () {
+    test('ratio-based: 80%+ aligned, 50%+ watch, below critical', () {
+      expect(ScoreUtils.goalHoursStatus(42, 42), StatusLevel.aligned);
+      expect(ScoreUtils.goalHoursStatus(33.6, 42), StatusLevel.aligned);
+      expect(ScoreUtils.goalHoursStatus(33, 42), StatusLevel.watch);
+      expect(ScoreUtils.goalHoursStatus(21, 42), StatusLevel.watch);
+      expect(ScoreUtils.goalHoursStatus(20, 42), StatusLevel.critical);
+      // The same ratios hold for a small target.
+      expect(ScoreUtils.goalHoursStatus(8, 10), StatusLevel.aligned);
+      expect(ScoreUtils.goalHoursStatus(5, 10), StatusLevel.watch);
+      expect(ScoreUtils.goalHoursStatus(4.9, 10), StatusLevel.critical);
+      // No target → neutral, never punished.
+      expect(ScoreUtils.goalHoursStatus(3, 0), StatusLevel.neutral);
+      expect(ScoreUtils.goalHoursLabel(4, 10), 'Far behind');
+      expect(ScoreUtils.goalHoursLabel(9, 10), 'On track');
     });
   });
 
@@ -91,8 +115,8 @@ void main() {
       expect(ScoreUtils.recoveryStatus(4.9), StatusLevel.watch);
       expect(ScoreUtils.recoveryStatus(5), StatusLevel.aligned);
       expect(ScoreUtils.recoveryStatus(10.5), StatusLevel.aligned);
-      expect(ScoreUtils.recoveryLabel(0), 'Critical');
-      expect(ScoreUtils.recoveryLabel(3), 'Warning');
+      expect(ScoreUtils.recoveryLabel(0), 'At zero');
+      expect(ScoreUtils.recoveryLabel(3), 'Thin');
     });
   });
 

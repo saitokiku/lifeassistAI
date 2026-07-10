@@ -41,8 +41,8 @@ final moneyStateProvider = Provider<MoneyState?>((ref) {
     targetSurplusHigh: settings.targetSurplusHigh,
     categories: categories,
     monthTransactions: transactions,
-    rothIraAnnualTarget: settings.rothIraAnnualTarget,
-    rothIraContributed: settings.rothIraContributed,
+    retirementAnnualTarget: settings.retirementAnnualTarget,
+    retirementContributed: settings.retirementContributed,
     brokerageBalance: settings.brokerageBalance,
     savingsBalance: settings.savingsBalance,
   );
@@ -166,13 +166,14 @@ class MoneyController {
     await repo.setNumber(SettingsKeys.targetSurplusHigh, high);
   }
 
-  Future<void> setRothIra({double? annualTarget, double? contributed}) async {
+  Future<void> setRetirement(
+      {double? annualTarget, double? contributed}) async {
     final repo = _ref.read(settingsRepositoryProvider);
     if (annualTarget != null) {
-      await repo.setNumber(SettingsKeys.rothIraAnnualTarget, annualTarget);
+      await repo.setNumber(SettingsKeys.retirementAnnualTarget, annualTarget);
     }
     if (contributed != null) {
-      await repo.setNumber(SettingsKeys.rothIraContributed, contributed);
+      await repo.setNumber(SettingsKeys.retirementContributed, contributed);
     }
   }
 

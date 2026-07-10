@@ -85,7 +85,7 @@ class _Content extends StatelessWidget {
           Text('Time', style: theme.textTheme.headlineSmall),
           const SizedBox(height: AppSpace.xs),
           Text(
-            AppCopy.availableTimeBudget,
+            AppCopy.timeTagline,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -101,7 +101,7 @@ class _Content extends StatelessWidget {
           ),
           WeeklyTimeBudgetCard(state: state),
           const SizedBox(height: AppSpace.cardGap),
-          WeeklyHoursChart(kaizenWeeklyTarget: state.kaizenWeeklyTarget),
+          WeeklyHoursChart(goalWeeklyTarget: state.goalWeeklyTarget),
           SectionHeader(
             title: 'Countdowns',
             trailing: TextButton.icon(

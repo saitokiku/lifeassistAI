@@ -10,10 +10,6 @@ final identityRepositoryProvider = Provider<IdentityRepository>(
   (ref) => IdentityRepository(ref.watch(databaseProvider)),
 );
 
-final goalsProvider = StreamProvider<List<Goal>>(
-  (ref) => ref.watch(identityRepositoryProvider).watchGoals(),
-);
-
 final freedomTargetsProvider = StreamProvider<List<FreedomTarget>>(
   (ref) => ref.watch(identityRepositoryProvider).watchFreedomTargets(),
 );
@@ -24,14 +20,12 @@ final identityStatementsProvider = StreamProvider<List<IdentityStatement>>(
 
 final identityStateProvider = Provider<IdentityState?>((ref) {
   final statements = ref.watch(identityStatementsProvider).valueOrNull;
-  final goals = ref.watch(goalsProvider).valueOrNull;
   final targets = ref.watch(freedomTargetsProvider).valueOrNull;
   final settings = ref.watch(settingsProvider).valueOrNull;
-  if (statements == null || goals == null || targets == null) return null;
+  if (statements == null || targets == null) return null;
 
   return IdentityState(
     statements: statements,
-    goals: goals,
     freedomTargets: targets,
     philosophyText: settings?.philosophyText ?? '',
   );
@@ -41,27 +35,6 @@ class IdentityController {
   IdentityController(this._repo);
 
   final IdentityRepository _repo;
-
-  Future<void> createGoal({
-    required String title,
-    String? description,
-    String? metricName,
-    required double currentValue,
-    required double targetValue,
-    DateTime? targetDate,
-  }) =>
-      _repo.createGoal(
-        title: title,
-        description: description,
-        metricName: metricName,
-        currentValue: currentValue,
-        targetValue: targetValue,
-        targetDate: targetDate,
-      );
-
-  Future<void> updateGoal(Goal goal) => _repo.updateGoal(goal);
-
-  Future<void> deleteGoal(String id) => _repo.deleteGoal(id);
 
   Future<void> createFreedomTarget({
     required String title,

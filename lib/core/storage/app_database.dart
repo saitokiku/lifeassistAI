@@ -148,8 +148,10 @@ class ParkedIdeas extends Table {
   TextColumn get dateCaptured => text()(); // yyyy-MM-dd
   TextColumn get reviewDate => text()(); // yyyy-MM-dd, captured + 7 days
   TextColumn get decision => text().withDefault(const Constant('undecided'))(); // undecided | ignore | later | integrate
-  BoolColumn get directlyHelpsKaizenThisWeek =>
-      boolean().withDefault(const Constant(false))();
+  // SQL name predates the universal main-goal system; kept for data compat.
+  BoolColumn get helpsMainGoal => boolean()
+      .named('directly_helps_kaizen_this_week')
+      .withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -157,6 +159,28 @@ class ParkedIdeas extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// The user's one main goal — the outcome the app organizes itself around.
+/// Exactly one row is `active` at a time; finished or shelved goals keep
+/// their history with a different status.
+class MainGoals extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+
+  /// Why this goal matters, in the user's words. Optional.
+  TextColumn get why => text().withDefault(const Constant(''))();
+  TextColumn get targetDate => text().nullable()(); // yyyy-MM-dd
+  // active | paused | completed | archived  (see MainGoalStatus)
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Milestones under the main goal (known as `goals` in storage for
+/// historical reasons — pre-v2 these were free-standing "goals").
 class Goals extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -165,6 +189,8 @@ class Goals extends Table {
   RealColumn get currentValue => real().withDefault(const Constant(0))();
   RealColumn get targetValue => real().withDefault(const Constant(0))();
   TextColumn get targetDate => text().nullable()(); // yyyy-MM-dd
+  BoolColumn get isDone => boolean().withDefault(const Constant(false))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -229,6 +255,7 @@ class SettingsEntries extends Table {
 }
 
 @DriftDatabase(tables: [
+  MainGoals,
   GrowthMetrics,
   GrowthMetricEntries,
   DailyExperiments,
@@ -250,11 +277,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2: the universal main-goal system.
+            await m.createTable(mainGoals);
+            await m.addColumn(goals, goals.isDone);
+            await m.addColumn(goals, goals.sortOrder);
+            // Legacy value rewrites + deriving the main goal from existing
+            // Kaizen-era data live in LegacyMigration (shared with import).
+          }
+        },
       );
 
   /// Wipes every table. Used by "Reset all data" and JSON import.

@@ -53,12 +53,12 @@ class WeeklyHoursPoint {
   const WeeklyHoursPoint({
     required this.weekStart,
     required this.totalHours,
-    required this.kaizenHours,
+    required this.goalHours,
   });
 
   final DateTime weekStart;
   final double totalHours;
-  final double kaizenHours;
+  final double goalHours;
 }
 
 /// How many weeks of history the time chart shows.
@@ -69,7 +69,7 @@ final _blocksSinceProvider =
   return ref.watch(timeRepositoryProvider).watchBlocksSince(since);
 });
 
-/// Last [kWeeklyHistoryWeeks] weeks of total vs Kaizen hours (oldest first).
+/// Last [kWeeklyHistoryWeeks] weeks of total vs main-goal hours (oldest first).
 /// Null while sources load.
 final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
   final now = readNow(ref);
@@ -79,19 +79,19 @@ final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
   final blocks = ref.watch(_blocksSinceProvider(firstWeekStart)).valueOrNull;
   if (budgets == null || blocks == null) return null;
 
-  final kaizenBudgetIds = budgets
-      .where((b) => TimeCategoryKind.parse(b.kind) == TimeCategoryKind.kaizen)
+  final goalBudgetIds = budgets
+      .where((b) => TimeCategoryKind.parse(b.kind) == TimeCategoryKind.goal)
       .map((b) => b.id)
       .toSet();
 
   final totals = <String, double>{};
-  final kaizen = <String, double>{};
+  final goalHours = <String, double>{};
   for (final block in blocks) {
     final weekKey = AppDateUtils.dateKey(
         AppDateUtils.startOfWeek(AppDateUtils.parseDateKey(block.date)));
     totals[weekKey] = (totals[weekKey] ?? 0) + block.hours;
-    if (kaizenBudgetIds.contains(block.budgetId)) {
-      kaizen[weekKey] = (kaizen[weekKey] ?? 0) + block.hours;
+    if (goalBudgetIds.contains(block.budgetId)) {
+      goalHours[weekKey] = (goalHours[weekKey] ?? 0) + block.hours;
     }
   }
 
@@ -103,7 +103,7 @@ final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
         return WeeklyHoursPoint(
           weekStart: weekStart,
           totalHours: totals[key] ?? 0,
-          kaizenHours: kaizen[key] ?? 0,
+          goalHours: goalHours[key] ?? 0,
         );
       }(),
   ];

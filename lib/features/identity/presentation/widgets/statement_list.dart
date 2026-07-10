@@ -27,7 +27,7 @@ class StatementList extends ConsumerWidget {
         icon: Icons.fingerprint,
         title: 'No statements yet',
         message:
-            'One-liners you operate by. Try "The W-2 is funding, not identity."',
+            'One-liners you want to operate by. Try "I finish what I start."',
         actionLabel: 'Add statement',
         onAction: () => StatementEditor.show(context),
       );

@@ -11,7 +11,7 @@ import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
-import '../../application/kaizen_controller.dart';
+import '../../application/focus_controller.dart';
 import '../../domain/growth_metric.dart';
 import '../../domain/growth_metric_entry.dart';
 
@@ -117,7 +117,7 @@ class _GrowthMetricEntryFormState extends ConsumerState<GrowthMetricEntryForm> {
     final navigator = Navigator.of(context);
     final updating = _existing != null;
     try {
-      await ref.read(kaizenControllerProvider).upsertEntry(
+      await ref.read(focusControllerProvider).upsertEntry(
             metricId: widget.metric.id,
             date: _date,
             value: Validators.parseNumber(_value.text),

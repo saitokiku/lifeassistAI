@@ -11,10 +11,10 @@ import '../../domain/monthly_money_snapshot.dart';
 import 'money_field.dart';
 import 'money_snacks.dart';
 
-/// Edit the manual balances: Roth IRA target and contributions, brokerage,
-/// savings.
-class FreedomAccountsSheet extends ConsumerStatefulWidget {
-  const FreedomAccountsSheet({super.key, required this.snapshot});
+/// Edit the manual balances: retirement target and contributions,
+/// brokerage, savings.
+class SavingsAccountsSheet extends ConsumerStatefulWidget {
+  const SavingsAccountsSheet({super.key, required this.snapshot});
 
   final MonthlyMoneySnapshot snapshot;
 
@@ -24,21 +24,21 @@ class FreedomAccountsSheet extends ConsumerStatefulWidget {
   }) =>
       showAppSheet<void>(
         context,
-        builder: (_) => FreedomAccountsSheet(snapshot: snapshot),
+        builder: (_) => SavingsAccountsSheet(snapshot: snapshot),
       );
 
   @override
-  ConsumerState<FreedomAccountsSheet> createState() =>
-      _FreedomAccountsSheetState();
+  ConsumerState<SavingsAccountsSheet> createState() =>
+      _SavingsAccountsSheetState();
 }
 
-class _FreedomAccountsSheetState extends ConsumerState<FreedomAccountsSheet> {
+class _SavingsAccountsSheetState extends ConsumerState<SavingsAccountsSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _target = TextEditingController(
-      text: Formatters.number(widget.snapshot.rothIraAnnualTarget,
+      text: Formatters.number(widget.snapshot.retirementAnnualTarget,
           maxDecimals: 2));
   late final _contributed = TextEditingController(
-      text: Formatters.number(widget.snapshot.rothIraContributed,
+      text: Formatters.number(widget.snapshot.retirementContributed,
           maxDecimals: 2));
   late final _brokerage = TextEditingController(
       text: Formatters.number(widget.snapshot.brokerageBalance,
@@ -62,7 +62,7 @@ class _FreedomAccountsSheetState extends ConsumerState<FreedomAccountsSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await controller.setRothIra(
+      await controller.setRetirement(
         annualTarget: Validators.parseNumber(_target.text),
         contributed: Validators.parseNumber(_contributed.text),
       );
@@ -83,8 +83,8 @@ class _FreedomAccountsSheetState extends ConsumerState<FreedomAccountsSheet> {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: 'Freedom accounts',
-      subtitle: 'Manual balances. A monthly nudge keeps them honest.',
+      title: 'Savings & investing',
+      subtitle: 'Manual balances — update them when they change.',
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
         Form(
@@ -93,14 +93,14 @@ class _FreedomAccountsSheetState extends ConsumerState<FreedomAccountsSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               MoneyField(
-                label: 'Roth IRA annual target',
+                label: 'Retirement target (this year)',
                 controller: _target,
                 validator: (v) =>
                     Validators.nonNegativeNumber(v, label: 'Target'),
               ),
               const SizedBox(height: AppSpace.md),
               MoneyField(
-                label: 'Roth IRA contributed this year',
+                label: 'Contributed so far',
                 controller: _contributed,
                 validator: (v) =>
                     Validators.nonNegativeNumber(v, label: 'Contributed'),

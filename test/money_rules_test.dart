@@ -78,9 +78,10 @@ void main() {
   });
 
   group('Category flag rules', () {
-    test('warnOverTarget: Amazon over \$258 warns', () {
+    test('warnOverTarget: spending past the target warns', () {
       final flag = MoneyFlagRules.evaluateCategory(
-        category: category(name: 'Amazon', target: 258, flagType: 'warnOverTarget'),
+        category: category(
+            name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
         spent: 259,
         allIntentional: false,
       );
@@ -89,8 +90,8 @@ void main() {
 
       expect(
         MoneyFlagRules.evaluateCategory(
-          category:
-              category(name: 'Amazon', target: 258, flagType: 'warnOverTarget'),
+          category: category(
+              name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
           spent: 258,
           allIntentional: false,
         ),
@@ -98,9 +99,10 @@ void main() {
       );
     });
 
-    test('criticalOverZero: any weed/poker spend is critical', () {
+    test('criticalOverZero: any spend at all is critical', () {
       final flag = MoneyFlagRules.evaluateCategory(
-        category: category(name: 'Weed', target: 0, flagType: 'criticalOverZero'),
+        category: category(
+            name: 'Impulse buys', target: 0, flagType: 'criticalOverZero'),
         spent: 0.01,
         allIntentional: true,
       );
@@ -118,7 +120,7 @@ void main() {
 
     test('warnOverZeroUnlessIntentional respects intentional flag', () {
       final cat = category(
-          name: 'Restaurants/desserts',
+          name: 'Eating out',
           target: 0,
           flagType: 'warnOverZeroUnlessIntentional');
       expect(
@@ -165,24 +167,30 @@ void main() {
 
   group('MonthlyMoneySnapshot', () {
     test('computes rollup, projections, and flags from transactions', () {
-      final amazon = category(
-          name: 'Amazon', target: 258, flagType: 'warnOverTarget', id: 'amazon');
-      final weed = category(
-          name: 'Weed', target: 0, flagType: 'criticalOverZero', id: 'weed');
+      final shopping = category(
+          name: 'Shopping',
+          target: 258,
+          flagType: 'warnOverTarget',
+          id: 'shopping');
+      final impulse = category(
+          name: 'Impulse buys',
+          target: 0,
+          flagType: 'criticalOverZero',
+          id: 'impulse');
 
       final snapshot = MonthlyMoneySnapshot.compute(
         now: DateTime(2026, 7, 10), // day 10 of 31
         monthlyNetIncome: 6942,
         targetSurplusLow: 3200,
         targetSurplusHigh: 3800,
-        categories: [amazon, weed],
+        categories: [shopping, impulse],
         monthTransactions: [
-          tx(amount: 300, categoryId: 'amazon'),
-          tx(amount: 20, categoryId: 'weed'),
+          tx(amount: 300, categoryId: 'shopping'),
+          tx(amount: 20, categoryId: 'impulse'),
           tx(amount: 50, categoryId: null), // uncategorized fog
         ],
-        rothIraAnnualTarget: 7000,
-        rothIraContributed: 3500,
+        retirementAnnualTarget: 7000,
+        retirementContributed: 3500,
         brokerageBalance: 0,
         savingsBalance: 0,
       );
@@ -192,9 +200,9 @@ void main() {
       expect(snapshot.projectedSurplus,
           closeTo(6942 - 370 / 10 * 31, 0.001));
       expect(snapshot.uncategorizedCount, 1);
-      expect(snapshot.rothIraProgress, 0.5);
+      expect(snapshot.retirementProgress, 0.5);
 
-      // Flags: amazon over target (warning), weed critical, uncategorized.
+      // Flags: shopping over target (warning), impulse critical, uncategorized.
       expect(
         snapshot.flags.where((f) => f.severity == MoneyFlagSeverity.critical),
         hasLength(1),

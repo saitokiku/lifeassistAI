@@ -10,12 +10,12 @@ import '../../../../shared/widgets/loading_view.dart';
 import '../../../../shared/widgets/metric_card.dart';
 import '../../application/time_controller.dart';
 
-/// Stacked bar history: total hours per week with the Kaizen portion
-/// highlighted, plus a dashed line marking the weekly Kaizen target.
+/// Stacked bar history: total hours per week with the main-goal portion
+/// highlighted, plus a dashed line marking the weekly goal-hours target.
 class WeeklyHoursChart extends ConsumerWidget {
-  const WeeklyHoursChart({super.key, this.kaizenWeeklyTarget});
+  const WeeklyHoursChart({super.key, this.goalWeeklyTarget});
 
-  final double? kaizenWeeklyTarget;
+  final double? goalWeeklyTarget;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,7 +24,7 @@ class WeeklyHoursChart extends ConsumerWidget {
     if (history == null) return const SkeletonCard(height: 260);
 
     final hasData = history.any((p) => p.totalHours > 0);
-    final target = kaizenWeeklyTarget ?? 0;
+    final target = goalWeeklyTarget ?? 0;
     final showTarget = hasData && target > 0;
     final maxTotal =
         history.fold<double>(0, (m, p) => math.max(m, p.totalHours));
@@ -34,7 +34,7 @@ class WeeklyHoursChart extends ConsumerWidget {
 
     return MetricCard(
       title: 'Weekly hours',
-      supportText: 'Last ${history.length} weeks · Kaizen vs everything else.',
+      supportText: 'Last ${history.length} weeks · goal hours vs everything else.',
       child: !hasData
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -128,7 +128,7 @@ class WeeklyHoursChart extends ConsumerWidget {
                             final p = history[group.x];
                             return BarTooltipItem(
                               'Total ${Formatters.hours(p.totalHours)}\n'
-                              'Kaizen ${Formatters.hours(p.kaizenHours)}',
+                              'Main goal ${Formatters.hours(p.goalHours)}',
                               TextStyle(
                                 color: theme.colorScheme.onInverseSurface,
                                 fontSize: 12,
@@ -150,11 +150,11 @@ class WeeklyHoursChart extends ConsumerWidget {
                                 rodStackItems: [
                                   BarChartRodStackItem(
                                     0,
-                                    history[i].kaizenHours,
+                                    history[i].goalHours,
                                     AppColors.primary,
                                   ),
                                   BarChartRodStackItem(
-                                    history[i].kaizenHours,
+                                    history[i].goalHours,
                                     history[i].totalHours,
                                     otherColor,
                                   ),
@@ -170,12 +170,12 @@ class WeeklyHoursChart extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _swatch(theme, AppColors.primary, 'Kaizen'),
+                    _swatch(theme, AppColors.primary, 'Main goal'),
                     const SizedBox(width: 16),
                     _swatch(theme, otherColor, 'Other logged'),
                     if (showTarget) ...[
                       const SizedBox(width: 16),
-                      _dashSwatch(theme, 'Kaizen target'),
+                      _dashSwatch(theme, 'Goal target'),
                     ],
                   ],
                 ),

@@ -5,6 +5,7 @@ import 'app.dart';
 import 'core/providers.dart';
 import 'core/storage/app_database.dart';
 import 'core/storage/database_connection.dart';
+import 'core/storage/legacy_migration.dart';
 import 'core/storage/preferences_service.dart';
 import 'core/storage/seed_service.dart';
 import 'core/theme/app_theme.dart';
@@ -23,6 +24,9 @@ Future<void> bootstrap() async {
 
     // Seed defaults into empty tables. Safe to call every launch.
     await SeedService(database).seedIfNeeded();
+
+    // Rewrite Kaizen-era data into the universal main-goal shape.
+    await LegacyMigration(database).run();
 
     runApp(
       ProviderScope(

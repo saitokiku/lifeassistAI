@@ -61,7 +61,7 @@ class RemindersScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpace.xs),
                         Text(
-                          'The rhythm holds the system together.',
+                          'Gentle nudges through the day.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

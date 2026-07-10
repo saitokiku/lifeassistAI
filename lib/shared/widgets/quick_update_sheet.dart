@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/utils/validation.dart';
-import '../../../../shared/haptics.dart';
-import '../../../../shared/widgets/app_sheet.dart';
-import '../../../../shared/widgets/loading_view.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/validation.dart';
+import '../haptics.dart';
+import 'app_sheet.dart';
+import 'loading_view.dart';
 
 /// One field, one save — the low-friction path for progress updates.
 ///

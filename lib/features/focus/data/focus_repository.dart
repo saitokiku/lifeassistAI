@@ -4,14 +4,125 @@ import 'package:uuid/uuid.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
 
-/// Persistence for growth metrics, metric entries, and daily experiments.
-class KaizenRepository {
-  KaizenRepository(this._db);
+/// Persistence for the main goal and everything under it: milestones,
+/// progress measures (growth metrics + entries), and daily actions.
+class FocusRepository {
+  FocusRepository(this._db);
 
   final AppDatabase _db;
   final _uuid = const Uuid();
 
-  // --- Growth metrics -------------------------------------------------------
+  // --- Main goal ------------------------------------------------------------
+
+  /// The goal the app organizes itself around: the most recent non-archived,
+  /// non-completed one. Completed/archived goals stay as history.
+  Stream<MainGoal?> watchCurrentGoal() => (_db.select(_db.mainGoals)
+        ..where((t) => t.status.isIn(['active', 'paused']))
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+        ..limit(1))
+      .watchSingleOrNull();
+
+  Stream<List<MainGoal>> watchAllGoals() => (_db.select(_db.mainGoals)
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+      .watch();
+
+  Future<MainGoal> createGoal({
+    required String title,
+    String why = '',
+    DateTime? targetDate,
+  }) async {
+    final now = DateTime.now();
+    final goal = MainGoal(
+      id: _uuid.v4(),
+      title: title,
+      why: why,
+      targetDate: targetDate == null ? null : AppDateUtils.dateKey(targetDate),
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    );
+    await _db.transaction(() async {
+      // Starting a new goal shelves any other open one — one goal at a time.
+      await (_db.update(_db.mainGoals)
+            ..where((t) => t.status.isIn(['active', 'paused'])))
+          .write(MainGoalsCompanion(
+        status: const Value('archived'),
+        updatedAt: Value(now),
+      ));
+      await _db.into(_db.mainGoals).insert(goal);
+    });
+    return goal;
+  }
+
+  Future<void> updateGoal(MainGoal goal) => _db.update(_db.mainGoals).replace(
+        goal.copyWith(updatedAt: DateTime.now()),
+      );
+
+  Future<void> setGoalStatus(String id, String status) async {
+    final now = DateTime.now();
+    await (_db.update(_db.mainGoals)..where((t) => t.id.equals(id)))
+        .write(MainGoalsCompanion(
+      status: Value(status),
+      updatedAt: Value(now),
+      completedAt: Value(status == 'completed' ? now : null),
+    ));
+  }
+
+  // --- Milestones -----------------------------------------------------------
+
+  Stream<List<Goal>> watchMilestones() => (_db.select(_db.goals)
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.isDone),
+          (t) => OrderingTerm.asc(t.sortOrder),
+          (t) => OrderingTerm.asc(t.createdAt),
+        ]))
+      .watch();
+
+  Future<Goal> createMilestone({
+    required String title,
+    String? description,
+    String? metricName,
+    double currentValue = 0,
+    double targetValue = 0,
+    DateTime? targetDate,
+  }) async {
+    final now = DateTime.now();
+    final count = await _db.goals.count().getSingle();
+    final milestone = Goal(
+      id: _uuid.v4(),
+      title: title,
+      description: description,
+      metricName: metricName,
+      currentValue: currentValue,
+      targetValue: targetValue,
+      targetDate: targetDate == null ? null : AppDateUtils.dateKey(targetDate),
+      isDone: false,
+      sortOrder: count,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _db.into(_db.goals).insert(milestone);
+    return milestone;
+  }
+
+  Future<void> updateMilestone(Goal milestone) =>
+      _db.update(_db.goals).replace(
+            milestone.copyWith(updatedAt: DateTime.now()),
+          );
+
+  Future<void> setMilestoneDone(String id, bool done) async {
+    await (_db.update(_db.goals)..where((t) => t.id.equals(id)))
+        .write(GoalsCompanion(
+      isDone: Value(done),
+      updatedAt: Value(DateTime.now()),
+    ));
+  }
+
+  Future<void> deleteMilestone(String id) =>
+      (_db.delete(_db.goals)..where((t) => t.id.equals(id))).go();
+
+  // --- Progress measures (growth metrics) -----------------------------------
 
   Stream<List<GrowthMetric>> watchMetrics() => (_db.select(_db.growthMetrics)
         ..orderBy([
@@ -68,7 +179,8 @@ class KaizenRepository {
         await (_db.delete(_db.growthMetricEntries)
               ..where((t) => t.metricId.equals(id)))
             .go();
-        await (_db.delete(_db.growthMetrics)..where((t) => t.id.equals(id))).go();
+        await (_db.delete(_db.growthMetrics)..where((t) => t.id.equals(id)))
+            .go();
       });
 
   // --- Metric entries -------------------------------------------------------
@@ -138,20 +250,14 @@ class KaizenRepository {
     ));
   }
 
-  // --- Daily experiments ----------------------------------------------------
+  // --- Daily actions --------------------------------------------------------
 
-  Stream<List<DailyExperiment>> watchExperiments() =>
+  Stream<List<DailyExperiment>> watchActions() =>
       (_db.select(_db.dailyExperiments)
             ..orderBy([(t) => OrderingTerm.desc(t.date)]))
           .watch();
 
-  Stream<DailyExperiment?> watchExperimentForDate(DateTime date) =>
-      (_db.select(_db.dailyExperiments)
-            ..where((t) => t.date.equals(AppDateUtils.dateKey(date)))
-            ..limit(1))
-          .watchSingleOrNull();
-
-  Future<void> logExperiment({
+  Future<void> logAction({
     required DateTime date,
     required String hypothesis,
     required String actionTaken,
@@ -173,11 +279,11 @@ class KaizenRepository {
         ));
   }
 
-  Future<void> updateExperiment(DailyExperiment experiment) =>
+  Future<void> updateAction(DailyExperiment action) =>
       _db.update(_db.dailyExperiments).replace(
-            experiment.copyWith(updatedAt: DateTime.now()),
+            action.copyWith(updatedAt: DateTime.now()),
           );
 
-  Future<void> deleteExperiment(String id) =>
+  Future<void> deleteAction(String id) =>
       (_db.delete(_db.dailyExperiments)..where((t) => t.id.equals(id))).go();
 }

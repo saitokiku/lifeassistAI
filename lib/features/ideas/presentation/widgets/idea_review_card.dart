@@ -113,10 +113,10 @@ class IdeaReviewCard extends ConsumerWidget {
   /// progress bar carries age and countdown in one quiet line.
   List<Widget> _coolingBody(ThemeData theme) {
     return [
-      if (idea.directlyHelpsKaizenThisWeek) ...[
+      if (idea.helpsMainGoal) ...[
         const SizedBox(height: AppSpace.sm),
         const StatusBadge(
-          label: 'Helps the hunt — can integrate now',
+          label: 'Helps your goal — usable now',
           level: StatusLevel.aligned,
         ),
       ],
@@ -385,8 +385,8 @@ class _LockedIntegrate extends StatelessWidget {
 
     return Tooltip(
       message:
-          'Unlocks when cooling ends — or when it directly helps the hunt '
-          'this week.',
+          'Unlocks when cooling ends — or when it directly helps '
+          'your main goal.',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(

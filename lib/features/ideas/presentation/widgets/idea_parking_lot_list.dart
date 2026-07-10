@@ -43,7 +43,7 @@ class _IdeaParkingLotListState extends State<IdeaParkingLotList> {
           icon: Icons.lightbulb_outline,
           title: 'The lot is empty.',
           message: 'When the next shiny idea shows up, park it here — '
-              'it keeps the hunt clean.',
+              'it keeps your focus clean.',
           actionLabel: 'Park an idea',
           onAction: () => IdeaCaptureForm.show(context),
         ),

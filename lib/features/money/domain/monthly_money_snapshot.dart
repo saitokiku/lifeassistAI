@@ -32,8 +32,8 @@ class MonthlyMoneySnapshot {
     required double targetSurplusHigh,
     required List<BudgetCategory> categories,
     required List<TransactionEntry> monthTransactions,
-    required double rothIraAnnualTarget,
-    required double rothIraContributed,
+    required double retirementAnnualTarget,
+    required double retirementContributed,
     required double brokerageBalance,
     required double savingsBalance,
   }) {
@@ -107,8 +107,8 @@ class MonthlyMoneySnapshot {
       categorySpends: categorySpends,
       flags: flags,
       uncategorizedCount: uncategorizedCount,
-      rothIraAnnualTarget: rothIraAnnualTarget,
-      rothIraContributed: rothIraContributed,
+      retirementAnnualTarget: retirementAnnualTarget,
+      retirementContributed: retirementContributed,
       brokerageBalance: brokerageBalance,
       savingsBalance: savingsBalance,
     );
@@ -125,8 +125,8 @@ class MonthlyMoneySnapshot {
     required this.categorySpends,
     required this.flags,
     required this.uncategorizedCount,
-    required this.rothIraAnnualTarget,
-    required this.rothIraContributed,
+    required this.retirementAnnualTarget,
+    required this.retirementContributed,
     required this.brokerageBalance,
     required this.savingsBalance,
   });
@@ -141,14 +141,14 @@ class MonthlyMoneySnapshot {
   final List<CategorySpend> categorySpends;
   final List<MoneyFlag> flags;
   final int uncategorizedCount;
-  final double rothIraAnnualTarget;
-  final double rothIraContributed;
+  final double retirementAnnualTarget;
+  final double retirementContributed;
   final double brokerageBalance;
   final double savingsBalance;
 
-  double get rothIraProgress => rothIraAnnualTarget <= 0
+  double get retirementProgress => retirementAnnualTarget <= 0
       ? 0
-      : (rothIraContributed / rothIraAnnualTarget).clamp(0.0, 1.0);
+      : (retirementContributed / retirementAnnualTarget).clamp(0.0, 1.0);
 
   bool get withinTargetPace => MoneyMath.withinTargetPace(
         projectedSurplus: projectedSurplus,

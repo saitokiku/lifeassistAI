@@ -79,20 +79,15 @@ class SettingsScreen extends ConsumerWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SectionHeader(title: 'Targets'),
+          const SectionHeader(title: 'About you'),
           _SettingsGroup(children: [
             _SettingsRow(
-              icon: Icons.payments_outlined,
-              title: 'Net monthly income',
-              value: Formatters.money(settings.monthlyNetIncome),
-              onTap: () => _IncomeSheet.show(context, settings: settings),
-            ),
-            _SettingsRow(
-              icon: Icons.savings_outlined,
-              title: 'Target surplus range',
-              value:
-                  '${Formatters.money(settings.targetSurplusLow)} – ${Formatters.money(settings.targetSurplusHigh)}',
-              onTap: () => _SurplusSheet.show(context, settings: settings),
+              icon: Icons.person_outline,
+              title: 'Your name',
+              value: settings.displayName.isEmpty
+                  ? 'Not set'
+                  : settings.displayName,
+              onTap: () => _NameSheet.show(context, settings: settings),
             ),
             _SettingsRow(
               icon: Icons.cake_outlined,
@@ -103,10 +98,29 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => _BirthdaySheet.show(context, settings: settings),
             ),
             _SettingsRow(
-              icon: Icons.format_quote_outlined,
-              title: 'Philosophy line',
-              value: settings.philosophyText,
-              onTap: () => _PhilosophySheet.show(context, settings: settings),
+              icon: Icons.outlined_flag,
+              title: 'Main goal',
+              subtitle: 'On the Focus tab.',
+              link: true,
+              onTap: () => context.go('/focus'),
+            ),
+          ]),
+          const SectionHeader(title: 'Targets'),
+          _SettingsGroup(children: [
+            _SettingsRow(
+              icon: Icons.payments_outlined,
+              title: 'Net monthly income',
+              value: settings.hasIncome
+                  ? Formatters.money(settings.monthlyNetIncome)
+                  : 'Not set',
+              onTap: () => _IncomeSheet.show(context, settings: settings),
+            ),
+            _SettingsRow(
+              icon: Icons.savings_outlined,
+              title: 'Target surplus range',
+              value:
+                  '${Formatters.money(settings.targetSurplusLow)} – ${Formatters.money(settings.targetSurplusHigh)}',
+              onTap: () => _SurplusSheet.show(context, settings: settings),
             ),
             _SettingsRow(
               icon: Icons.pie_chart_outline,
@@ -123,6 +137,8 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.go('/time'),
             ),
           ]),
+          const SectionHeader(title: 'Today screen'),
+          _AreasCard(settings: settings),
           const SectionHeader(title: 'Appearance'),
           const _ThemeCard(),
           const SectionHeader(title: 'Notifications'),
@@ -386,7 +402,7 @@ class _NotificationsRowState extends ConsumerState<_NotificationsRow> {
           showErrorSnack(
             context,
             'Blocked at the system level. Allow notifications for '
-            'Life Dashboard, then try again.',
+            '${AppConstants.appName}, then try again.',
           );
         }
       } else {
@@ -723,8 +739,8 @@ class _SurplusSheetState extends ConsumerState<_SurplusSheet> {
   }
 }
 
-class _PhilosophySheet extends ConsumerStatefulWidget {
-  const _PhilosophySheet({required this.settings});
+class _NameSheet extends ConsumerStatefulWidget {
+  const _NameSheet({required this.settings});
 
   final UserSettings settings;
 
@@ -734,31 +750,27 @@ class _PhilosophySheet extends ConsumerStatefulWidget {
   }) =>
       showAppSheet<void>(
         context,
-        builder: (_) => _PhilosophySheet(settings: settings),
+        builder: (_) => _NameSheet(settings: settings),
       );
 
   @override
-  ConsumerState<_PhilosophySheet> createState() => _PhilosophySheetState();
+  ConsumerState<_NameSheet> createState() => _NameSheetState();
 }
 
-class _PhilosophySheetState extends ConsumerState<_PhilosophySheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final _text = TextEditingController(
-    text: widget.settings.philosophyText,
+class _NameSheetState extends ConsumerState<_NameSheet> {
+  late final _name = TextEditingController(
+    text: widget.settings.displayName,
   );
 
   @override
   void dispose() {
-    _text.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
     final navigator = Navigator.of(context);
-    await ref
-        .read(settingsControllerProvider)
-        .setPhilosophyText(_text.text.trim());
+    await ref.read(settingsControllerProvider).setDisplayName(_name.text);
     Haptics.medium();
     if (!mounted) return;
     showSuccessSnack(context, 'Saved.');
@@ -768,21 +780,70 @@ class _PhilosophySheetState extends ConsumerState<_PhilosophySheet> {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: 'Philosophy line',
-      subtitle: 'One line at the top of Today. Make it yours.',
+      title: 'Your name',
+      subtitle: 'Used for greetings only. Leave it empty to skip.',
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
-        Form(
-          key: _formKey,
-          child: AppTextField(
-            label: 'Philosophy line',
-            hint: AppConstants.philosophyLine,
-            controller: _text,
-            maxLines: 2,
-            validator: (v) => Validators.required(v, label: 'Philosophy line'),
-          ),
+        AppTextField(
+          label: 'Name',
+          hint: 'What should we call you?',
+          controller: _name,
+          autofocus: true,
         ),
       ],
+    );
+  }
+}
+
+/// Which optional modules the Today screen shows.
+class _AreasCard extends ConsumerWidget {
+  const _AreasCard({required this.settings});
+
+  final UserSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Today shows these areas',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Your goal always shows. Turn the rest on or off.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Wrap(
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            children: [
+              for (final area in DashboardArea.values)
+                FilterChip(
+                  label: Text(area.label),
+                  selected: settings.showsArea(area),
+                  onSelected: (on) {
+                    Haptics.select();
+                    final next = {...settings.dashboardAreas};
+                    on ? next.add(area) : next.remove(area);
+                    ref
+                        .read(settingsControllerProvider)
+                        .setDashboardAreas(next);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -834,7 +895,7 @@ class _BirthdaySheet extends ConsumerWidget {
 
     return AppSheet(
       title: 'Birthday',
-      subtitle: 'Drives the age-${AppConstants.lockInAge} countdown.',
+      subtitle: 'Used for age-based countdowns. Nothing else.',
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

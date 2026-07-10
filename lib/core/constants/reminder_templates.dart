@@ -5,37 +5,43 @@ class ReminderTemplates {
 
   static const Map<String, List<String>> byType = {
     'morningCommand': [
-      "Run today's Kaizen experiment before research.",
-      'Point the engine at one hunt.',
-      'Growth hunt first. Build hunt is fenced.',
+      'What would make today count? Pick it now.',
+      'One clear priority beats a long list.',
+      'Look at today before today happens to you.',
     ],
-    'kaizenExperiment': [
-      'One test. One verdict. Log it.',
-      'No verdict yet today? One test before research.',
+    'dailyAction': [
+      'One small step toward your goal. Log what happened.',
+      'No step yet today? Small counts — take one now.',
     ],
     'moneyCheck': [
-      'Money is the scoreboard, not the mission.',
-      'Undefined misc is fog. Categorize it.',
-      'Surplus must move toward freedom.',
+      'A quick look at spending keeps the month honest.',
+      'Thirty seconds: log anything you spent today.',
+      'Uncategorized spending hides patterns. Give it a lane.',
     ],
     'nightReview': [
-      'Recovery floor is load-bearing. Do not zero it out.',
-      'Curiosity is fuel. Point it at one hunt.',
-      'Freedom is the goal.',
+      'Close the day: what moved, what stalled?',
+      'Two minutes of review saves tomorrow an hour.',
+      'Check off what you did. Let the rest wait for morning.',
     ],
     'custom': [
-      'Freedom is the goal.',
+      'This is your reminder.',
     ],
   };
 
+  /// Legacy type key from before the universal main-goal redesign.
+  static const String legacyDailyActionType = 'kaizenExperiment';
+
   static String defaultMessageFor(String type) {
-    final list = byType[type] ?? byType['custom']!;
+    final list = byType[_normalize(type)] ?? byType['custom']!;
     return list.first;
   }
 
   /// Deterministic rotation so the same day always shows the same line.
   static String rotatingMessageFor(String type, DateTime day) {
-    final list = byType[type] ?? byType['custom']!;
+    final list = byType[_normalize(type)] ?? byType['custom']!;
     return list[day.difference(DateTime(2026)).inDays.abs() % list.length];
   }
+
+  static String _normalize(String type) =>
+      type == legacyDailyActionType ? 'dailyAction' : type;
 }

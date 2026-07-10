@@ -17,8 +17,9 @@ class AppDestination {
 
 /// Navigation structure.
 ///
-/// Compact (phones): five tabs — Today, Kaizen, Money, Time, You.
-/// The You tab is a hub for Identity, Habits, Ideas, Reminders, Settings.
+/// Compact (phones): five tabs — Today, Focus, Money, Time, You.
+/// Focus is the user's main goal; You is the hub for principles, habits,
+/// ideas, reminders, and settings.
 /// Wide (rail): every screen, flat.
 class AppDestinations {
   AppDestinations._();
@@ -26,16 +27,16 @@ class AppDestinations {
   /// Bottom bar tabs, in branch order (must match the router's branches).
   static const compact = <AppDestination>[
     AppDestination(
-      route: '/dashboard',
+      route: '/today',
       label: 'Today',
       icon: Icons.wb_sunny_outlined,
       selectedIcon: Icons.wb_sunny,
     ),
     AppDestination(
-      route: '/kaizen',
-      label: 'Kaizen',
-      icon: Icons.trending_up_outlined,
-      selectedIcon: Icons.trending_up,
+      route: '/focus',
+      label: 'Focus',
+      icon: Icons.outlined_flag,
+      selectedIcon: Icons.flag,
     ),
     AppDestination(
       route: '/money',
@@ -60,16 +61,16 @@ class AppDestinations {
   /// Wide-layout rail: all screens.
   static const rail = <AppDestination>[
     AppDestination(
-      route: '/dashboard',
+      route: '/today',
       label: 'Today',
       icon: Icons.wb_sunny_outlined,
       selectedIcon: Icons.wb_sunny,
     ),
     AppDestination(
-      route: '/kaizen',
-      label: 'Kaizen',
-      icon: Icons.trending_up_outlined,
-      selectedIcon: Icons.trending_up,
+      route: '/focus',
+      label: 'Focus',
+      icon: Icons.outlined_flag,
+      selectedIcon: Icons.flag,
     ),
     AppDestination(
       route: '/money',
@@ -96,16 +97,16 @@ class AppDestinations {
       selectedIcon: Icons.lightbulb,
     ),
     AppDestination(
-      route: '/identity',
-      label: 'Identity',
-      icon: Icons.flag_outlined,
-      selectedIcon: Icons.flag,
-    ),
-    AppDestination(
       route: '/reminders',
       label: 'Reminders',
       icon: Icons.notifications_outlined,
       selectedIcon: Icons.notifications,
+    ),
+    AppDestination(
+      route: '/more',
+      label: 'You',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person,
     ),
     AppDestination(
       route: '/settings',
@@ -115,8 +116,7 @@ class AppDestinations {
     ),
   ];
 
-  /// Rail selection for the current location; null when nothing matches
-  /// (e.g. the /more hub, which only exists as a compact tab).
+  /// Rail selection for the current location; null when nothing matches.
   static int? railIndexForLocation(String location) {
     for (var i = 0; i < rail.length; i++) {
       if (location.startsWith(rail[i].route)) return i;

@@ -6,25 +6,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_dashboard/app.dart';
 import 'package:life_dashboard/core/providers.dart';
 import 'package:life_dashboard/core/storage/app_database.dart';
+import 'package:life_dashboard/core/storage/legacy_migration.dart';
 import 'package:life_dashboard/core/storage/preferences_service.dart';
 import 'package:life_dashboard/core/storage/seed_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// End-to-end smoke: the real app against a seeded in-memory database.
-/// Every screen must build and the core navigation paths must work at
-/// phone dimensions without exceptions or layout overflows.
+/// Every screen must build and the core paths — navigation, goal setup,
+/// onboarding, legacy migration — must work at phone dimensions without
+/// exceptions or layout overflows.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
 
-  Future<Widget> appWith({required bool onboarded}) async {
+  Future<Widget> appWith({
+    required bool onboarded,
+    Future<void> Function(AppDatabase db)? prepare,
+  }) async {
     SharedPreferences.setMockInitialValues({
       if (onboarded) 'onboardingComplete': true,
     });
     PackageInfo.setMockInitialValues(
-      appName: 'Life Dashboard',
+      appName: 'Life Assist',
       packageName: 'com.kaizen.lifedashboard',
       version: '0.2.0',
       buildNumber: '2',
@@ -32,7 +37,9 @@ void main() {
     );
     final prefs = PreferencesService(await SharedPreferences.getInstance());
     db = AppDatabase(DatabaseConnection(NativeDatabase.memory()));
+    if (prepare != null) await prepare(db);
     await SeedService(db).seedIfNeeded();
+    await LegacyMigration(db).run();
 
     return ProviderScope(
       overrides: [
@@ -70,6 +77,12 @@ void main() {
   }
 
   Future<void> openHubRow(WidgetTester tester, String label) async {
+    // Hub rows can sit below the fold on a phone-sized You screen.
+    await tester.scrollUntilVisible(
+      find.text(label).first,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text(label).first);
     await settle(tester);
   }
@@ -98,65 +111,84 @@ void main() {
 
     await tester.pumpWidget(await appWith(onboarded: true));
 
-    // Today: greeting, focus hero, check-in, scoreboard.
-    await pumpUntil(tester, find.text("TODAY'S FOCUS"));
+    // Today: greeting, the Up-next hero inviting goal setup, check-in.
+    await pumpUntil(tester, find.text('UP NEXT'));
     await settle(tester);
+    expect(find.text('Set your main goal'), findsOneWidget);
     expect(find.text('CHECK-IN'), findsOneWidget);
-    expect(find.text('SCOREBOARD'), findsOneWidget);
 
-    // Quick add opens and offers the five captures.
+    // Quick add opens and offers the captures that exist right now.
     await tester.tap(find.byType(FloatingActionButton).first);
     await settle(tester);
     expect(find.text('Quick add'), findsOneWidget);
     expect(find.text('Log time'), findsOneWidget);
+    expect(find.text('Add expense'), findsOneWidget);
     expect(find.text('Park an idea'), findsOneWidget);
+    // No goal yet → no goal-step capture.
+    expect(find.text('Goal step'), findsNothing);
     await tester.tapAt(const Offset(195, 60)); // dismiss via barrier
     await settle(tester);
 
-    // Main tabs.
-    await tapTab(tester, 'Kaizen');
-    expect(find.text('One hunt. One test a day.'), findsOneWidget);
+    // Focus: invites the user to set a goal, then shows it.
+    await tapTab(tester, 'Focus');
+    expect(find.text('What are you working toward?'), findsOneWidget);
+    await tester.tap(find.text('Set your main goal'));
+    await settle(tester);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Goal'), 'Kaizen');
+    await tester.tap(find.text('Set goal'));
+    await settle(tester);
+    expect(find.text('MAIN GOAL'), findsOneWidget);
+    expect(find.text('Kaizen'), findsWidgets);
+    expect(find.text('MILESTONES'), findsOneWidget);
 
+    // Money: no income yet → setup invitation, budgets still reachable.
     await tapTab(tester, 'Money');
-    expect(find.text('The scoreboard, not the mission.'), findsOneWidget);
+    expect(find.text('Where the month stands.'), findsOneWidget);
+    expect(find.text('Set income'), findsOneWidget);
+    expect(find.text('BUDGET CATEGORIES'), findsOneWidget);
 
     await tapTab(tester, 'Time');
-    expect(find.text('Available time is the real budget.'), findsOneWidget);
+    expect(find.text('Your week, in hours.'), findsOneWidget);
 
     await tapTab(tester, 'You');
-    expect(find.text('Direction, systems, and settings.'), findsOneWidget);
+    expect(find.text('Principles, systems, and settings.'), findsOneWidget);
 
     // You hub → each sub-screen and back.
     await openHubRow(tester, 'Habits');
-    expect(find.text('Support systems, not the mission.'), findsOneWidget);
+    expect(find.text('Small daily supports.'), findsOneWidget);
     await goBack(tester);
 
     await openHubRow(tester, 'Ideas');
-    expect(find.text('Curiosity captured. Not chased.'), findsOneWidget);
+    expect(find.text('Catch ideas now, decide later.'), findsOneWidget);
     await goBack(tester);
 
     await openHubRow(tester, 'Reminders');
-    expect(
-        find.text('The rhythm holds the system together.'), findsOneWidget);
+    expect(find.text('Gentle nudges through the day.'), findsOneWidget);
     await goBack(tester);
 
     await openHubRow(tester, 'Settings');
     expect(find.text('Targets, appearance, and your data.'), findsOneWidget);
     await goBack(tester);
 
-    await openHubRow(tester, 'Identity & direction');
-    expect(find.text('The why behind the numbers.'), findsOneWidget);
-    await goBack(tester);
-
-    // Back on the hub, and Today is still alive in its branch.
-    expect(find.text('Direction, systems, and settings.'), findsOneWidget);
+    // Back on the hub (its list kept the scrolled position); Today now
+    // reflects the goal set earlier.
+    expect(find.text('SYSTEMS'), findsOneWidget);
     await tapTab(tester, 'Today');
-    expect(find.text("TODAY'S FOCUS"), findsOneWidget);
+    expect(find.text('UP NEXT'), findsOneWidget);
+    expect(find.text('Set your main goal'), findsNothing);
+    // The goal snapshot card sits further down the Today list.
+    await tester.scrollUntilVisible(
+      find.text('KAIZEN'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('KAIZEN'), findsOneWidget); // goal snapshot card
 
     await shutDown(tester);
   });
 
-  testWidgets('first run lands on onboarding and can advance',
+  testWidgets('onboarding sets the goal and lands on a personalized Today',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
@@ -164,13 +196,106 @@ void main() {
 
     await tester.pumpWidget(await appWith(onboarded: false));
 
-    await pumpUntil(tester, find.textContaining('Money'));
+    // Welcome.
+    await pumpUntil(tester, find.text('One quiet place to run your life.'));
+    await settle(tester);
+    await tester.tap(find.text('Get started'));
     await settle(tester);
 
-    // Page 1 → 2 via Next; a Back affordance appears.
+    // Goal step: pick an example, refine nothing, move on.
+    expect(find.text('What are you working toward?'), findsOneWidget);
+    expect(find.text('Skip for now'), findsOneWidget); // empty → skippable
+    await tester.tap(find.text('Run a marathon'));
+    await settle(tester);
+    expect(find.text('Next'), findsOneWidget); // filled → Next
     await tester.tap(find.text('Next'));
     await settle(tester);
-    expect(find.text('Back'), findsOneWidget);
+
+    // About you.
+    expect(find.text('About you'), findsOneWidget);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Your name (optional)'), 'Alex');
+    await tester.tap(find.text('Next'));
+    await settle(tester);
+
+    // Rhythm: switch notifications off (no platform plugin in tests).
+    expect(find.text('A light daily rhythm'), findsOneWidget);
+    await tester.tap(find.byType(Switch));
+    await settle(tester);
+    await tester.tap(find.text('Start'));
+    await settle(tester);
+
+    // Lands on Today, greeting by name, goal live everywhere.
+    await pumpUntil(tester, find.text('UP NEXT'));
+    await settle(tester);
+    expect(find.textContaining('Alex'), findsWidgets);
+    expect(find.textContaining('Run a marathon'), findsWidgets);
+
+    // The goal exists in storage.
+    final goals = await db.select(db.mainGoals).get();
+    expect(goals.single.title, 'Run a marathon');
+
+    await shutDown(tester);
+  });
+
+  testWidgets('a Kaizen-era database arrives as the user\'s main goal',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final at = DateTime(2026, 6, 1);
+    await tester.pumpWidget(await appWith(
+      onboarded: true,
+      prepare: (db) async {
+        // Pre-v2 data: a growth metric, an experiment, a kaizen budget.
+        await db.into(db.growthMetrics).insert(GrowthMetric(
+              id: 'metric-1',
+              name: 'Weekly active learners',
+              unit: 'users',
+              currentValue: 12,
+              weeklyTarget: 10,
+              isActive: true,
+              createdAt: at,
+              updatedAt: at,
+            ));
+        await db.into(db.dailyExperiments).insert(DailyExperiment(
+              id: 'exp-1',
+              date: '2026-06-30',
+              hypothesis: 'Try a new landing page',
+              actionTaken: 'Shipped it',
+              result: 'Signups doubled',
+              verdict: 'confirm',
+              notes: null,
+              createdAt: at,
+              updatedAt: at,
+            ));
+        await db.into(db.timeBudgets).insert(const TimeBudget(
+              id: 'budget-1',
+              name: 'Kaizen',
+              kind: 'kaizen',
+              weeklyTargetHours: 42,
+              sortOrder: 0,
+            ));
+      },
+    ));
+
+    await pumpUntil(tester, find.text('UP NEXT'));
+    await settle(tester);
+
+    // The Focus tab carries the migrated goal and all its history.
+    await tapTab(tester, 'Focus');
+    expect(find.text('MAIN GOAL'), findsOneWidget);
+    expect(find.text('Kaizen'), findsWidgets);
+
+    // The measure and the logged step live further down the screen.
+    await tester.scrollUntilVisible(
+      find.textContaining('Shipped it'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('WEEKLY ACTIVE LEARNERS'), findsOneWidget);
+    expect(find.textContaining('Shipped it'), findsOneWidget);
 
     await shutDown(tester);
   });

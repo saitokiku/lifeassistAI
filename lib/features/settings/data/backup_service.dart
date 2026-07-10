@@ -5,8 +5,12 @@ import 'package:drift/drift.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/storage/legacy_migration.dart';
 
 /// JSON export/import of every core table. The user owns their data.
+///
+/// Exports are versioned (`schemaVersion`); v1 backups predate the universal
+/// main-goal system and are normalized on import so nothing is lost.
 class BackupService {
   BackupService(this._db);
 
@@ -14,6 +18,7 @@ class BackupService {
 
   static const _tableOrder = [
     'settings',
+    'mainGoals',
     'growthMetrics',
     'growthMetricEntries',
     'dailyExperiments',
@@ -35,6 +40,9 @@ class BackupService {
     final data = <String, List<Map<String, dynamic>>>{
       'settings': [
         for (final r in await _db.select(_db.settingsEntries).get()) r.toJson(),
+      ],
+      'mainGoals': [
+        for (final r in await _db.select(_db.mainGoals).get()) r.toJson(),
       ],
       'growthMetrics': [
         for (final r in await _db.select(_db.growthMetrics).get()) r.toJson(),
@@ -107,12 +115,12 @@ class BackupService {
     final data = parsed['data'];
     if (data is! Map<String, dynamic>) {
       return const Result.failure(
-          "Missing 'data' section. Is this a Life Dashboard export?");
+          "Missing 'data' section. Is this a ${AppConstants.appName} export?");
     }
 
     List<Map<String, dynamic>> rows(String key) => [
           for (final e in (data[key] as List? ?? const []))
-            (e as Map).cast<String, dynamic>(),
+            _normalizeLegacyRow(key, (e as Map).cast<String, dynamic>()),
         ];
 
     try {
@@ -132,6 +140,7 @@ class BackupService {
         }
 
         await insertAll(_db.settingsEntries, 'settings', SettingsEntry.fromJson);
+        await insertAll(_db.mainGoals, 'mainGoals', MainGoal.fromJson);
         await insertAll(
             _db.growthMetrics, 'growthMetrics', GrowthMetric.fromJson);
         await insertAll(_db.growthMetricEntries, 'growthMetricEntries',
@@ -155,10 +164,44 @@ class BackupService {
         await insertAll(_db.identityStatements, 'identityStatements',
             IdentityStatement.fromJson);
       });
+
+      // A v1 backup carries Kaizen-era values and no main goal; rewrite it
+      // into the universal shape (no-op for v2 backups).
+      await LegacyMigration(_db).run();
+
       return Result.success(count);
     } catch (e) {
       return Result.failure(
           'Import failed; data was rolled back. (${e.runtimeType})', e);
+    }
+  }
+
+  /// Fills in fields that pre-v2 exports don't have, so their rows satisfy
+  /// today's schema. Value-level rewrites happen in [LegacyMigration].
+  static Map<String, dynamic> _normalizeLegacyRow(
+    String table,
+    Map<String, dynamic> row,
+  ) {
+    switch (table) {
+      case 'parkedIdeas':
+        if (!row.containsKey('helpsMainGoal')) {
+          return {
+            ...row,
+            'helpsMainGoal': row['directlyHelpsKaizenThisWeek'] ?? false,
+          }..remove('directlyHelpsKaizenThisWeek');
+        }
+        return row;
+      case 'goals':
+        if (!row.containsKey('isDone') || !row.containsKey('sortOrder')) {
+          return {
+            'isDone': false,
+            'sortOrder': 0,
+            ...row,
+          };
+        }
+        return row;
+      default:
+        return row;
     }
   }
 

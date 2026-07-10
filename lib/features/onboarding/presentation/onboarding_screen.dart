@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/constants/default_targets.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/utils/validation.dart';
 import '../../../routing/app_router.dart';
 import '../../../shared/haptics.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../kaizen/application/kaizen_controller.dart';
+import '../../../shared/widgets/target_date_row.dart';
+import '../../focus/application/focus_controller.dart';
 import '../../reminders/application/reminders_controller.dart';
 import '../../settings/application/settings_controller.dart';
-import '../../time/application/time_controller.dart';
-import '../../time/domain/time_category.dart';
+import '../../settings/domain/user_settings.dart';
 
-/// First-launch onboarding. Collects the numbers that drive the dashboard;
-/// fully skippable — sensible defaults are already seeded either way.
+/// First-launch onboarding: what the app is, the user's main goal, a little
+/// about them, and the daily rhythm. Four short steps; every field is
+/// optional and everything can be changed later.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -33,67 +31,43 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pageController = PageController();
   int _page = 0;
-
-  /// Highest page the user may swipe to; raised by Next after validation.
-  int _maxAllowedPage = 0;
   bool _finishing = false;
 
-  // Page 2: money
-  final _moneyFormKey = GlobalKey<FormState>();
-  final _income = TextEditingController(
-    text: Formatters.number(DefaultTargets.monthlyNetIncome),
-  );
-  final _surplusLow = TextEditingController(
-    text: Formatters.number(DefaultTargets.targetSurplusLow),
-  );
-  final _surplusHigh = TextEditingController(
-    text: Formatters.number(DefaultTargets.targetSurplusHigh),
-  );
+  static const int _pageCount = 4;
 
-  // Page 3: kaizen
-  final _kaizenFormKey = GlobalKey<FormState>();
-  final _kaizenTarget = TextEditingController(
-    text: Formatters.number(DefaultTargets.weeklyKaizenHoursTarget),
-  );
-  final _metricName =
-      TextEditingController(text: DefaultTargets.defaultGrowthMetricName);
-  final _metricUnit =
-      TextEditingController(text: DefaultTargets.defaultGrowthMetricUnit);
+  // Step 2: the main goal
+  final _goalTitle = TextEditingController();
+  final _goalWhy = TextEditingController();
+  DateTime? _goalDate;
 
-  // Page 4: rhythm
+  // Step 3: about you
+  final _name = TextEditingController();
+  final Set<DashboardArea> _areas = {...DashboardArea.all};
+
+  // Step 4: rhythm
   TimeOfDay _morning = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _night = const TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay _evening = const TimeOfDay(hour: 21, minute: 30);
   bool _enableNotifications = true;
 
   @override
   void dispose() {
     _pageController.dispose();
-    _income.dispose();
-    _surplusLow.dispose();
-    _surplusHigh.dispose();
-    _kaizenTarget.dispose();
-    _metricName.dispose();
-    _metricUnit.dispose();
+    _goalTitle.dispose();
+    _goalWhy.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _next() async {
     if (_finishing) return;
-    if (_page == 1 && !(_moneyFormKey.currentState?.validate() ?? true)) {
-      return;
-    }
-    if (_page == 2 && !(_kaizenFormKey.currentState?.validate() ?? true)) {
-      return;
-    }
-    if (_page < 3) {
+    if (_page < _pageCount - 1) {
       FocusScope.of(context).unfocus();
-      _maxAllowedPage = _page + 1;
       await _pageController.nextPage(
         duration: AppMotion.standard,
         curve: AppMotion.easeOut,
       );
     } else {
-      await _finish(applyInputs: true);
+      await _finish();
     }
   }
 
@@ -106,79 +80,58 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  /// Persists onboarding answers into the already-seeded records, marks
-  /// onboarding complete, and goes to the dashboard.
-  Future<void> _finish({required bool applyInputs}) async {
+  /// Persists whatever the user shared, marks onboarding complete, and
+  /// lands on Today. Empty fields simply apply nothing.
+  Future<void> _finish() async {
     if (_finishing) return;
     setState(() => _finishing = true);
     // Captured before the awaits — the context may unmount mid-flight.
     final router = GoRouter.of(context);
 
     try {
-      if (applyInputs) {
-        final settings = ref.read(settingsControllerProvider);
-        await settings
-            .setMonthlyNetIncome(Validators.parseNumber(_income.text));
-        await settings.setTargetSurplus(
-          low: Validators.parseNumber(_surplusLow.text),
-          high: Validators.parseNumber(_surplusHigh.text),
-        );
+      final settings = ref.read(settingsControllerProvider);
 
-        // Kaizen weekly hours live on the Kaizen time budget row.
-        final db = ref.read(databaseProvider);
-        final budgets = await db.select(db.timeBudgets).get();
-        for (final budget in budgets) {
-          if (TimeCategoryKind.parse(budget.kind) == TimeCategoryKind.kaizen) {
-            await ref.read(timeControllerProvider).updateBudget(
-                  budget.copyWith(
-                    weeklyTargetHours:
-                        Validators.parseNumber(_kaizenTarget.text),
-                  ),
-                );
-          }
-        }
+      final name = _name.text.trim();
+      if (name.isNotEmpty) await settings.setDisplayName(name);
 
-        // Rename the seeded active metric to the user's chosen hunt.
-        final metrics = await db.select(db.growthMetrics).get();
-        for (final metric in metrics.where((m) => m.isActive)) {
-          await ref.read(kaizenControllerProvider).updateMetric(
-                metric.copyWith(
-                  name: _metricName.text.trim().isEmpty
-                      ? metric.name
-                      : _metricName.text.trim(),
-                  unit: _metricUnit.text.trim().isEmpty
-                      ? metric.unit
-                      : _metricUnit.text.trim(),
-                ),
-              );
-        }
-
-        // Morning command / night review times.
-        final reminders = await db.select(db.reminders).get();
-        for (final reminder in reminders) {
-          if (reminder.type == 'morningCommand') {
-            await db.update(db.reminders).replace(reminder.copyWith(
-                hour: _morning.hour,
-                minute: _morning.minute,
-                updatedAt: DateTime.now()));
-          } else if (reminder.type == 'nightReview') {
-            await db.update(db.reminders).replace(reminder.copyWith(
-                hour: _night.hour,
-                minute: _night.minute,
-                updatedAt: DateTime.now()));
-          }
-        }
-
-        if (_enableNotifications) {
-          await ref.read(remindersControllerProvider).enableNotifications();
-        }
-
-        Haptics.medium();
+      if (_areas.length != DashboardArea.all.length) {
+        await settings.setDashboardAreas(_areas);
       }
 
+      final goalTitle = _goalTitle.text.trim();
+      if (goalTitle.isNotEmpty) {
+        await ref.read(focusControllerProvider).createGoal(
+              title: goalTitle,
+              why: _goalWhy.text.trim(),
+              targetDate: _goalDate,
+            );
+      }
+
+      // Morning plan / evening review times on the seeded reminders.
+      final db = ref.read(databaseProvider);
+      final reminders = await db.select(db.reminders).get();
+      for (final reminder in reminders) {
+        if (reminder.type == 'morningCommand') {
+          await db.update(db.reminders).replace(reminder.copyWith(
+              hour: _morning.hour,
+              minute: _morning.minute,
+              updatedAt: DateTime.now()));
+        } else if (reminder.type == 'nightReview') {
+          await db.update(db.reminders).replace(reminder.copyWith(
+              hour: _evening.hour,
+              minute: _evening.minute,
+              updatedAt: DateTime.now()));
+        }
+      }
+
+      if (_enableNotifications) {
+        await ref.read(remindersControllerProvider).enableNotifications();
+      }
+
+      Haptics.medium();
       await ref.read(preferencesProvider).setOnboardingComplete(true);
       ref.invalidate(appRouterProvider);
-      router.go('/dashboard');
+      router.go('/today');
     } finally {
       if (mounted) setState(() => _finishing = false);
     }
@@ -196,16 +149,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Expanded(
                 child: PageView(
                   controller: _pageController,
-                  // Swiping back is free; forward stays gated on validation.
-                  physics: _GatedPagePhysics(allowedPage: () => _maxAllowedPage),
-                  onPageChanged: (i) => setState(() {
-                    _page = i;
-                    _maxAllowedPage = i;
-                  }),
+                  onPageChanged: (i) => setState(() => _page = i),
                   children: [
                     _welcome(theme),
-                    _moneyStep(theme),
-                    _kaizenStep(theme),
+                    _goalStep(theme),
+                    _aboutStep(theme),
                     _rhythmStep(theme),
                   ],
                 ),
@@ -220,12 +168,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // --- footer ---------------------------------------------------------------
 
-  Widget _footer(ThemeData theme) {
-    final scheme = theme.colorScheme;
-    final quiet = TextButton.styleFrom(
-      foregroundColor: scheme.onSurfaceVariant,
-    );
+  String get _nextLabel {
+    if (_page == 0) return 'Get started';
+    if (_page == _pageCount - 1) return 'Start';
+    if (_page == 1 && _goalTitle.text.trim().isEmpty) return 'Skip for now';
+    return 'Next';
+  }
 
+  Widget _footer(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpace.screen, AppSpace.md, AppSpace.screen, AppSpace.lg,
@@ -240,17 +190,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               if (_page > 0)
                 TextButton(
                   onPressed: _finishing ? null : _back,
-                  style: quiet,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.onSurfaceVariant,
+                  ),
                   child: const Text('Back'),
                 ),
               const Spacer(),
-              TextButton(
-                onPressed:
-                    _finishing ? null : () => _finish(applyInputs: false),
-                style: quiet,
-                child: const Text('Skip'),
-              ),
-              const SizedBox(width: AppSpace.sm),
               FilledButton(
                 onPressed: _finishing ? null : _next,
                 child: _finishing
@@ -262,7 +207,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           color: AppColors.onPrimary,
                         ),
                       )
-                    : Text(_page == 3 ? 'Start' : 'Next'),
+                    : Text(_nextLabel),
               ),
             ],
           ),
@@ -280,148 +225,167 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         children: children,
       );
 
-  Widget _tagline(ThemeData theme, String text) => Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 0.2,
-        ),
+  Widget _stepIntro(ThemeData theme, String title, String support) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            support,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.45,
+            ),
+          ),
+        ],
       );
 
   Widget _welcome(ThemeData theme) => _wrap([
         const SizedBox(height: AppSpace.xxxl + AppSpace.lg),
-        Text('Life Dashboard', style: theme.textTheme.headlineSmall),
+        Text(AppConstants.appName, style: theme.textTheme.headlineSmall),
+        const SizedBox(height: AppSpace.sm),
+        Text(
+          'One quiet place to run your life.',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: AppSpace.xxxl),
-        const _TriadLine(
-          icon: Icons.account_balance_wallet_outlined,
-          text: 'Money is the scoreboard.',
-        ),
-        const SizedBox(height: AppSpace.lg),
-        const _TriadLine(
-          icon: Icons.trending_up,
-          text: 'Curiosity is the engine.',
-        ),
-        const SizedBox(height: AppSpace.lg),
-        const _TriadLine(
+        const _ValueLine(
           icon: Icons.outlined_flag,
-          text: 'Freedom is the goal.',
+          text: 'Pick one main goal and move it a little every day.',
+        ),
+        const SizedBox(height: AppSpace.lg),
+        const _ValueLine(
+          icon: Icons.wb_sunny_outlined,
+          text: 'See what matters today — not everything at once.',
+        ),
+        const SizedBox(height: AppSpace.lg),
+        const _ValueLine(
+          icon: Icons.donut_small_outlined,
+          text: 'Keep money, time, and habits honest with light logging.',
         ),
         const SizedBox(height: AppSpace.xxxl),
         Text(
-          'Local-first. No accounts. Your data stays here.',
+          'Local-first. No account, no cloud, no analytics — your data '
+          'stays on this device.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.textTertiary,
           ),
         ),
       ]);
 
-  Widget _moneyStep(ThemeData theme) => _wrap([
-        Text('Money', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpace.xs),
-        _tagline(theme, AppCopy.moneyScoreboard),
-        const SizedBox(height: AppSpace.xxl),
-        Form(
-          key: _moneyFormKey,
-          child: Column(
-            children: [
-              _NumberField(
-                label: 'Net monthly income',
-                controller: _income,
-                suffixText: r'$',
-                validator: (v) =>
-                    Validators.nonNegativeNumber(v, label: 'Income'),
-              ),
-              const SizedBox(height: AppSpace.md),
-              _NumberField(
-                label: 'Target surplus (low)',
-                controller: _surplusLow,
-                suffixText: r'$',
-                validator: (v) => Validators.number(v, label: 'Low'),
-              ),
-              const SizedBox(height: AppSpace.md),
-              _NumberField(
-                label: 'Target surplus (high)',
-                controller: _surplusHigh,
-                suffixText: r'$',
-                textInputAction: TextInputAction.done,
-                validator: (v) {
-                  final base = Validators.number(v, label: 'High');
-                  if (base != null) return base;
-                  final low = Validators.tryParseNumber(_surplusLow.text);
-                  if (low != null && Validators.parseNumber(v!) < low) {
-                    return "High target can't be under the low one.";
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-      ]);
-
-  Widget _kaizenStep(ThemeData theme) => _wrap([
-        Text('Kaizen', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpace.xs),
-        _tagline(theme, AppCopy.oneHunt),
-        const SizedBox(height: AppSpace.sm),
-        Text(
-          'Pick the hours you will protect and the one number that proves '
-          'progress.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+  Widget _goalStep(ThemeData theme) => _wrap([
+        _stepIntro(
+          theme,
+          'What are you working toward?',
+          'The one outcome that matters most right now. The app keeps it '
+              'in front of you. You can change it, pause it, or set it '
+              'later.',
         ),
         const SizedBox(height: AppSpace.xl),
-        Form(
-          key: _kaizenFormKey,
-          child: Column(
-            children: [
-              _NumberField(
-                label: 'Weekly hours target',
-                controller: _kaizenTarget,
-                suffixText: 'h',
-                validator: (v) => Validators.positiveNumber(v, label: 'Target'),
-              ),
-              const SizedBox(height: AppSpace.md),
-              AppTextField(
-                label: 'Growth metric',
-                controller: _metricName,
-                validator: (v) => Validators.required(v, label: 'Metric'),
-              ),
-              const SizedBox(height: AppSpace.md),
-              AppTextField(
-                label: 'Unit',
-                controller: _metricUnit,
-                textInputAction: TextInputAction.done,
-                validator: (v) => Validators.required(v, label: 'Unit'),
-              ),
-            ],
-          ),
+        AppTextField(
+          label: 'Your main goal',
+          hint: 'e.g. Finish nursing school',
+          controller: _goalTitle,
+          onChanged: (_) => setState(() {}),
         ),
+        const SizedBox(height: AppSpace.md),
+        Wrap(
+          spacing: AppSpace.sm,
+          runSpacing: AppSpace.sm,
+          children: [
+            for (final example in const [
+              'Build my business',
+              'Get out of debt',
+              'Run a marathon',
+              'Publish my novel',
+            ])
+              ActionChip(
+                label: Text(example),
+                onPressed: () {
+                  Haptics.select();
+                  setState(() => _goalTitle.text = example);
+                },
+              ),
+          ],
+        ),
+        if (_goalTitle.text.trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpace.lg),
+          AppTextField(
+            label: 'Why it matters (optional)',
+            hint: 'In your own words.',
+            controller: _goalWhy,
+            maxLines: 2,
+          ),
+          const SizedBox(height: AppSpace.sm),
+          TargetDateRow(
+            date: _goalDate,
+            emptyLabel: 'Add a timeframe (optional)',
+            onChanged: (d) => setState(() => _goalDate = d),
+          ),
+        ],
+      ]);
+
+  Widget _aboutStep(ThemeData theme) => _wrap([
+        _stepIntro(
+          theme,
+          'About you',
+          'A name for greetings, and the areas you want on your Today '
+              'screen. All of it optional, all of it changeable.',
+        ),
+        const SizedBox(height: AppSpace.xl),
+        AppTextField(
+          label: 'Your name (optional)',
+          hint: 'What should we call you?',
+          controller: _name,
+        ),
+        const SizedBox(height: AppSpace.xl),
+        Text(
+          'Manage these areas',
+          style: theme.textTheme.titleSmall,
+        ),
+        const SizedBox(height: AppSpace.sm),
+        for (final area in DashboardArea.values)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(area.label),
+            subtitle: Text(area.description),
+            value: _areas.contains(area),
+            onChanged: (on) {
+              Haptics.select();
+              setState(() {
+                on == true ? _areas.add(area) : _areas.remove(area);
+              });
+            },
+          ),
       ]);
 
   Widget _rhythmStep(ThemeData theme) => _wrap([
-        Text('Rhythm', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpace.xs),
-        _tagline(theme, AppCopy.recoveryLoadBearing),
-        const SizedBox(height: AppSpace.xxl),
+        _stepIntro(
+          theme,
+          'A light daily rhythm',
+          'Two gentle nudges: plan the day in the morning, close it at '
+              'night. Adjust or turn them off anytime.',
+        ),
+        const SizedBox(height: AppSpace.xl),
         AppCard(
           padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
           child: Column(
             children: [
               _TimeRow(
                 icon: Icons.wb_sunny_outlined,
-                title: 'Morning command',
+                title: 'Morning plan',
                 time: _morning,
                 onPicked: (t) => setState(() => _morning = t),
               ),
               const Divider(height: 1, indent: AppSpace.lg + 40 + AppSpace.md),
               _TimeRow(
                 icon: Icons.nightlight_outlined,
-                title: 'Night review',
-                time: _night,
-                onPicked: (t) => setState(() => _night = t),
+                title: 'Evening review',
+                time: _evening,
+                onPicked: (t) => setState(() => _evening = t),
               ),
               const Divider(height: 1, indent: AppSpace.lg + 40 + AppSpace.md),
               _ToggleRow(
@@ -439,7 +403,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: AppSpace.lg),
         Text(
-          'Skip applies nothing. You can change all of this later in Settings.',
+          'That\'s it. Everything else waits until you need it.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -449,9 +413,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
 // --- widgets -----------------------------------------------------------------
 
-/// One line of the triad: glyph + statement. Pure typography.
-class _TriadLine extends StatelessWidget {
-  const _TriadLine({required this.icon, required this.text});
+/// One value-proposition line: glyph + statement. Pure typography.
+class _ValueLine extends StatelessWidget {
+  const _ValueLine({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -460,10 +424,19 @@ class _TriadLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AppColors.primary),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 20, color: AppColors.primary),
+        ),
         const SizedBox(width: AppSpace.md),
-        Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodyLarge?.copyWith(height: 1.4),
+          ),
+        ),
       ],
     );
   }
@@ -621,74 +594,5 @@ class _IconWell extends StatelessWidget {
       ),
       child: Icon(icon, size: 20, color: AppColors.primary),
     );
-  }
-}
-
-/// Numeric input matching AppNumberField, plus keyboard chaining.
-class _NumberField extends StatelessWidget {
-  const _NumberField({
-    required this.label,
-    required this.controller,
-    this.suffixText,
-    this.validator,
-    this.textInputAction = TextInputAction.next,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final String? suffixText;
-  final String? Function(String?)? validator;
-  final TextInputAction textInputAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      validator: validator ?? (v) => Validators.number(v, label: label),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-      ],
-      textInputAction: textInputAction,
-      decoration: InputDecoration(labelText: label, suffixText: suffixText),
-      autovalidateMode: AutovalidateMode.onUserInteraction,
-    );
-  }
-}
-
-/// Lets the user swipe back through completed steps while keeping forward
-/// movement on the validated Next button.
-///
-/// Works as a hard boundary at the highest validated page, so neither drags
-/// nor velocity-only flings can advance past it — only Next (which raises
-/// the limit after validation) moves the view forward.
-class _GatedPagePhysics extends ScrollPhysics {
-  const _GatedPagePhysics({required this.allowedPage, super.parent});
-
-  /// The furthest page the user may reach right now.
-  final int Function() allowedPage;
-
-  @override
-  _GatedPagePhysics applyTo(ScrollPhysics? ancestor) =>
-      _GatedPagePhysics(allowedPage: allowedPage, parent: buildParent(ancestor));
-
-  @override
-  double applyBoundaryConditions(ScrollMetrics position, double value) {
-    if (!position.hasViewportDimension || position.viewportDimension <= 0) {
-      return super.applyBoundaryConditions(position, value);
-    }
-    final vp = position.viewportDimension;
-    final allowedPx = allowedPage() * vp;
-    // The page the view is currently on or returning to; the half-pixel
-    // slack absorbs float error when resting exactly on a page boundary.
-    final ceilPx = ((position.pixels - 0.5) / vp).ceilToDouble() * vp;
-    var limit = ceilPx > allowedPx ? ceilPx : allowedPx;
-    if (limit < position.minScrollExtent) limit = position.minScrollExtent;
-    if (limit > position.maxScrollExtent) limit = position.maxScrollExtent;
-    if (value > limit && value > position.pixels) {
-      // Report everything past the limit as overscroll (i.e. blocked).
-      return value - limit;
-    }
-    return super.applyBoundaryConditions(position, value);
   }
 }

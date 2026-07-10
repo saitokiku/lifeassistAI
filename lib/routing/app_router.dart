@@ -3,10 +3,9 @@ import 'package:go_router/go_router.dart';
 
 import '../core/providers.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
+import '../features/focus/presentation/focus_screen.dart';
 import '../features/habits/presentation/habits_screen.dart';
-import '../features/identity/presentation/identity_screen.dart';
 import '../features/ideas/presentation/ideas_screen.dart';
-import '../features/kaizen/presentation/kaizen_screen.dart';
 import '../features/money/presentation/money_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/reminders/presentation/reminders_screen.dart';
@@ -19,11 +18,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(preferencesProvider);
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/today',
     redirect: (context, state) {
-      final onboarding = state.uri.path == '/onboarding';
+      final path = state.uri.path;
+      final onboarding = path == '/onboarding';
       if (!prefs.onboardingComplete && !onboarding) return '/onboarding';
-      if (prefs.onboardingComplete && onboarding) return '/dashboard';
+      if (prefs.onboardingComplete && onboarding) return '/today';
+      // Pre-v2 locations that may live in restored navigation state.
+      if (path == '/dashboard') return '/today';
+      if (path == '/kaizen') return '/focus';
+      if (path == '/identity') return '/more';
       return null;
     },
     routes: [
@@ -38,14 +42,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/dashboard',
+              path: '/today',
               builder: (context, state) => const DashboardScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/kaizen',
-              builder: (context, state) => const KaizenScreen(),
+              path: '/focus',
+              builder: (context, state) => const FocusScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -72,10 +76,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/ideas',
               builder: (context, state) => const IdeasScreen(),
-            ),
-            GoRoute(
-              path: '/identity',
-              builder: (context, state) => const IdentityScreen(),
             ),
             GoRoute(
               path: '/reminders',

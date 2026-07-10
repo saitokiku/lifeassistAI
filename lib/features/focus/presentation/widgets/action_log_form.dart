@@ -2,7 +2,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_utils.dart';
@@ -12,26 +11,26 @@ import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
-import '../../application/kaizen_controller.dart';
-import '../../domain/daily_experiment.dart';
+import '../../application/focus_controller.dart';
+import '../../domain/daily_action.dart';
 
-/// Log or edit a daily experiment: hypothesis → action → result → verdict.
+/// Log or edit a daily action: what you did, what happened, how it went.
 ///
-/// New experiments require an explicit verdict — no default that quietly
-/// pads the confirm column. Saving for a day that already has an experiment
-/// updates that day instead of inserting a duplicate.
-class ExperimentLogForm extends ConsumerStatefulWidget {
-  const ExperimentLogForm({super.key, this.experiment});
+/// New entries require an honest read on the outcome — no default that
+/// quietly pads the "worked" column. Saving for a day that already has an
+/// entry updates that day instead of inserting a duplicate.
+class ActionLogForm extends ConsumerStatefulWidget {
+  const ActionLogForm({super.key, this.action});
 
-  final DailyExperiment? experiment;
+  final DailyExperiment? action;
 
   static Future<void> show(
     BuildContext context, {
-    DailyExperiment? experiment,
+    DailyExperiment? action,
   }) async {
     final message = await showAppSheet<String>(
       context,
-      builder: (_) => ExperimentLogForm(experiment: experiment),
+      builder: (_) => ActionLogForm(action: action),
     );
     if (message != null && context.mounted) {
       showSuccessSnack(context, message);
@@ -39,32 +38,44 @@ class ExperimentLogForm extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<ExperimentLogForm> createState() => _ExperimentLogFormState();
+  ConsumerState<ActionLogForm> createState() => _ActionLogFormState();
 }
 
-class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
+class _ActionLogFormState extends ConsumerState<ActionLogForm> {
   final _formKey = GlobalKey<FormState>();
-  late final _hypothesis =
-      TextEditingController(text: widget.experiment?.hypothesis ?? '');
   late final _action =
-      TextEditingController(text: widget.experiment?.actionTaken ?? '');
+      TextEditingController(text: widget.action?.actionTaken ?? '');
   late final _result =
-      TextEditingController(text: widget.experiment?.result ?? '');
+      TextEditingController(text: widget.action?.result ?? '');
+  late final _hypothesis =
+      TextEditingController(text: widget.action?.hypothesis ?? '');
   late final _notes =
-      TextEditingController(text: widget.experiment?.notes ?? '');
+      TextEditingController(text: widget.action?.notes ?? '');
 
-  /// Null until the user commits — new experiments never default a verdict.
-  late ExperimentVerdict? _verdict = widget.experiment?.verdictEnum;
+  /// Null until the user commits — new entries never default an outcome.
+  late ActionVerdict? _verdict = widget.action?.verdictEnum;
   String? _verdictError;
 
-  /// Only used when logging a new experiment; edits never move the date.
+  /// Shows the optional detail fields (idea being tested, notes). Open by
+  /// default when editing an entry that already uses them.
+  late bool _showDetail = (widget.action?.hypothesis.isNotEmpty ?? false) ||
+      (widget.action?.notes?.isNotEmpty ?? false);
+
+  /// Only used when logging a new entry; edits never move the date.
   DateTime _date = DateTime.now();
+
+  /// Display order: encouraging read first.
+  static const _verdictOrder = [
+    ActionVerdict.worked,
+    ActionVerdict.adjust,
+    ActionVerdict.didntWork,
+  ];
 
   @override
   void dispose() {
-    _hypothesis.dispose();
     _action.dispose();
     _result.dispose();
+    _hypothesis.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -79,14 +90,14 @@ class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
     if (picked != null && mounted) setState(() => _date = picked);
   }
 
-  /// The experiment already logged for [date], if any. Guards the quick-log
+  /// The action already logged for [date], if any. Guards the quick-log
   /// path against inserting a second row for the same day.
   DailyExperiment? _existingFor(DateTime date) {
     final key = AppDateUtils.dateKey(date);
-    final experiments = ref.read(kaizenStateProvider)?.experiments;
-    if (experiments == null) return null;
-    for (final e in experiments) {
-      if (e.date == key) return e;
+    final actions = ref.read(focusStateProvider)?.actions;
+    if (actions == null) return null;
+    for (final a in actions) {
+      if (a.date == key) return a;
     }
     return null;
   }
@@ -94,37 +105,37 @@ class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
   Future<void> _save() async {
     final valid = _formKey.currentState!.validate();
     if (_verdict == null) {
-      setState(() => _verdictError = "Pick a verdict — that's the deal.");
+      setState(() => _verdictError = 'How did it go? Pick one.');
     }
     if (!valid || _verdict == null) return;
 
-    final controller = ref.read(kaizenControllerProvider);
+    final controller = ref.read(focusControllerProvider);
     final navigator = Navigator.of(context);
     final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
-    final isNew = widget.experiment == null;
-    final target = widget.experiment ?? _existingFor(_date);
+    final isNew = widget.action == null;
+    final target = widget.action ?? _existingFor(_date);
 
     try {
       if (target == null) {
-        await controller.logExperiment(
+        await controller.logAction(
           date: _date,
           hypothesis: _hypothesis.text.trim(),
           actionTaken: _action.text.trim(),
           result: _result.text.trim(),
-          verdict: _verdict!.name,
+          verdict: _verdict!.storageValue,
           notes: notes,
         );
       } else {
-        await controller.updateExperiment(target.copyWith(
+        await controller.updateAction(target.copyWith(
           hypothesis: _hypothesis.text.trim(),
           actionTaken: _action.text.trim(),
           result: _result.text.trim(),
-          verdict: _verdict!.name,
+          verdict: _verdict!.storageValue,
           notes: Value(notes),
         ));
       }
       Haptics.medium();
-      navigator.pop(isNew ? 'Verdict in. One test, one answer.' : 'Saved.');
+      navigator.pop(isNew ? 'Logged. Small steps add up.' : 'Saved.');
     } catch (_) {
       if (mounted) showErrorSnack(context, "That didn't save. Try again.");
     }
@@ -134,13 +145,13 @@ class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isNew = widget.experiment == null;
+    final isNew = widget.action == null;
 
     return AppSheet(
-      title: isNew ? 'Log experiment' : 'Edit experiment',
-      subtitle: AppCopy.oneTestOneVerdict,
+      title: isNew ? "Log today's step" : 'Edit step',
+      subtitle: 'One small action toward your goal, honestly reviewed.',
       footer: AppSheetButton(
-        label: isNew ? 'Save verdict' : 'Update verdict',
+        label: isNew ? 'Log it' : 'Save',
         onPressed: _save,
       ),
       children: [
@@ -150,41 +161,34 @@ class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppTextField(
-                label: 'Hypothesis',
-                hint: 'If I change X, Y should move.',
-                controller: _hypothesis,
-                validator: (v) => Validators.required(v, label: 'Hypothesis'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: AppSpace.md),
-              AppTextField(
-                label: 'Action taken',
-                hint: 'The move you actually made.',
+                label: 'What did you do?',
+                hint: 'The step you took, in one line.',
                 controller: _action,
-                validator: (v) => Validators.required(v, label: 'Action'),
+                autofocus: isNew,
+                validator: (v) => Validators.required(v, label: 'The step'),
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpace.md),
               AppTextField(
-                label: 'Result',
-                hint: 'What happened, plainly.',
+                label: 'What happened?',
+                hint: 'The honest outcome.',
                 controller: _result,
-                validator: (v) => Validators.required(v, label: 'Result'),
+                validator: (v) => Validators.required(v, label: 'The outcome'),
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpace.lg),
               Text(
-                'Verdict',
+                'How did it go?',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpace.sm),
-              SegmentedButton<ExperimentVerdict>(
+              SegmentedButton<ActionVerdict>(
                 emptySelectionAllowed: true,
                 showSelectedIcon: false,
                 segments: [
-                  for (final v in ExperimentVerdict.values)
+                  for (final v in _verdictOrder)
                     ButtonSegment(
                       value: v,
                       label: Text(v.label),
@@ -210,12 +214,31 @@ class _ExperimentLogFormState extends ConsumerState<ExperimentLogForm> {
                     ),
                   ),
                 ),
-              const SizedBox(height: AppSpace.md),
-              AppTextField(
-                label: 'Notes (optional)',
-                controller: _notes,
-                maxLines: 2,
-              ),
+              const SizedBox(height: AppSpace.sm),
+              if (!_showDetail)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _showDetail = true),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add detail'),
+                  ),
+                )
+              else ...[
+                const SizedBox(height: AppSpace.xs),
+                AppTextField(
+                  label: 'What were you testing? (optional)',
+                  hint: 'If I change X, Y should move.',
+                  controller: _hypothesis,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpace.md),
+                AppTextField(
+                  label: 'Notes (optional)',
+                  controller: _notes,
+                  maxLines: 2,
+                ),
+              ],
               if (isNew) ...[
                 const SizedBox(height: AppSpace.xs),
                 ListTile(

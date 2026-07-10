@@ -11,16 +11,16 @@ import '../../../../shared/widgets/app_number_field.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
-import '../../application/identity_controller.dart';
-import '../../domain/freedom_target.dart';
-import 'target_date_row.dart';
+import '../../../identity/application/identity_controller.dart';
+import '../../../identity/domain/freedom_target.dart';
+import '../../../../shared/widgets/target_date_row.dart';
 
-/// Create or edit the freedom target.
+/// Create or edit the long-term target.
 ///
 /// Create collects targets only — currents start at zero and get their own
 /// one-tap update path on the card, so nothing typed here is ever discarded.
-class FreedomTargetEditor extends ConsumerStatefulWidget {
-  const FreedomTargetEditor({super.key, this.target});
+class LongTermTargetEditor extends ConsumerStatefulWidget {
+  const LongTermTargetEditor({super.key, this.target});
 
   final FreedomTarget? target;
 
@@ -28,7 +28,7 @@ class FreedomTargetEditor extends ConsumerStatefulWidget {
       {FreedomTarget? target}) async {
     final saved = await showAppSheet<bool>(
       context,
-      builder: (_) => FreedomTargetEditor(target: target),
+      builder: (_) => LongTermTargetEditor(target: target),
     );
     if (saved == true && context.mounted) {
       showSuccessSnack(context, target == null ? 'Target set.' : 'Saved.');
@@ -36,11 +36,11 @@ class FreedomTargetEditor extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<FreedomTargetEditor> createState() =>
-      _FreedomTargetEditorState();
+  ConsumerState<LongTermTargetEditor> createState() =>
+      _LongTermTargetEditorState();
 }
 
-class _FreedomTargetEditorState extends ConsumerState<FreedomTargetEditor> {
+class _LongTermTargetEditorState extends ConsumerState<LongTermTargetEditor> {
   final _formKey = GlobalKey<FormState>();
   late final _title = TextEditingController(text: widget.target?.title ?? '');
   late final _description =
@@ -122,7 +122,7 @@ class _FreedomTargetEditorState extends ConsumerState<FreedomTargetEditor> {
     final isNew = widget.target == null;
 
     return AppSheet(
-      title: isNew ? 'Set the freedom target' : 'Edit freedom target',
+      title: isNew ? 'Set a long-term target' : 'Edit long-term target',
       subtitle: isNew
           ? 'Targets only. Progress starts at zero and updates in one tap from the card.'
           : null,

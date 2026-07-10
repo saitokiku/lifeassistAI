@@ -1,40 +1,61 @@
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
-import '../domain/daily_experiment.dart';
+import '../domain/daily_action.dart';
+import '../domain/main_goal.dart';
 
-/// Derived, display-ready Kaizen numbers.
-class KaizenState {
-  const KaizenState({
+/// Derived, display-ready state for the main goal and its supporting loops.
+class FocusState {
+  const FocusState({
+    required this.goal,
+    required this.milestones,
     required this.activeMetric,
     required this.activeMetricEntries,
-    required this.experiments,
+    required this.actions,
     required this.today,
   });
 
+  /// The current main goal; null until the user sets one.
+  final MainGoal? goal;
+
+  /// Milestones, undone first (each in stored order).
+  final List<Goal> milestones;
+
   final GrowthMetric? activeMetric;
   final List<GrowthMetricEntry> activeMetricEntries; // newest first
-  final List<DailyExperiment> experiments; // newest first
+  final List<DailyExperiment> actions; // newest first
   final DateTime today;
+
+  bool get hasGoal => goal != null;
+
+  bool get goalPaused => goal?.isPaused ?? false;
 
   String get todayKey => AppDateUtils.dateKey(today);
 
-  DailyExperiment? get todayExperiment {
-    for (final e in experiments) {
-      if (e.date == todayKey) return e;
+  /// The next undone milestone, if any.
+  Goal? get nextMilestone {
+    for (final m in milestones) {
+      if (!m.isDone) return m;
     }
     return null;
   }
 
-  bool get todayExperimentLogged => todayExperiment != null;
+  int get milestonesDone => milestones.where((m) => m.isDone).length;
 
-  Set<String> get loggedExperimentDays =>
-      experiments.map((e) => e.date).toSet();
+  DailyExperiment? get todayAction {
+    for (final a in actions) {
+      if (a.date == todayKey) return a;
+    }
+    return null;
+  }
 
-  int get experimentStreak =>
-      ExperimentStats.streak(loggedExperimentDays, today);
+  bool get todayActionLogged => todayAction != null;
+
+  Set<String> get loggedActionDays => actions.map((a) => a.date).toSet();
+
+  int get actionStreak => DailyActionStats.streak(loggedActionDays, today);
 
   int get missedDaysLast30 =>
-      ExperimentStats.missedDays(loggedExperimentDays, today);
+      DailyActionStats.missedDays(loggedActionDays, today);
 
   /// Today's value for the active metric, if logged.
   double? get todayMetricValue {

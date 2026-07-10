@@ -8,58 +8,63 @@ import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/loading_view.dart';
-import '../../application/kaizen_controller.dart';
-import '../../domain/daily_experiment.dart';
-import 'experiment_log_form.dart';
+import '../../application/focus_controller.dart';
+import '../../domain/daily_action.dart';
+import 'action_log_form.dart';
 import 'relative_date.dart';
 
-/// Experiment history: verdict filter chips, then one row per verdict.
+/// Daily action history: outcome filter chips, then one row per day.
 /// Tap edits; swipe deletes with undo. Filters get their own empty copy.
-class ExperimentHistoryList extends ConsumerStatefulWidget {
-  const ExperimentHistoryList({
+class ActionHistoryList extends ConsumerStatefulWidget {
+  const ActionHistoryList({
     super.key,
-    required this.experiments,
+    required this.actions,
     this.today,
   });
 
-  final List<DailyExperiment> experiments;
+  final List<DailyExperiment> actions;
 
   /// The app's ticking "today"; falls back to the device clock.
   final DateTime? today;
 
   @override
-  ConsumerState<ExperimentHistoryList> createState() =>
-      _ExperimentHistoryListState();
+  ConsumerState<ActionHistoryList> createState() => _ActionHistoryListState();
 }
 
-class _ExperimentHistoryListState extends ConsumerState<ExperimentHistoryList> {
-  ExperimentVerdict? _filter;
+class _ActionHistoryListState extends ConsumerState<ActionHistoryList> {
+  ActionVerdict? _filter;
 
-  void _setFilter(ExperimentVerdict? value) {
+  static const _filterOrder = [
+    ActionVerdict.worked,
+    ActionVerdict.adjust,
+    ActionVerdict.didntWork,
+  ];
+
+  void _setFilter(ActionVerdict? value) {
     Haptics.select();
     setState(() => _filter = value);
   }
 
-  Future<void> _edit(DailyExperiment experiment) =>
-      ExperimentLogForm.show(context, experiment: experiment);
+  Future<void> _edit(DailyExperiment action) =>
+      ActionLogForm.show(context, action: action);
 
-  /// Delete with a working undo: re-logs the captured row via logExperiment.
-  Future<void> _delete(DailyExperiment experiment) async {
-    final controller = ref.read(kaizenControllerProvider);
-    final date = AppDateUtils.parseDateKey(experiment.date);
-    final hypothesis = experiment.hypothesis;
-    final actionTaken = experiment.actionTaken;
-    final result = experiment.result;
-    final verdict = experiment.verdict;
-    final notes = experiment.notes;
+  /// Delete with a working undo: re-logs the captured row via logAction.
+  Future<void> _delete(DailyExperiment action) async {
+    final controller = ref.read(focusControllerProvider);
+    final date = AppDateUtils.parseDateKey(action.date);
+    final hypothesis = action.hypothesis;
+    final actionTaken = action.actionTaken;
+    final result = action.result;
+    final verdict = action.verdict;
+    final notes = action.notes;
 
-    await controller.deleteExperiment(experiment.id);
+    await controller.deleteAction(action.id);
     Haptics.light();
     if (!mounted) return;
     showUndoSnack(
       context,
-      'Experiment deleted.',
-      onUndo: () => controller.logExperiment(
+      'Entry deleted.',
+      onUndo: () => controller.logAction(
         date: date,
         hypothesis: hypothesis,
         actionTaken: actionTaken,
@@ -73,14 +78,14 @@ class _ExperimentHistoryListState extends ConsumerState<ExperimentHistoryList> {
   @override
   Widget build(BuildContext context) {
     final today = widget.today ??
-        ref.watch(kaizenStateProvider)?.today ??
+        ref.watch(focusStateProvider)?.today ??
         AppDateUtils.dateOnly(DateTime.now());
 
     final filtered = _filter == null
-        ? widget.experiments
+        ? widget.actions
         : [
-            for (final e in widget.experiments)
-              if (e.verdictEnum == _filter) e,
+            for (final a in widget.actions)
+              if (a.verdictEnum == _filter) a,
           ];
 
     return Column(
@@ -95,7 +100,7 @@ class _ExperimentHistoryListState extends ConsumerState<ExperimentHistoryList> {
               selected: _filter == null,
               onSelected: (_) => _setFilter(null),
             ),
-            for (final v in ExperimentVerdict.values)
+            for (final v in _filterOrder)
               FilterChip(
                 label: Text(v.label),
                 selected: _filter == v,
@@ -104,28 +109,29 @@ class _ExperimentHistoryListState extends ConsumerState<ExperimentHistoryList> {
           ],
         ),
         const SizedBox(height: AppSpace.md),
-        if (widget.experiments.isEmpty)
+        if (widget.actions.isEmpty)
           const EmptyState(
-            icon: Icons.science_outlined,
-            title: 'No experiments yet',
-            message: 'One test. One verdict. Log the first one.',
+            icon: Icons.directions_walk,
+            title: 'Nothing logged yet',
+            message: 'Each day, take one small step toward your goal and '
+                'note how it went. The log becomes your map of what works.',
           )
         else if (filtered.isEmpty)
           EmptyState(
             icon: Icons.filter_alt_off_outlined,
-            title: 'No ${_filter!.label.toLowerCase()} verdicts yet.',
+            title: 'Nothing matches this filter.',
             actionLabel: 'Clear filter',
             onAction: () => _setFilter(null),
           )
         else
-          for (final experiment in filtered)
+          for (final action in filtered)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
-              child: _ExperimentRow(
-                experiment: experiment,
+              child: _ActionRow(
+                action: action,
                 today: today,
-                onEdit: () => _edit(experiment),
-                onDelete: () => _delete(experiment),
+                onEdit: () => _edit(action),
+                onDelete: () => _delete(action),
               ),
             ),
       ],
@@ -133,15 +139,15 @@ class _ExperimentHistoryListState extends ConsumerState<ExperimentHistoryList> {
   }
 }
 
-class _ExperimentRow extends StatelessWidget {
-  const _ExperimentRow({
-    required this.experiment,
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.action,
     required this.today,
     required this.onEdit,
     required this.onDelete,
   });
 
-  final DailyExperiment experiment;
+  final DailyExperiment action;
   final DateTime today;
   final VoidCallback onEdit;
   final Future<void> Function() onDelete;
@@ -150,14 +156,17 @@ class _ExperimentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final verdict = experiment.verdictEnum;
+    final verdict = action.verdictEnum;
     final when = relativeDayLabel(
-      AppDateUtils.parseDateKey(experiment.date),
+      AppDateUtils.parseDateKey(action.date),
       today,
     );
+    // Older entries may only carry the hypothesis field.
+    final headline =
+        action.actionTaken.isNotEmpty ? action.actionTaken : action.hypothesis;
 
     return Dismissible(
-      key: ValueKey('experiment-${experiment.id}'),
+      key: ValueKey('action-${action.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -200,7 +209,7 @@ class _ExperimentRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    experiment.hypothesis,
+                    headline,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium,

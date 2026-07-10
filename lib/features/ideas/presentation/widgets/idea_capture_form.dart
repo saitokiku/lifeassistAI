@@ -45,7 +45,7 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
       TextEditingController(text: widget.idea?.whyTempting ?? '');
   late final _potentialValue =
       TextEditingController(text: widget.idea?.potentialValue ?? '');
-  late bool _helpsKaizen = widget.idea?.directlyHelpsKaizenThisWeek ?? false;
+  late bool _helpsGoal = widget.idea?.helpsMainGoal ?? false;
 
   /// Detail is collapsed on capture, expanded on edit.
   late bool _showDetail = widget.idea != null;
@@ -93,7 +93,7 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
           category: _emptyToNull(_category),
           whyTempting: _emptyToNull(_whyTempting),
           potentialValue: _emptyToNull(_potentialValue),
-          directlyHelpsKaizenThisWeek: _helpsKaizen,
+          helpsMainGoal: _helpsGoal,
         );
       } else {
         // Full-row update. dateCaptured, reviewDate, decision, and
@@ -105,7 +105,7 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
           category: Value(_emptyToNull(_category)),
           whyTempting: Value(_emptyToNull(_whyTempting)),
           potentialValue: Value(_emptyToNull(_potentialValue)),
-          directlyHelpsKaizenThisWeek: _helpsKaizen,
+          helpsMainGoal: _helpsGoal,
         ));
       }
       Haptics.medium();
@@ -184,12 +184,12 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
               const SizedBox(height: AppSpace.xs),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Directly helps the hunt this week'),
+                title: const Text('Directly helps my main goal'),
                 subtitle: const Text('The only way to skip cooling.'),
-                value: _helpsKaizen,
+                value: _helpsGoal,
                 onChanged: (v) {
                   Haptics.select();
-                  setState(() => _helpsKaizen = v);
+                  setState(() => _helpsGoal = v);
                 },
               ),
               if (!_showDetail)

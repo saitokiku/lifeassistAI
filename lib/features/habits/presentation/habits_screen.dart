@@ -66,7 +66,7 @@ class HabitsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpace.xs),
                         Text(
-                          'Support systems, not the mission.',
+                          'Small daily supports.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -77,7 +77,8 @@ class HabitsScreen extends ConsumerWidget {
                             icon: Icons.check_circle_outline,
                             title: 'Nothing to check off yet.',
                             message:
-                                'Add one habit that supports the mission.',
+                                'Start with one habit you want to keep '
+                                    'showing up for.',
                             actionLabel: 'New habit',
                             onAction: () => HabitEditor.show(context),
                           )

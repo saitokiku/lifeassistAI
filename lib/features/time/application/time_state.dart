@@ -67,8 +67,9 @@ class TimeState {
       .where((p) => p.kind == kind)
       .fold(0.0, (sum, p) => sum + p.targetHours);
 
-  double get kaizenHoursThisWeek => hoursForKind(TimeCategoryKind.kaizen);
-  double get kaizenWeeklyTarget => targetForKind(TimeCategoryKind.kaizen);
+  /// Hours invested in the main goal this week, and their target.
+  double get goalHoursThisWeek => hoursForKind(TimeCategoryKind.goal);
+  double get goalWeeklyTarget => targetForKind(TimeCategoryKind.goal);
 
   double get recoveryHoursThisWeek =>
       progress.where((p) => p.kind.countsAsRecovery).fold(

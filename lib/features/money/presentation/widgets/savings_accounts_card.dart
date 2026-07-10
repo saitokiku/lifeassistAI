@@ -8,10 +8,10 @@ import '../../../../shared/widgets/metric_card.dart';
 import '../../../../shared/widgets/progress_bar_card.dart';
 import '../../domain/monthly_money_snapshot.dart';
 
-/// Where the surplus goes: Roth IRA pace plus brokerage and savings
+/// Where the surplus goes: retirement pace plus brokerage and savings
 /// balances. All manual — one sheet updates the lot.
-class FreedomAccountsCard extends StatelessWidget {
-  const FreedomAccountsCard({
+class SavingsAccountsCard extends StatelessWidget {
+  const SavingsAccountsCard({
     super.key,
     required this.snapshot,
     this.onEdit,
@@ -23,10 +23,10 @@ class FreedomAccountsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasIraTarget = snapshot.rothIraAnnualTarget > 0;
+    final hasRetirementTarget = snapshot.retirementAnnualTarget > 0;
 
     return MetricCard(
-      title: 'Freedom accounts',
+      title: 'Savings & investing',
       supportText: 'Manual balances. Update monthly.',
       trailing: onEdit == null
           ? null
@@ -42,22 +42,22 @@ class FreedomAccountsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasIraTarget)
+          if (hasRetirementTarget)
             LabeledProgressBar(
-              progress: snapshot.rothIraProgress,
+              progress: snapshot.retirementProgress,
               color: AppColors.primary,
-              leading: 'Roth IRA',
+              leading: 'Retirement',
               trailing:
-                  '${Formatters.money(snapshot.rothIraContributed)} of ${Formatters.money(snapshot.rothIraAnnualTarget)}',
+                  '${Formatters.money(snapshot.retirementContributed)} of ${Formatters.money(snapshot.retirementAnnualTarget)}',
             )
           else
             Row(
               children: [
                 Expanded(
-                  child: Text('Roth IRA', style: theme.textTheme.bodySmall),
+                  child: Text('Retirement', style: theme.textTheme.bodySmall),
                 ),
                 Text(
-                  'no target set',
+                  'no yearly target set',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.textTertiary,
                   ),

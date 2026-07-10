@@ -1,88 +1,60 @@
 /// Seed defaults. These are inserted into the local database on first launch
 /// and become fully user-editable records after that. They are never read
 /// directly by UI once seeded.
+///
+/// Defaults are deliberately neutral: real numbers come from the user during
+/// onboarding or later, and screens are designed to guide setup when a value
+/// is still unset.
 class DefaultTargets {
   DefaultTargets._();
 
-  // Money
-  static const double monthlyNetIncome = 6942;
-  static const double targetSurplusLow = 3200;
-  static const double targetSurplusHigh = 3800;
-  static const double rothIraAnnualTarget = 7000;
+  // Money. Zero means "not set yet" — the Money screen invites setup
+  // instead of pretending to know the user's finances.
+  static const double monthlyNetIncome = 0;
+  static const double targetSurplusLow = 0;
+  static const double targetSurplusHigh = 0;
+  static const double retirementAnnualTarget = 0;
 
   // Time
-  static const double weeklyKaizenHoursTarget = 42;
-  static const double weeklyRecoveryFloorHours = 10.5;
+  static const double weeklyGoalHoursTarget = 10;
+  static const double weeklyRecoveryFloorHours = 8;
   static const double recoveryWarningThresholdHours = 5;
 
-  // Kaizen hour status thresholds
-  static const double kaizenAlignedHours = 35;
-  static const double kaizenWatchHours = 25;
-
   /// name, monthly target, flag rule key (see BudgetFlagType).
+  /// Targets start at 0 with no flag rule; the category editor is where
+  /// each lane gets a real target and a leak rule.
   static const List<(String, double, String)> budgetCategories = [
-    ('Housing', 1700, 'warnOverTarget'),
-    ('Food', 400, 'warnOverTarget'),
-    ('Car', 340, 'warnOverTarget'),
-    ('Amazon', 258, 'warnOverTarget'),
-    ('Misc', 300, 'warnOverTarget'),
-    ('Subscriptions', 60, 'warnOverTarget'),
-    ('Fitness', 60, 'warnOverTarget'),
-    ('Charity', 125, 'warnOverTarget'),
-    ('Poker', 0, 'criticalOverZero'),
-    ('Weed', 0, 'criticalOverZero'),
-    ('Restaurants/desserts', 0, 'warnOverZeroUnlessIntentional'),
-    ('Travel', 0, 'warnOverZero'),
+    ('Housing', 0, 'none'),
+    ('Groceries', 0, 'none'),
+    ('Transport', 0, 'none'),
+    ('Eating out', 0, 'none'),
+    ('Subscriptions', 0, 'none'),
+    ('Health', 0, 'none'),
+    ('Fun', 0, 'none'),
+    ('Travel', 0, 'none'),
   ];
 
   /// name, kind key, weekly target hours.
   static const List<(String, String, double)> weeklyTimeBudgets = [
-    ('Sleep', 'sleep', 52.5),
-    ('Job', 'job', 30),
-    ('Kaizen', 'kaizen', 42),
-    ('Admin', 'admin', 14),
-    ('Decompress', 'decompress', 10.5),
-    ('Meals', 'meals', 7),
-    ('Exercise', 'exercise', 5),
-    ('Volunteering', 'volunteering', 3),
-    ('Toastmasters', 'toastmasters', 2),
-    ('Meditation', 'meditation', 1.5),
+    ('Sleep', 'sleep', 56),
+    ('Work', 'job', 40),
+    ('Main goal', 'goal', 10),
+    ('Exercise', 'exercise', 4),
+    ('Downtime', 'decompress', 8),
+    ('Chores & admin', 'admin', 6),
   ];
 
   /// name, habit type key, unit.
   static const List<(String, String, String?)> habits = [
-    ('Weed-free', 'boolean', null),
-    ('Meditation', 'duration', 'min'),
     ('Exercise', 'duration', 'min'),
-    ('Sleep logged', 'numeric', 'hrs'),
-    ('Volunteering/service', 'boolean', null),
-    ('Toastmasters', 'boolean', null),
+    ('Read', 'duration', 'min'),
+    ('In bed on time', 'boolean', null),
   ];
 
   /// title, reminder type key, hour, minute.
   static const List<(String, String, int, int)> reminders = [
-    ('Morning command', 'morningCommand', 8, 0),
-    ('Kaizen experiment', 'kaizenExperiment', 12, 0),
-    ('Money check', 'moneyCheck', 18, 0),
-    ('Night review', 'nightReview', 22, 0),
+    ('Morning plan', 'morningCommand', 8, 0),
+    ('Daily step', 'dailyAction', 12, 0),
+    ('Evening review', 'nightReview', 21, 30),
   ];
-
-  /// Default identity statements: the current operating identity.
-  static const List<String> identityStatements = [
-    'Builder/operator.',
-    'Kaizen growth is the main hunt.',
-    'W-2 job is the funding base.',
-    'Flipping is winding down.',
-    'Freedom is the actual goal.',
-  ];
-
-  static const String defaultGrowthMetricName = 'Weekly active learners';
-  static const String defaultGrowthMetricUnit = 'users';
-  static const double defaultGrowthMetricWeeklyTarget = 10;
-
-  static const String defaultFreedomTargetTitle = 'Freedom number';
-  static const String defaultFreedomTargetDescription =
-      'Enough passive income and liquidity that work is optional.';
-  static const double defaultTargetMonthlyPassiveIncome = 8000;
-  static const double defaultTargetLiquidNetWorth = 500000;
 }

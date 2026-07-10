@@ -73,7 +73,7 @@ class _StatementEditorState extends ConsumerState<StatementEditor> {
           key: _formKey,
           child: AppTextField(
             label: 'Statement',
-            hint: 'e.g. The W-2 is funding, not identity.',
+            hint: 'e.g. I finish what I start.',
             controller: _content,
             maxLines: 2,
             autofocus: true,

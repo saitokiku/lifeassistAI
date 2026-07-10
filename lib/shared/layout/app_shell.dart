@@ -7,7 +7,7 @@ import 'responsive_scaffold.dart';
 
 /// Shell around every top-level screen: rail on wide, bottom bar on compact.
 ///
-/// Compact shows five tabs (Today · Kaizen · Money · Time · You) backed by
+/// Compact shows five tabs (Today · Focus · Money · Time · You) backed by
 /// an indexed stack, so each tab keeps its scroll position and state.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});

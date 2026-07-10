@@ -1,22 +1,26 @@
-/// Daily experiment domain model plus streak math.
+/// Daily action domain model plus streak math.
+///
+/// One small, deliberate step toward the main goal per day, with an honest
+/// note on how it went. Stored in the `daily_experiments` table (pre-v2
+/// name); the drift-generated `DailyExperiment` class is re-exported here.
 library;
 
 export '../../../core/storage/app_database.dart' show DailyExperiment;
-export 'experiment_verdict.dart';
+export 'action_verdict.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
-import 'experiment_verdict.dart';
+import 'action_verdict.dart';
 
-extension DailyExperimentX on DailyExperiment {
-  ExperimentVerdict get verdictEnum => ExperimentVerdict.parse(verdict);
+extension DailyActionX on DailyExperiment {
+  ActionVerdict get verdictEnum => ActionVerdict.parse(verdict);
 }
 
-class ExperimentStats {
-  ExperimentStats._();
+class DailyActionStats {
+  DailyActionStats._();
 
-  /// Consecutive days with a logged experiment, ending today (or yesterday
-  /// when today has no verdict yet — an open day doesn't break the streak).
+  /// Consecutive days with a logged action, ending today (or yesterday
+  /// when today isn't logged yet — an open day doesn't break the streak).
   static int streak(Set<String> loggedDateKeys, DateTime today) {
     var day = AppDateUtils.dateOnly(today);
     if (!loggedDateKeys.contains(AppDateUtils.dateKey(day))) {
@@ -30,7 +34,7 @@ class ExperimentStats {
     return streak;
   }
 
-  /// Days in the last [window] days (ending today) with no experiment logged.
+  /// Days in the last [window] days (ending today) with no action logged.
   static int missedDays(Set<String> loggedDateKeys, DateTime today,
       {int window = 30}) {
     final keys = AppDateUtils.lastDateKeys(today, window);
