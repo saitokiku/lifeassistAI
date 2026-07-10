@@ -10,6 +10,7 @@ import '../../time/application/time_state.dart';
 /// What the "Up next" card should point the user at, in priority order.
 enum UpNextKind {
   setGoal,
+  goalCompleted,
   moneyCritical,
   logAction,
   logGoalTime,
@@ -39,6 +40,10 @@ class DashboardState {
       targetSurplusLow: money.snapshot.targetSurplusLow,
       exerciseOrMeditationToday: exerciseOrMeditationToday,
       recoveryHoursThisWeek: time.recoveryHoursThisWeek,
+      // Hidden areas are excluded from the score, not silently failed.
+      includeMoney: settings.showsArea(DashboardArea.money),
+      includeHealth: settings.showsArea(DashboardArea.habits),
+      includeRecovery: settings.showsArea(DashboardArea.time),
     ));
     upNext = _resolveUpNext();
   }
@@ -88,6 +93,7 @@ class DashboardState {
   /// The one thing most worth doing right now.
   UpNextKind _resolveUpNext() {
     if (goal == null) return UpNextKind.setGoal;
+    if (goal!.isCompleted) return UpNextKind.goalCompleted;
     if (moneyCritical) return UpNextKind.moneyCritical;
     if (goalActive) {
       if (!focus.todayActionLogged) return UpNextKind.logAction;

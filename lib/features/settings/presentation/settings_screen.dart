@@ -15,6 +15,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/seed_service.dart';
+import '../../../core/storage/settings_keys.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -467,10 +468,24 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
 
   @override
   Widget build(BuildContext context) {
+    final lastBackupAt =
+        ref.watch(settingsProvider).valueOrNull?.lastBackupAt;
+    final String subtitle;
+    if (lastBackupAt == null) {
+      subtitle = 'Everything as one file. Never backed up yet.';
+    } else {
+      final days = DateTime.now().difference(lastBackupAt).inDays;
+      subtitle = switch (days) {
+        0 => 'Last backup: today.',
+        1 => 'Last backup: yesterday.',
+        _ => 'Last backup: $days days ago.',
+      };
+    }
+
     return _SettingsRow(
       icon: Icons.ios_share_outlined,
       title: 'Export backup',
-      subtitle: 'Everything as one file. Also copied to clipboard.',
+      subtitle: subtitle,
       trailing: _busy
           ? const SizedBox(
               width: 16,
@@ -534,9 +549,10 @@ class _AboutRowState extends State<_AboutRow> {
 
 // --- export flow -------------------------------------------------------------
 
-/// Serializes everything, copies it to the clipboard, then opens the OS
-/// share sheet anchored to [context]'s render box (iPad popover contract).
-/// A cancelled share is a quiet no-op — the clipboard copy still stands.
+/// Serializes everything and opens the OS share sheet anchored to
+/// [context]'s render box (iPad popover contract). The clipboard is an
+/// explicit opt-in fallback — a whole-database copy never lands there
+/// silently, because synced clipboards leak.
 Future<void> _runExport(BuildContext context, WidgetRef ref) async {
   // Anchor the share popover (required by iPad; ignored elsewhere).
   final box = context.findRenderObject() as RenderBox?;
@@ -545,12 +561,29 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
   final String json;
   try {
     json = await ref.read(backupServiceProvider).exportJson();
-    // Clipboard is a universal fallback the user can always rely on.
-    await Clipboard.setData(ClipboardData(text: json));
   } catch (_) {
     if (!context.mounted) return;
     showErrorSnack(context, "That didn't export. Try again.");
     return;
+  }
+
+  Future<void> markBackedUp() => ref
+      .read(settingsRepositoryProvider)
+      .setValue(SettingsKeys.lastBackupAt, DateTime.now().toIso8601String());
+
+  void offerClipboardFallback() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Share dismissed. Copy it instead?'),
+        action: SnackBarAction(
+          label: 'Copy',
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: json));
+            await markBackedUp();
+          },
+        ),
+      ),
+    );
   }
 
   final stamp =
@@ -582,14 +615,16 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
     }
     if (!context.mounted) return;
     if (result.status == ShareResultStatus.success) {
-      showSuccessSnack(context, 'Backup shared. Also on your clipboard.');
+      await markBackedUp();
+      if (!context.mounted) return;
+      showSuccessSnack(context, 'Backup saved.');
     } else {
-      showSuccessSnack(context, 'Backup copied to your clipboard.');
+      offerClipboardFallback();
     }
   } catch (_) {
-    // Share cancelled or unavailable; the clipboard copy still stands.
+    // Share unavailable on this platform; offer the clipboard explicitly.
     if (!context.mounted) return;
-    showSuccessSnack(context, 'Backup copied to your clipboard.');
+    offerClipboardFallback();
   }
 }
 
@@ -1091,6 +1126,8 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     if (!confirmed || !mounted) return;
 
     final navigator = Navigator.of(context);
+    // The next launch re-runs seed + legacy migration over the restored data.
+    await ref.read(preferencesProvider).clearDataRevision();
     final result = await ref.read(backupServiceProvider).importJson(raw);
     if (!mounted) return;
 
@@ -1254,6 +1291,11 @@ class _ResetSheetState extends ConsumerState<_ResetSheet> {
     Haptics.medium();
     final navigator = Navigator.of(context);
     final db = ref.read(databaseProvider);
+    final prefs = ref.read(preferencesProvider);
+    // Clearing the revision first makes the next launch re-run seeding
+    // even if the app dies between the clear and the re-seed below.
+    await prefs.clearDataRevision();
+    await prefs.clearRunningTimer();
     // Order is load-bearing: clear, then re-seed the empty tables.
     await db.clearAllTables();
     await SeedService(db).seedIfNeeded();

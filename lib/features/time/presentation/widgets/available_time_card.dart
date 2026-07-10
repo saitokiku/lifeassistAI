@@ -26,7 +26,7 @@ class AvailableTimeCard extends StatelessWidget {
           Text(
             'AVAILABLE TODAY',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.primary,
+              color: theme.colorScheme.brandLabel,
             ),
           ),
           const SizedBox(height: AppSpace.md),

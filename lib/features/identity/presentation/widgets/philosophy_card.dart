@@ -35,7 +35,7 @@ class PhilosophyCard extends ConsumerWidget {
                 child: Text(
                   'YOUR LINE',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.primary,
+                    color: theme.colorScheme.brandLabel,
                   ),
                 ),
               ),

@@ -23,8 +23,29 @@ class SettingsKeys {
   /// (see DashboardAreas). Absent = all modules.
   static const dashboardAreas = 'dashboardAreas';
 
+  /// ISO timestamp of the most recent successful export (manual or auto).
+  static const lastBackupAt = 'lastBackupAt';
+
+  /// Net income snapshots per month: `<prefix>2026-07` → value. The
+  /// surplus history reads the nearest snapshot at or before each month.
+  static const incomeForMonthPrefix = 'incomeFor.';
+
   // SharedPreferences-backed (device-local app flags)
   static const prefOnboardingComplete = 'onboardingComplete';
   static const prefThemeMode = 'themeMode'; // system | dark | light
   static const prefNotificationsEnabled = 'notificationsEnabled';
+
+  /// Bumps when seeds/legacy migration change; bootstrap skips both while
+  /// the stored value matches (a reset or import clears it).
+  static const prefDataRevision = 'dataRevision';
+
+  /// Biometric/PIN gate on app open (device-local by design).
+  static const prefAppLockEnabled = 'appLockEnabled';
+
+  /// ISO timestamp of the last automatic rolling backup.
+  static const prefLastAutoBackupAt = 'lastAutoBackupAt';
+
+  /// A live time-block timer survives restarts via these two.
+  static const prefTimerBudgetId = 'timerBudgetId';
+  static const prefTimerStartedAt = 'timerStartedAt';
 }

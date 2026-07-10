@@ -5,6 +5,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/settings_keys.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../settings/application/settings_controller.dart';
+import '../../settings/data/settings_repository.dart';
 import '../data/money_repository.dart';
 import '../domain/monthly_money_snapshot.dart';
 import 'money_state.dart';
@@ -62,6 +63,7 @@ class MonthlySurplusPoint {
     required this.income,
     required this.spend,
     required this.isPartial,
+    required this.hasData,
   });
 
   final DateTime month;
@@ -70,6 +72,10 @@ class MonthlySurplusPoint {
 
   /// True for the current month (still accumulating).
   final bool isPartial;
+
+  /// False when the month has no logged transactions at all — the chart
+  /// shows a gap instead of pretending the month was a perfect surplus.
+  final bool hasData;
 
   double get surplus => income - spend;
 }
@@ -82,22 +88,29 @@ final _txSinceProvider =
   return ref.watch(moneyRepositoryProvider).watchTransactionsSince(since);
 });
 
-/// Last [kMonthlyHistoryMonths] months of surplus (oldest first). Income is
-/// the current configured monthly net income applied to each month (we don't
-/// keep historical income). Null while sources load.
+/// Month key → income snapshot, for honest history math.
+final incomeSnapshotsProvider = StreamProvider<Map<String, double>>(
+  (ref) => ref.watch(settingsRepositoryProvider).watchIncomeSnapshots(),
+);
+
+/// Last [kMonthlyHistoryMonths] months of surplus (oldest first). Each
+/// month uses the income snapshot that applied back then; months without
+/// any logged transactions carry [MonthlySurplusPoint.hasData] = false.
+/// Null while sources load.
 final monthlySurplusHistoryProvider =
     Provider<List<MonthlySurplusPoint>?>((ref) {
   final now = readNow(ref);
   final settings = ref.watch(settingsProvider).valueOrNull;
+  final snapshots = ref.watch(incomeSnapshotsProvider).valueOrNull;
   final firstMonth =
       DateTime(now.year, now.month - (kMonthlyHistoryMonths - 1));
   final txs = ref.watch(_txSinceProvider(firstMonth)).valueOrNull;
-  if (settings == null || txs == null) return null;
+  if (settings == null || txs == null || snapshots == null) return null;
 
   final spendByMonth = <String, double>{};
   for (final tx in txs) {
     final d = AppDateUtils.parseDateKey(tx.date);
-    final key = '${d.year}-${d.month}';
+    final key = SettingsRepository.monthKey(d);
     spendByMonth[key] = (spendByMonth[key] ?? 0) + tx.amount;
   }
 
@@ -105,12 +118,18 @@ final monthlySurplusHistoryProvider =
     for (var i = 0; i < kMonthlyHistoryMonths; i++)
       () {
         final month = DateTime(firstMonth.year, firstMonth.month + i);
-        final key = '${month.year}-${month.month}';
+        final key = SettingsRepository.monthKey(month);
+        final isPartial = month.year == now.year && month.month == now.month;
+        final hasData = isPartial || spendByMonth.containsKey(key);
         return MonthlySurplusPoint(
           month: month,
-          income: settings.monthlyNetIncome,
+          income: hasData
+              ? SettingsRepository.incomeForMonth(
+                  snapshots, month, settings.monthlyNetIncome)
+              : 0,
           spend: spendByMonth[key] ?? 0,
-          isPartial: month.year == now.year && month.month == now.month,
+          isPartial: isPartial,
+          hasData: hasData,
         );
       }(),
   ];
@@ -156,9 +175,8 @@ class MoneyController {
 
   Future<void> deleteTransaction(String id) => _repo.deleteTransaction(id);
 
-  Future<void> setMonthlyNetIncome(double value) => _ref
-      .read(settingsRepositoryProvider)
-      .setNumber(SettingsKeys.monthlyNetIncome, value);
+  Future<void> setMonthlyNetIncome(double value) =>
+      _ref.read(settingsRepositoryProvider).setMonthlyNetIncome(value);
 
   Future<void> setTargetSurplus(
       {required double low, required double high}) async {

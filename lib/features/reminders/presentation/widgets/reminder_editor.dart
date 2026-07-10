@@ -1,15 +1,20 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/reminder_templates.dart';
+import '../../../../core/errors/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/validation.dart';
+import '../../../../core/utils/weekdays.dart';
 import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
+import '../../../../shared/widgets/weekday_picker.dart';
 import '../../application/reminders_controller.dart';
 import '../../domain/reminder.dart';
 import '../../domain/reminder_type.dart';
@@ -52,9 +57,17 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
   late bool _rotating =
       widget.reminder == null || widget.reminder!.message.isEmpty;
 
+  /// Schedule state: weekday bitmask, or a one-shot date that overrides it.
+  late int _weekdays = widget.reminder?.weekdays ?? WeekdayMask.all;
+  late DateTime? _onceDate = widget.reminder?.oneShotDate == null
+      ? null
+      : AppDateUtils.tryParseDateKey(widget.reminder!.oneShotDate!);
+
   bool _deleting = false;
 
   bool get _editing => widget.reminder != null;
+
+  bool get _isOnce => _onceDate != null;
 
   @override
   void dispose() {
@@ -87,6 +100,20 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
     }
   }
 
+  Future<void> _pickOnceDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _onceDate ?? now,
+      firstDate: AppDateUtils.dateOnly(now),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      Haptics.select();
+      setState(() => _onceDate = picked);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final controller = ref.read(remindersControllerProvider);
@@ -101,45 +128,64 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
         : (_message.text.trim().isEmpty
             ? ReminderTemplates.defaultMessageFor(_type.name)
             : _message.text.trim());
+    final onceKey = _isOnce ? AppDateUtils.dateKey(_onceDate!) : null;
     try {
+      final Result<int> result;
       if (widget.reminder == null) {
-        await controller.createReminder(
+        result = await controller.createReminder(
           title: _title.text.trim(),
           message: message,
           type: _type.name,
           hour: _time.hour,
           minute: _time.minute,
+          weekdays: _weekdays,
+          oneShotDate: onceKey,
         );
       } else {
-        await controller.updateReminder(widget.reminder!.copyWith(
+        result = await controller.updateReminder(widget.reminder!.copyWith(
           title: _title.text.trim(),
           message: message,
           type: _type.name,
           hour: _time.hour,
           minute: _time.minute,
+          weekdays: _weekdays,
+          oneShotDate: Value(onceKey),
         ));
       }
       Haptics.medium();
       navigator.pop();
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded,
-                  size: 18, color: AppColors.aligned),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(
-                child: Text(
-                  'Saved.',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: AppColors.textPrimaryDark),
+      messenger.hideCurrentSnackBar();
+      // The row is saved either way; a scheduling failure must not look
+      // like an armed reminder, so it gets said out loud.
+      switch (result) {
+        case Success():
+          messenger.showSnackBar(SnackBar(
+            duration: const Duration(seconds: 2),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    size: 18, color: AppColors.aligned),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Text(
+                    'Saved.',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: AppColors.textPrimaryDark),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ));
+              ],
+            ),
+          ));
+        case Failure(message: final error):
+          messenger.showSnackBar(SnackBar(
+            duration: const Duration(seconds: 5),
+            content: Text(
+              "Saved, but scheduling didn't work — $error",
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: AppColors.textPrimaryDark),
+            ),
+          ));
+      }
     } catch (_) {
       if (mounted) {
         showErrorSnack(context, "That didn't save. Try again.");
@@ -186,6 +232,8 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
               type: reminder.type,
               hour: reminder.hour,
               minute: reminder.minute,
+              weekdays: reminder.weekdays,
+              oneShotDate: reminder.oneShotDate,
             );
           },
         ),
@@ -278,11 +326,68 @@ class _ReminderEditorState extends ConsumerState<ReminderEditor> {
             ),
           ),
         ),
+        const SizedBox(height: AppSpace.xl),
+        _Overline('REPEATS'),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(
+          spacing: AppSpace.sm,
+          runSpacing: AppSpace.sm,
+          children: [
+            _ChoiceChip(
+              icon: Icons.all_inclusive,
+              label: 'Every day',
+              selected: !_isOnce && _weekdays == WeekdayMask.all,
+              onTap: () {
+                Haptics.select();
+                setState(() {
+                  _onceDate = null;
+                  _weekdays = WeekdayMask.all;
+                });
+              },
+            ),
+            _ChoiceChip(
+              icon: Icons.view_week_outlined,
+              label: 'Some days',
+              selected: !_isOnce && _weekdays != WeekdayMask.all,
+              onTap: () {
+                Haptics.select();
+                setState(() {
+                  _onceDate = null;
+                  if (_weekdays == WeekdayMask.all) {
+                    _weekdays = WeekdayMask.weekdaysOnly;
+                  }
+                });
+              },
+            ),
+            _ChoiceChip(
+              icon: Icons.event_outlined,
+              label: _isOnce
+                  ? 'Once · ${Formatters.shortDate(_onceDate!)}'
+                  : 'Once',
+              selected: _isOnce,
+              // Tapping again re-opens the picker to change the date.
+              onTap: _pickOnceDate,
+            ),
+          ],
+        ),
+        if (!_isOnce && _weekdays != WeekdayMask.all) ...[
+          const SizedBox(height: AppSpace.md),
+          WeekdayPicker(
+            mask: _weekdays,
+            onChanged: (mask) => setState(() => _weekdays = mask),
+          ),
+        ],
         const SizedBox(height: 6),
         Padding(
           padding: const EdgeInsets.only(left: AppSpace.xs),
           child: Text(
-            'Fires daily around this time.',
+            _isOnce
+                ? 'Fires once on ${Formatters.fullDate(_onceDate!)}, then '
+                    'turns itself off.'
+                : _weekdays == WeekdayMask.all
+                    ? 'Fires daily around this time.'
+                    : 'Fires on ${WeekdayMask.describe(_weekdays)} '
+                        'around this time.',
             style:
                 theme.textTheme.bodySmall?.copyWith(color: scheme.textTertiary),
           ),

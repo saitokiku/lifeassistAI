@@ -106,7 +106,14 @@ class CheckInStrip extends ConsumerWidget {
       // Unchecking preserves the entry via undo — never silent data loss.
       final log = h.todayLog!;
       final messenger = ScaffoldMessenger.of(context);
-      await controller.unlogHabit(habitId: h.habit.id, date: today);
+      try {
+        await controller.unlogHabit(habitId: h.habit.id, date: today);
+      } catch (_) {
+        if (context.mounted) {
+          showErrorSnack(context, "That didn't save. Try again.");
+        }
+        return;
+      }
       if (!context.mounted) return;
       messenger.hideCurrentSnackBar();
       showUndoSnack(
@@ -124,7 +131,13 @@ class CheckInStrip extends ConsumerWidget {
 
     final type = HabitType.parse(h.habit.type);
     if (type == HabitType.boolean) {
-      await controller.logHabit(habitId: h.habit.id, date: today, value: 1);
+      try {
+        await controller.logHabit(habitId: h.habit.id, date: today, value: 1);
+      } catch (_) {
+        if (context.mounted) {
+          showErrorSnack(context, "That didn't save. Try again.");
+        }
+      }
       return;
     }
 
@@ -160,11 +173,18 @@ class CheckInStrip extends ConsumerWidget {
           onPressed: () async {
             if (!(formKey.currentState?.validate() ?? false)) return;
             final navigator = Navigator.of(sheetContext);
-            await controller.logHabit(
-              habitId: h.habit.id,
-              date: h.today,
-              value: Validators.parseNumber(valueController.text),
-            );
+            try {
+              await controller.logHabit(
+                habitId: h.habit.id,
+                date: h.today,
+                value: Validators.parseNumber(valueController.text),
+              );
+            } catch (_) {
+              if (sheetContext.mounted) {
+                showErrorSnack(sheetContext, "That didn't save. Try again.");
+              }
+              return;
+            }
             Haptics.light();
             navigator.pop();
           },

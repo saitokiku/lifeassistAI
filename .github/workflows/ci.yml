@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter 3.44.6
+        run: |
+          curl -sSL -o /tmp/flutter.tar.xz \
+            https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.6-stable.tar.xz
+          mkdir -p "$HOME/flutter-sdk"
+          tar -xf /tmp/flutter.tar.xz -C "$HOME/flutter-sdk" --strip-components=1
+          echo "$HOME/flutter-sdk/bin" >> "$GITHUB_PATH"
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

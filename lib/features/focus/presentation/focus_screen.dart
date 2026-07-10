@@ -528,7 +528,7 @@ class _InviteCard extends StatelessWidget {
           Text(
             actionLabel,
             style: theme.textTheme.labelLarge?.copyWith(
-              color: AppColors.primary,
+              color: theme.colorScheme.brandLabel,
             ),
           ),
         ],

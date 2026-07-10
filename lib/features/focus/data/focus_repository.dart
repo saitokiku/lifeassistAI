@@ -14,10 +14,11 @@ class FocusRepository {
 
   // --- Main goal ------------------------------------------------------------
 
-  /// The goal the app organizes itself around: the most recent non-archived,
-  /// non-completed one. Completed/archived goals stay as history.
+  /// The goal the app organizes itself around: the most recent non-archived
+  /// one. A completed goal stays current — celebrated, not vanished — until
+  /// the user starts the next one; only archived goals leave the stage.
   Stream<MainGoal?> watchCurrentGoal() => (_db.select(_db.mainGoals)
-        ..where((t) => t.status.isIn(['active', 'paused']))
+        ..where((t) => t.status.isIn(['active', 'paused', 'completed']))
         ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
         ..limit(1))
       .watchSingleOrNull();

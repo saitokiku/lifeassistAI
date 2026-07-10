@@ -37,7 +37,7 @@ class SettingsController {
       _repo.setValue(SettingsKeys.displayName, name.trim());
 
   Future<void> setMonthlyNetIncome(double value) =>
-      _repo.setNumber(SettingsKeys.monthlyNetIncome, value);
+      _repo.setMonthlyNetIncome(value);
 
   Future<void> setTargetSurplus(
       {required double low, required double high}) async {

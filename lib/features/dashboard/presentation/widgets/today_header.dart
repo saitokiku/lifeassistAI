@@ -126,9 +126,14 @@ class TodayHeader extends StatelessWidget {
             const SizedBox(height: AppSpace.xxl),
             _part(theme, 'Hours on $goalTitle', score.goalScore, 35),
             _part(theme, 'Daily step', score.actionScore, 20),
-            _part(theme, 'Money pace', score.moneyScore, 15),
-            _part(theme, 'Exercise or meditation', score.healthScore, 15),
-            _part(theme, 'Downtime', score.recoveryScore, 15),
+            // Hidden areas are excluded from the score, so they don't
+            // appear here either.
+            if (score.moneyScore case final money?)
+              _part(theme, 'Money pace', money, 15),
+            if (score.healthScore case final health?)
+              _part(theme, 'Exercise or meditation', health, 15),
+            if (score.recoveryScore case final recovery?)
+              _part(theme, 'Downtime', recovery, 15),
           ],
         );
       },

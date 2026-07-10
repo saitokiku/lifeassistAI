@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import '../theme/app_colors.dart';
 
 /// Inputs for the daily focus score. All values come from real data.
+/// The include flags mirror the Today-screen area toggles — a hidden area
+/// must not cost points, so its part is excluded and the rest renormalizes.
 class FocusScoreInput {
   const FocusScoreInput({
     required this.goalHoursThisWeek,
@@ -12,6 +14,9 @@ class FocusScoreInput {
     required this.targetSurplusLow,
     required this.exerciseOrMeditationToday,
     required this.recoveryHoursThisWeek,
+    this.includeMoney = true,
+    this.includeHealth = true,
+    this.includeRecovery = true,
   });
 
   final double goalHoursThisWeek;
@@ -21,6 +26,9 @@ class FocusScoreInput {
   final double targetSurplusLow;
   final bool exerciseOrMeditationToday;
   final double recoveryHoursThisWeek;
+  final bool includeMoney;
+  final bool includeHealth;
+  final bool includeRecovery;
 }
 
 class FocusScoreBreakdown {
@@ -34,14 +42,27 @@ class FocusScoreBreakdown {
 
   final double goalScore; // up to 35
   final double actionScore; // 0 or 20
-  final double moneyScore; // up to 15
-  final double healthScore; // 0 or 15
-  final double recoveryScore; // 0, 7, or 15
+  final double? moneyScore; // up to 15; null = money area hidden
+  final double? healthScore; // 0 or 15; null = habits area hidden
+  final double? recoveryScore; // 0, 7, or 15; null = time area hidden
 
-  int get total =>
-      (goalScore + actionScore + moneyScore + healthScore + recoveryScore)
-          .round()
-          .clamp(0, 100);
+  double get _earned =>
+      goalScore +
+      actionScore +
+      (moneyScore ?? 0) +
+      (healthScore ?? 0) +
+      (recoveryScore ?? 0);
+
+  /// Only enabled parts count toward the denominator, so 100 stays
+  /// reachable no matter which areas are turned off.
+  double get _possible =>
+      35 +
+      20 +
+      (moneyScore == null ? 0 : 15) +
+      (healthScore == null ? 0 : 15) +
+      (recoveryScore == null ? 0 : 15);
+
+  int get total => (_earned / _possible * 100).round().clamp(0, 100);
 }
 
 class ScoreUtils {
@@ -64,8 +85,10 @@ class ScoreUtils {
 
     final actionScore = input.todayActionLogged ? 20.0 : 0.0;
 
-    final double moneyScore;
-    if (input.targetSurplusLow <= 0) {
+    final double? moneyScore;
+    if (!input.includeMoney) {
+      moneyScore = null;
+    } else if (input.targetSurplusLow <= 0) {
       moneyScore = input.projectedSurplus >= 0 ? 15.0 : 0.0;
     } else if (input.projectedSurplus >= input.targetSurplusLow) {
       moneyScore = 15.0;
@@ -74,10 +97,16 @@ class ScoreUtils {
           math.max(input.projectedSurplus / input.targetSurplusLow, 0.0) * 15;
     }
 
-    final healthScore = input.exerciseOrMeditationToday ? 15.0 : 0.0;
+    final healthScore = !input.includeHealth
+        ? null
+        : input.exerciseOrMeditationToday
+            ? 15.0
+            : 0.0;
 
-    final double recoveryScore;
-    if (input.recoveryHoursThisWeek >= 5) {
+    final double? recoveryScore;
+    if (!input.includeRecovery) {
+      recoveryScore = null;
+    } else if (input.recoveryHoursThisWeek >= 5) {
       recoveryScore = 15.0;
     } else if (input.recoveryHoursThisWeek > 0) {
       recoveryScore = 7.0;

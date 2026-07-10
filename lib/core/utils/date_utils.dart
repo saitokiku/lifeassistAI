@@ -10,6 +10,9 @@ class AppDateUtils {
 
   static DateTime parseDateKey(String key) => DateTime.parse(key);
 
+  /// Like [parseDateKey] but null on malformed input instead of throwing.
+  static DateTime? tryParseDateKey(String key) => DateTime.tryParse(key);
+
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   static bool isSameDay(DateTime a, DateTime b) =>

@@ -21,6 +21,8 @@ class GrowthMetrics extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'idx_metric_entries_metric', columns: {#metricId})
+@TableIndex(name: 'idx_metric_entries_date', columns: {#date})
 class GrowthMetricEntries extends Table {
   TextColumn get id => text()();
   TextColumn get metricId => text()();
@@ -32,6 +34,7 @@ class GrowthMetricEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'idx_daily_experiments_date', columns: {#date})
 class DailyExperiments extends Table {
   TextColumn get id => text()();
   TextColumn get date => text()(); // yyyy-MM-dd
@@ -63,9 +66,18 @@ class BudgetCategories extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'idx_transactions_date', columns: {#date})
+@TableIndex(name: 'idx_transactions_category', columns: {#categoryId})
+@TableIndex(name: 'idx_transactions_account', columns: {#accountId})
 class TransactionEntries extends Table {
   TextColumn get id => text()();
   TextColumn get categoryId => text().nullable()(); // null = uncategorized
+
+  /// Which tracked account this touched; null = not account-linked.
+  TextColumn get accountId => text().nullable()();
+
+  /// Set when materialized from a recurring expense (idempotence + trace).
+  TextColumn get sourceRecurringId => text().nullable()();
   TextColumn get date => text()(); // yyyy-MM-dd
   RealColumn get amount => real()();
   TextColumn get description => text().withDefault(const Constant(''))();
@@ -91,6 +103,8 @@ class TimeBudgets extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'idx_time_blocks_date', columns: {#date})
+@TableIndex(name: 'idx_time_blocks_budget', columns: {#budgetId})
 class TimeBlocks extends Table {
   TextColumn get id => text()();
   TextColumn get budgetId => text()();
@@ -122,6 +136,14 @@ class Habits extends Table {
   TextColumn get type => text()
       .withDefault(const Constant('boolean'))(); // boolean | numeric | duration
   TextColumn get unit => text().nullable()();
+
+  /// Scheduled weekdays (bitmask, bit 0 = Monday). 127 = every day.
+  /// Streaks and "due today" respect the schedule.
+  IntColumn get weekdays => integer().withDefault(const Constant(127))();
+
+  /// Optional per-habit reminder time; both null = no reminder.
+  IntColumn get reminderHour => integer().nullable()();
+  IntColumn get reminderMinute => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
@@ -130,6 +152,8 @@ class Habits extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'idx_habit_logs_habit', columns: {#habitId})
+@TableIndex(name: 'idx_habit_logs_date', columns: {#date})
 class HabitLogs extends Table {
   TextColumn get id => text()();
   TextColumn get habitId => text()();
@@ -167,6 +191,7 @@ class ParkedIdeas extends Table {
 /// The user's one main goal — the outcome the app organizes itself around.
 /// Exactly one row is `active` at a time; finished or shelved goals keep
 /// their history with a different status.
+@TableIndex(name: 'idx_main_goals_status', columns: {#status})
 class MainGoals extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -231,6 +256,13 @@ class Reminders extends Table {
   TextColumn get type => text().withDefault(const Constant('custom'))();
   IntColumn get hour => integer()();
   IntColumn get minute => integer()();
+
+  /// Fires on these weekdays (bitmask, bit 0 = Monday). 127 = daily.
+  /// Ignored when [oneShotDate] is set.
+  IntColumn get weekdays => integer().withDefault(const Constant(127))();
+
+  /// When set (yyyy-MM-dd), fires once on that date and is then disabled.
+  TextColumn get oneShotDate => text().nullable()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   // Stable int id handed to the platform notification plugin.
   IntColumn get notificationId => integer()();
@@ -250,6 +282,72 @@ class IdentityStatements extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Tracked financial accounts — bank, credit, investment, cash. Balances
+/// are updated manually or by CSV import; every update writes a snapshot.
+class Accounts extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  // checking | savings | credit | investment | cash | other (see AccountKind)
+  TextColumn get kind => text().withDefault(const Constant('checking'))();
+  RealColumn get balance => real().withDefault(const Constant(0))();
+
+  /// Credit balances count negative toward net worth when included.
+  BoolColumn get includeInNetWorth =>
+      boolean().withDefault(const Constant(true))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Dated balance history per account (one snapshot per account per day).
+@TableIndex(name: 'idx_balance_snapshots_account', columns: {#accountId})
+class BalanceSnapshots extends Table {
+  TextColumn get id => text()();
+  TextColumn get accountId => text()();
+  TextColumn get date => text()(); // yyyy-MM-dd
+  RealColumn get balance => real()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Monthly recurring expenses (rent, subscriptions). Materialized into
+/// TransactionEntries once per month by RecurringService.
+class RecurringTransactions extends Table {
+  TextColumn get id => text()();
+  TextColumn get categoryId => text().nullable()();
+  RealColumn get amount => real()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+
+  /// 1–31; clamped to the month's last day when shorter.
+  IntColumn get dayOfMonth => integer().withDefault(const Constant(1))();
+  BoolColumn get isIntentional => boolean().withDefault(const Constant(true))();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+
+  /// yyyy-MM of the last month an entry was created for (idempotence).
+  TextColumn get lastMaterializedMonth => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// One guided weekly review per week (weekStart = Monday day key).
+@TableIndex(name: 'idx_weekly_reviews_week', columns: {#weekStart})
+class WeeklyReviews extends Table {
+  TextColumn get id => text()();
+  TextColumn get weekStart => text()(); // yyyy-MM-dd, Monday
+  TextColumn get reflection => text().withDefault(const Constant(''))();
+  TextColumn get emphasis => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Key-value settings that must survive export/import (income, surplus
 /// targets, birthday, philosophy text, Roth IRA numbers, balances).
 class SettingsEntries extends Table {
@@ -262,6 +360,10 @@ class SettingsEntries extends Table {
 
 @DriftDatabase(tables: [
   MainGoals,
+  Accounts,
+  BalanceSnapshots,
+  RecurringTransactions,
+  WeeklyReviews,
   GrowthMetrics,
   GrowthMetricEntries,
   DailyExperiments,
@@ -283,7 +385,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -296,6 +398,26 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(goals, goals.sortOrder);
             // Legacy value rewrites + deriving the main goal from existing
             // Kaizen-era data live in LegacyMigration (shared with import).
+          }
+          if (from < 3) {
+            // v3: accounts, recurring expenses, weekly reviews, schedules.
+            await m.createTable(accounts);
+            await m.createTable(balanceSnapshots);
+            await m.createTable(recurringTransactions);
+            await m.createTable(weeklyReviews);
+            await m.addColumn(transactionEntries, transactionEntries.accountId);
+            await m.addColumn(
+                transactionEntries, transactionEntries.sourceRecurringId);
+            await m.addColumn(habits, habits.weekdays);
+            await m.addColumn(habits, habits.reminderHour);
+            await m.addColumn(habits, habits.reminderMinute);
+            await m.addColumn(reminders, reminders.weekdays);
+            await m.addColumn(reminders, reminders.oneShotDate);
+            for (final index in allSchemaEntities.whereType<Index>()) {
+              await m.createIndex(index);
+            }
+            // Turning the legacy manual balances into account rows lives in
+            // LegacyMigration (shared with import).
           }
         },
       );

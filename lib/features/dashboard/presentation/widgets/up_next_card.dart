@@ -32,7 +32,7 @@ class UpNextCard extends StatelessWidget {
           Text(
             'UP NEXT',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.primary,
+              color: theme.colorScheme.brandLabel,
             ),
           ),
           const SizedBox(height: AppSpace.md),
@@ -76,6 +76,13 @@ class UpNextCard extends StatelessWidget {
               'the app organizes itself around it.',
           actionLabel: 'Set your main goal',
           onTap: () => MainGoalEditor.show(context),
+        );
+      case UpNextKind.goalCompleted:
+        return _Directive(
+          text: 'You finished ${goalTitle ?? 'your goal'}. Take the win — '
+              "then choose what's next when you're ready.",
+          actionLabel: 'Celebrate on Focus',
+          onTap: () => context.go('/focus'),
         );
       case UpNextKind.moneyCritical:
         return _Directive(

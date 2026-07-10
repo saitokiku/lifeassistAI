@@ -19,6 +19,10 @@ class BackupService {
   static const _tableOrder = [
     'settings',
     'mainGoals',
+    'accounts',
+    'balanceSnapshots',
+    'recurringTransactions',
+    'weeklyReviews',
     'growthMetrics',
     'growthMetricEntries',
     'dailyExperiments',
@@ -43,6 +47,20 @@ class BackupService {
       ],
       'mainGoals': [
         for (final r in await _db.select(_db.mainGoals).get()) r.toJson(),
+      ],
+      'accounts': [
+        for (final r in await _db.select(_db.accounts).get()) r.toJson(),
+      ],
+      'balanceSnapshots': [
+        for (final r in await _db.select(_db.balanceSnapshots).get())
+          r.toJson(),
+      ],
+      'recurringTransactions': [
+        for (final r in await _db.select(_db.recurringTransactions).get())
+          r.toJson(),
+      ],
+      'weeklyReviews': [
+        for (final r in await _db.select(_db.weeklyReviews).get()) r.toJson(),
       ],
       'growthMetrics': [
         for (final r in await _db.select(_db.growthMetrics).get()) r.toJson(),
@@ -144,6 +162,13 @@ class BackupService {
         await insertAll(
             _db.settingsEntries, 'settings', SettingsEntry.fromJson);
         await insertAll(_db.mainGoals, 'mainGoals', MainGoal.fromJson);
+        await insertAll(_db.accounts, 'accounts', Account.fromJson);
+        await insertAll(
+            _db.balanceSnapshots, 'balanceSnapshots', BalanceSnapshot.fromJson);
+        await insertAll(_db.recurringTransactions, 'recurringTransactions',
+            RecurringTransaction.fromJson);
+        await insertAll(
+            _db.weeklyReviews, 'weeklyReviews', WeeklyReview.fromJson);
         await insertAll(
             _db.growthMetrics, 'growthMetrics', GrowthMetric.fromJson);
         await insertAll(_db.growthMetricEntries, 'growthMetricEntries',
@@ -186,6 +211,25 @@ class BackupService {
     Map<String, dynamic> row,
   ) {
     switch (table) {
+      case 'transactions':
+        return {
+          'accountId': null,
+          'sourceRecurringId': null,
+          ...row,
+        };
+      case 'habits':
+        return {
+          'weekdays': 127,
+          'reminderHour': null,
+          'reminderMinute': null,
+          ...row,
+        };
+      case 'reminders':
+        return {
+          'weekdays': 127,
+          'oneShotDate': null,
+          ...row,
+        };
       case 'parkedIdeas':
         if (!row.containsKey('helpsMainGoal')) {
           return {

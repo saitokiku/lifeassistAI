@@ -28,6 +28,9 @@ class HabitsRepository {
     required String name,
     required String type,
     String? unit,
+    int weekdays = 127,
+    int? reminderHour,
+    int? reminderMinute,
   }) async {
     final existing = await _db.select(_db.habits).get();
     await _db.into(_db.habits).insert(Habit(
@@ -35,6 +38,9 @@ class HabitsRepository {
           name: name,
           type: type,
           unit: unit,
+          weekdays: weekdays,
+          reminderHour: reminderHour,
+          reminderMinute: reminderMinute,
           sortOrder: existing.length,
           isArchived: false,
           createdAt: DateTime.now(),

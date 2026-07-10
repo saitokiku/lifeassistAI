@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/reminder_templates.dart';
+import '../../../../core/errors/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/formatters.dart';
@@ -120,6 +121,8 @@ class _ReminderListState extends ConsumerState<ReminderList> {
           type: reminder.type,
           hour: reminder.hour,
           minute: reminder.minute,
+          weekdays: reminder.weekdays,
+          oneShotDate: reminder.oneShotDate,
         );
       },
     );
@@ -140,9 +143,12 @@ class _ReminderRow extends ConsumerWidget {
     final dimmed = paused || !reminder.enabled;
 
     final time = Formatters.timeOfDay(reminder.hour, reminder.minute);
+    final schedule = reminder.scheduleLabel;
+    final timeAndSchedule =
+        schedule == 'Every day' ? time : '$time · $schedule';
     final meta = paused && reminder.enabled
-        ? '$time · paused — notifications are off'
-        : time;
+        ? '$timeAndSchedule · paused — notifications are off'
+        : timeAndSchedule;
     // Empty message means the rotating template; preview today's line so
     // the row always shows what would actually fire.
     final preview = reminder.message.isEmpty
@@ -202,11 +208,19 @@ class _ReminderRow extends ConsumerWidget {
           const SizedBox(width: AppSpace.md),
           Switch(
             value: reminder.enabled,
-            onChanged: (value) {
+            onChanged: (value) async {
               Haptics.select();
-              ref
+              final result = await ref
                   .read(remindersControllerProvider)
                   .setEnabled(reminder.id, value);
+              // Only a failed arm matters here; disabling can't half-fail.
+              if (value && result is Failure && context.mounted) {
+                showErrorSnack(
+                  context,
+                  "Turned on, but scheduling didn't work — "
+                  '${result.errorOrNull}',
+                );
+              }
             },
           ),
         ],

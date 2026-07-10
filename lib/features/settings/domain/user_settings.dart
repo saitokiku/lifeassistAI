@@ -12,6 +12,7 @@ class UserSettings {
     required this.savingsBalance,
     required this.philosophyText,
     required this.dashboardAreas,
+    this.lastBackupAt,
   });
 
   /// What the app calls the user; empty until they share a name.
@@ -32,6 +33,9 @@ class UserSettings {
   /// Which optional areas appear on the Today screen.
   final Set<DashboardArea> dashboardAreas;
 
+  /// When the user last exported a backup; null means never.
+  final DateTime? lastBackupAt;
+
   /// Income of 0 means money setup hasn't happened yet — screens invite
   /// setup instead of projecting from nothing.
   bool get hasIncome => monthlyNetIncome > 0;
@@ -51,6 +55,7 @@ class UserSettings {
     double? savingsBalance,
     String? philosophyText,
     Set<DashboardArea>? dashboardAreas,
+    DateTime? lastBackupAt,
   }) =>
       UserSettings(
         displayName: displayName ?? this.displayName,
@@ -66,6 +71,7 @@ class UserSettings {
         savingsBalance: savingsBalance ?? this.savingsBalance,
         philosophyText: philosophyText ?? this.philosophyText,
         dashboardAreas: dashboardAreas ?? this.dashboardAreas,
+        lastBackupAt: lastBackupAt ?? this.lastBackupAt,
       );
 }
 

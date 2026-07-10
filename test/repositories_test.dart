@@ -75,12 +75,16 @@ void main() {
       final all = await repo.watchAllGoals().first;
       expect(all.firstWhere((g) => g.id == first.id).status, 'archived');
 
-      // Completing removes it from "current" and stamps completedAt.
+      // Completing keeps it current (celebrated, not vanished) and stamps
+      // completedAt; only archiving removes it from the stage.
       await repo.setGoalStatus(second.id, 'completed');
+      final completed = await repo.watchCurrentGoal().first;
+      expect(completed!.id, second.id);
+      expect(completed.status, 'completed');
+      expect(completed.completedAt, isNotNull);
+
+      await repo.setGoalStatus(second.id, 'archived');
       expect(await repo.watchCurrentGoal().first, isNull);
-      final done = (await repo.watchAllGoals().first)
-          .firstWhere((g) => g.id == second.id);
-      expect(done.completedAt, isNotNull);
     });
   });
 

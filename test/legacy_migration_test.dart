@@ -61,6 +61,7 @@ void main() {
           type: 'kaizenExperiment',
           hour: 12,
           minute: 0,
+          weekdays: 127,
           enabled: true,
           notificationId: 1,
           createdAt: at,

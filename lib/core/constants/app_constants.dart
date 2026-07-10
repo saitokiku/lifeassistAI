@@ -15,9 +15,15 @@ class AppConstants {
   /// Weeks start on Monday everywhere in the app.
   static const int firstDayOfWeek = DateTime.monday;
 
-  /// '2' adds the main-goal table and universal enum values. '1' backups
-  /// are still importable; see BackupService and LegacyMigration.
-  static const String exportSchemaVersion = '2';
+  /// '3' adds accounts, recurring expenses, weekly reviews, and weekday
+  /// schedules. Older backups are still importable; see BackupService and
+  /// LegacyMigration.
+  static const String exportSchemaVersion = '3';
+
+  /// Bump when SeedService or LegacyMigration gain new work. Bootstrap
+  /// skips both while the stored preference matches; reset and import
+  /// clear the preference so the next launch re-runs them.
+  static const int dataRevision = 3;
 }
 
 /// Short, plain product copy used across the app. One voice: calm, direct,

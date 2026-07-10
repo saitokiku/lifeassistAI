@@ -27,6 +27,8 @@ class RemindersRepository {
     required String type,
     required int hour,
     required int minute,
+    int weekdays = 127,
+    String? oneShotDate,
     bool enabled = true,
   }) async {
     final now = DateTime.now();
@@ -38,6 +40,8 @@ class RemindersRepository {
           type: type,
           hour: hour,
           minute: minute,
+          weekdays: weekdays,
+          oneShotDate: oneShotDate,
           enabled: enabled,
           notificationId: SeedService.notificationIdFor(id),
           createdAt: now,
@@ -59,4 +63,17 @@ class RemindersRepository {
 
   Future<void> deleteReminder(String id) =>
       (_db.delete(_db.reminders)..where((t) => t.id.equals(id))).go();
+
+  /// Disables one-shot reminders whose date is behind [todayKey] — they
+  /// have either fired or been missed; both mean "done".
+  Future<void> disableExpiredOneShots({required String todayKey}) =>
+      (_db.update(_db.reminders)
+            ..where((t) =>
+                t.oneShotDate.isNotNull() &
+                t.oneShotDate.isSmallerThanValue(todayKey) &
+                t.enabled.equals(true)))
+          .write(RemindersCompanion(
+        enabled: const Value(false),
+        updatedAt: Value(DateTime.now()),
+      ));
 }

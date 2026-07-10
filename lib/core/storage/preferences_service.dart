@@ -36,4 +36,48 @@ class PreferencesService {
 
   Future<void> setNotificationsEnabled(bool value) =>
       _prefs.setBool(SettingsKeys.prefNotificationsEnabled, value);
+
+  /// Seeds/legacy migration are skipped while this matches the app's
+  /// current revision. Cleared by reset and import so both re-run.
+  int get dataRevision => _prefs.getInt(SettingsKeys.prefDataRevision) ?? 0;
+
+  Future<void> setDataRevision(int value) =>
+      _prefs.setInt(SettingsKeys.prefDataRevision, value);
+
+  Future<void> clearDataRevision() =>
+      _prefs.remove(SettingsKeys.prefDataRevision);
+
+  bool get appLockEnabled =>
+      _prefs.getBool(SettingsKeys.prefAppLockEnabled) ?? false;
+
+  Future<void> setAppLockEnabled(bool value) =>
+      _prefs.setBool(SettingsKeys.prefAppLockEnabled, value);
+
+  DateTime? get lastAutoBackupAt {
+    final raw = _prefs.getString(SettingsKeys.prefLastAutoBackupAt);
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  Future<void> setLastAutoBackupAt(DateTime value) => _prefs.setString(
+      SettingsKeys.prefLastAutoBackupAt, value.toIso8601String());
+
+  /// Live time-block timer (survives restarts). Null when none running.
+  ({String budgetId, DateTime startedAt})? get runningTimer {
+    final id = _prefs.getString(SettingsKeys.prefTimerBudgetId);
+    final raw = _prefs.getString(SettingsKeys.prefTimerStartedAt);
+    final startedAt = raw == null ? null : DateTime.tryParse(raw);
+    if (id == null || startedAt == null) return null;
+    return (budgetId: id, startedAt: startedAt);
+  }
+
+  Future<void> setRunningTimer(String budgetId, DateTime startedAt) async {
+    await _prefs.setString(SettingsKeys.prefTimerBudgetId, budgetId);
+    await _prefs.setString(
+        SettingsKeys.prefTimerStartedAt, startedAt.toIso8601String());
+  }
+
+  Future<void> clearRunningTimer() async {
+    await _prefs.remove(SettingsKeys.prefTimerBudgetId);
+    await _prefs.remove(SettingsKeys.prefTimerStartedAt);
+  }
 }
