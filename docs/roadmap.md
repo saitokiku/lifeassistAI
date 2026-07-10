@@ -32,6 +32,10 @@ testing.
 - Personalizable Today (area modules), reduced-motion support, honest
   zero-income states
 
+> Improvement priorities (defects, quick wins, depth features, and the voice-capture
+> flagship) are formulated in [IMPROVEMENT_BLUEPRINT.md](IMPROVEMENT_BLUEPRINT.md);
+> the releases below map to its tiers.
+
 ## v2.1 — launch readiness
 
 - Real app icon/branding, screenshots, marketing page
