@@ -1,8 +1,19 @@
 # Life Assist — Improvement Blueprint
 
-*Status: adopted plan of record for what comes after the v2 revamp. Everything in this
-document was verified against the code on `claude/life-assist-redesign-105upu` — each
-finding carries a file reference so implementation sessions don't have to re-audit.
+*Status: **implemented** (v3). Tier 0, Tier 1, and Tier 2 shipped in full; Tier 3 shipped
+the Siri flagship as Phase A (capture bus, done in Dart) + Phase B v1 (App Intents Swift
+sources — see [SIRI_SETUP.md](SIRI_SETUP.md) for the one-time Xcode step) + Phase C
+(Android shortcuts). Real bank-account tracking shipped as accounts + balance history +
+CSV statement import + recurring expenses; live aggregator feeds are documented as an
+integration seam in [BANK_CONNECTIONS.md](BANK_CONNECTIONS.md) because they require the
+user's own API keys and token server. Still open from Tier 3: journal/notes (weekly
+review covers the core need), calendar overlay, encrypted sync, and the cents-integer
+money migration. The file references below describe the pre-implementation code and
+remain useful as the rationale record.*
+
+*Original preface: adopted plan of record for what comes after the v2 revamp. Everything
+in this document was verified against the code on `claude/life-assist-redesign-105upu` —
+each finding carries a file reference so implementation sessions don't have to re-audit.
 Release mechanics live in [roadmap.md](roadmap.md); AI work stays deferred and scoped in
 [AI_PRODUCT_ROADMAP.md](AI_PRODUCT_ROADMAP.md).*
 
