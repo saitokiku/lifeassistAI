@@ -50,9 +50,11 @@ Future<void> bootstrap() async {
     // and drain any captures Siri wrote while the engine was down. Web
     // has neither a filesystem contract nor Siri.
     BridgePaths? bridge;
+    EntityMirrorService? mirror;
     if (!kIsWeb) {
       bridge = await BridgePaths.resolve();
-      await EntityMirrorService(database, bridge).start();
+      mirror = EntityMirrorService(database, bridge);
+      await mirror.start();
       final drain = CaptureQueueDrain(database, bridge);
       final result = await drain.drain();
       // Reminders captured by voice need their OS schedule reconciled the
@@ -74,6 +76,7 @@ Future<void> bootstrap() async {
           databaseProvider.overrideWithValue(database),
           preferencesProvider.overrideWithValue(preferences),
           if (bridge != null) bridgePathsProvider.overrideWithValue(bridge),
+          if (mirror != null) entityMirrorProvider.overrideWithValue(mirror),
         ],
         child: const LifeDashboardApp(),
       ),

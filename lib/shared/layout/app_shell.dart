@@ -11,6 +11,8 @@ import '../../core/capture/capture_request.dart';
 import '../../core/native/capture_queue_drain.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
+import '../../core/utils/date_utils.dart';
+import '../../features/dashboard/application/dashboard_controller.dart';
 import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
@@ -131,6 +133,7 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _todayDebounce?.cancel();
     _linkSub?.cancel();
     _notifications?.onTap = null;
     super.dispose();
@@ -176,6 +179,38 @@ class _AppShellState extends ConsumerState<AppShell>
     }
   }
 
+  /// Publishes "today" aggregates for Siri answers (GetUpNext, budget
+  /// status, snippet math). Debounced; a failed write is just no fresh
+  /// numbers — Swift says "open the app" instead of quoting stale ones.
+  Timer? _todayDebounce;
+  void _publishToday() {
+    if (kIsWeb) return;
+    _todayDebounce?.cancel();
+    _todayDebounce = Timer(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      final state = ref.read(dashboardStateProvider);
+      if (state == null) return;
+      final timer = ref.read(preferencesProvider).runningTimer;
+      try {
+        ref.read(entityMirrorProvider).writeToday({
+          'dateKey': AppDateUtils.dateKey(DateTime.now()),
+          'monthKey': '${DateTime.now().year}-'
+              '${DateTime.now().month.toString().padLeft(2, '0')}',
+          'score': state.showScore ? state.focusScore.total : null,
+          'upNext': state.upNextSpoken,
+          'habitsDueToday': null,
+          'timerStartedAt': timer?.startedAt.toIso8601String(),
+          'monthSpendCentsByCategory': {
+            for (final cs in state.money.snapshot.categorySpends)
+              cs.category.id: (cs.spent * 100).round(),
+          },
+        });
+      } catch (_) {
+        // Mirror unavailable (web/tests): nothing to publish.
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(pendingCaptureProvider, (previous, next) {
@@ -185,6 +220,9 @@ class _AppShellState extends ConsumerState<AppShell>
     ref.listen(pendingRouteProvider, (previous, next) {
       if (next == null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) => _drainPending());
+    });
+    ref.listen(dashboardStateProvider, (previous, next) {
+      if (next != null) _publishToday();
     });
 
     return ResponsiveScaffold(

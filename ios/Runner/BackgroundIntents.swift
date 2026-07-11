@@ -154,7 +154,8 @@ struct LogExpenseBackgroundIntent: AppIntent {
     @Parameter(title: "What for", requestValueDialog: "What was it for?")
     var note: String?
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
+    func perform() async throws
+        -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         let cents = Int((amount * 100).rounded())
         guard cents > 0, cents < 100_000_000 else {
             throw CaptureFailure.badInput("That amount didn't make sense.")
@@ -165,13 +166,33 @@ struct LogExpenseBackgroundIntent: AppIntent {
             fields["categoryId"] = category.id
             fields["categoryName"] = category.name
         }
+        let id: String
         do {
-            try CaptureQueue.enqueue(type: "expense", fields: fields)
+            id = try CaptureQueue.enqueue(type: "expense", fields: fields)
         } catch {
             throw CaptureFailure.writeFailed
         }
         let target = category?.name ?? "uncategorized"
-        return .result(dialog: "Logged \(dollars(cents)) to \(target).")
+        LastCapture.remember(id: id, summary: "the \(dollars(cents)) expense")
+
+        // Month-to-date context — spoken only when today-fresh, and the
+        // just-captured amount is added in so the number is true.
+        var detail: String?
+        if let category,
+           let today = TodayStore.loadFresh(),
+           let spent = today.monthSpendCentsByCategory?[category.id] {
+            detail =
+                "\(category.name) this month: \(centsLabel(spent + cents))"
+        }
+        return .result(
+            dialog: "Logged \(dollars(cents)) to \(target). Say 'undo that "
+                + "in Life Assist' to take it back.",
+            view: CaptureSnippetView(
+                icon: "dollarsign.circle",
+                headline: "\(dollars(cents)) · \(target)",
+                detail: detail
+            )
+        )
     }
 }
 
@@ -199,12 +220,14 @@ struct LogTimeBackgroundIntent: AppIntent {
             "budgetName": category.name,
         ]
         if let note, !note.isEmpty { fields["note"] = note }
+        let id: String
         do {
-            try CaptureQueue.enqueue(type: "time", fields: fields)
+            id = try CaptureQueue.enqueue(type: "time", fields: fields)
         } catch {
             throw CaptureFailure.writeFailed
         }
         let amount = hours == 1 ? "1 hour" : "\(hours) hours"
+        LastCapture.remember(id: id, summary: "the \(amount) on \(category.name)")
         return .result(dialog: "Logged \(amount) on \(category.name).")
     }
 }
@@ -222,11 +245,13 @@ struct ParkIdeaBackgroundIntent: AppIntent {
         guard !text.isEmpty else {
             throw CaptureFailure.badInput("The idea came through empty.")
         }
+        let id: String
         do {
-            try CaptureQueue.enqueue(type: "idea", fields: ["text": text])
+            id = try CaptureQueue.enqueue(type: "idea", fields: ["text": text])
         } catch {
             throw CaptureFailure.writeFailed
         }
+        LastCapture.remember(id: id, summary: "that idea")
         return .result(
             dialog: "Parked. It cools for a week before you decide.")
     }
@@ -275,8 +300,9 @@ struct AddReminderBackgroundIntent: AppIntent {
             fields["oneShotDateIso"] =
                 ISO8601DateFormatter().string(from: fireDate)
         }
+        let id: String
         do {
-            try CaptureQueue.enqueue(
+            id = try CaptureQueue.enqueue(
                 type: "reminder",
                 fields: fields,
                 notification: armed
@@ -284,6 +310,7 @@ struct AddReminderBackgroundIntent: AppIntent {
         } catch {
             throw CaptureFailure.writeFailed
         }
+        LastCapture.remember(id: id, summary: "that reminder")
 
         let clock = String(format: "%d:%02d", hour, minute)
         let cadence = isFutureDay ? "once" : "daily"
@@ -303,8 +330,9 @@ struct CheckHabitBackgroundIntent: AppIntent {
     var habit: HabitEntity
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        let id: String
         do {
-            try CaptureQueue.enqueue(type: "habitLog", fields: [
+            id = try CaptureQueue.enqueue(type: "habitLog", fields: [
                 "habitId": habit.id,
                 "habitName": habit.name,
                 "value": 1,
@@ -312,6 +340,7 @@ struct CheckHabitBackgroundIntent: AppIntent {
         } catch {
             throw CaptureFailure.writeFailed
         }
+        LastCapture.remember(id: id, summary: "the \(habit.name) check")
         return .result(dialog: "\(habit.name): done for today.")
     }
 }

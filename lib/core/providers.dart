@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'native/bridge_paths.dart';
 import 'native/capture_queue_drain.dart';
+import 'native/entity_mirror_service.dart';
 import 'notifications/habit_reminder_scheduler.dart';
 import 'notifications/notification_service.dart';
 import 'notifications/reminder_scheduler.dart';
@@ -41,6 +42,12 @@ final captureQueueDrainProvider = Provider<CaptureQueueDrain>(
     ref.watch(databaseProvider),
     ref.watch(bridgePathsProvider),
   ),
+);
+
+/// The mirror writer started in bootstrap; the shell uses it to publish
+/// "today" aggregates for Siri answers. Overridden on mobile/desktop.
+final entityMirrorProvider = Provider<EntityMirrorService>(
+  (ref) => throw UnimplementedError('Overridden in bootstrap'),
 );
 
 /// A ticking clock so time-derived providers roll over without a restart.

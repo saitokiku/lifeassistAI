@@ -104,6 +104,33 @@ class DashboardState {
   bool get weeklyReviewDue =>
       focus.today.weekday == DateTime.sunday && !weeklyReviewDone;
 
+  /// One sayable sentence for Siri's "what's next in Life Assist".
+  String get upNextSpoken => switch (upNext) {
+        UpNextKind.setGoal => 'Set your main goal — the app organizes '
+            'itself around it.',
+        UpNextKind.goalCompleted =>
+          'You finished ${goal?.title ?? 'your goal'}. Take the win.',
+        UpNextKind.moneyCritical => 'Money needs a look before anything '
+            'else today.',
+        UpNextKind.logAction =>
+          "Take one small step toward ${goal?.title ?? 'your goal'} and "
+              'log it.',
+        UpNextKind.logGoalTime =>
+          'Hours on ${goal?.title ?? 'your goal'} are behind this week.',
+        UpNextKind.logMetric => 'Log your progress measure to keep the '
+            'trend honest.',
+        UpNextKind.weeklyReview =>
+          "It's Sunday — five minutes closes the week.",
+        UpNextKind.protectRecovery =>
+          'No downtime logged this week. Protect a block.',
+        UpNextKind.reviewIdeas =>
+          '$ideasDueForReview idea${ideasDueForReview == 1 ? ' is' : 's are'} '
+              'ready for a verdict.',
+        UpNextKind.nextMilestone =>
+          'Next milestone: ${focus.nextMilestone?.title ?? 'on Focus'}.',
+        UpNextKind.steady => "You're on pace. Nothing urgent is waiting.",
+      };
+
   /// The one thing most worth doing right now.
   UpNextKind _resolveUpNext() {
     if (goal == null) return UpNextKind.setGoal;

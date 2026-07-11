@@ -75,7 +75,13 @@ class EntityMirrorService {
       'v': version,
       'generatedAt': DateTime.now().toIso8601String(),
       'budgetCategories': [
-        for (final c in categories) {'id': c.id, 'name': c.name},
+        for (final c in categories)
+          {
+            'id': c.id,
+            'name': c.name,
+            // Cents by bridge contract (the DB migrates later).
+            'monthlyTargetCents': (c.monthlyTarget * 100).round(),
+          },
       ],
       'timeBudgets': [
         for (final b in budgets) {'id': b.id, 'name': b.name, 'kind': b.kind},
@@ -86,8 +92,31 @@ class EntityMirrorService {
     };
 
     await _paths.root.create(recursive: true);
-    final tmp = File('${_paths.entitiesFile.path}.tmp');
+    await _atomicWrite(_paths.entitiesFile, payload);
+  }
+
+  /// Live "today" aggregates for Siri answers and snippet math — written
+  /// by the app shell whenever dashboard state changes. Swift treats a
+  /// date mismatch as stale and says so instead of quoting old numbers.
+  Future<void> writeToday(Map<String, dynamic> payload) async {
+    try {
+      await _paths.root.create(recursive: true);
+      await _atomicWrite(
+        File('${_paths.root.path}/today.json'),
+        {
+          'v': version,
+          'generatedAt': DateTime.now().toIso8601String(),
+          ...payload,
+        },
+      );
+    } catch (_) {
+      // Same rule as the entity mirror: never take the app down.
+    }
+  }
+
+  Future<void> _atomicWrite(File target, Map<String, dynamic> payload) async {
+    final tmp = File('${target.path}.tmp');
     await tmp.writeAsString(jsonEncode(payload), flush: true);
-    await tmp.rename(_paths.entitiesFile.path);
+    await tmp.rename(target.path);
   }
 }

@@ -213,5 +213,23 @@ struct LifeAssistShortcuts: AppShortcutsProvider {
             shortTitle: "Check habit",
             systemImageName: "checkmark.circle"
         )
+        AppShortcut(
+            intent: GetUpNextIntent(),
+            phrases: [
+                "What's next in \(.applicationName)",
+                "What should I do in \(.applicationName)",
+            ],
+            shortTitle: "What's next",
+            systemImageName: "sparkles"
+        )
+        AppShortcut(
+            intent: UndoLastCaptureIntent(),
+            phrases: [
+                "Undo that in \(.applicationName)",
+                "Undo the last capture in \(.applicationName)",
+            ],
+            shortTitle: "Undo capture",
+            systemImageName: "arrow.uturn.backward"
+        )
     }
 }

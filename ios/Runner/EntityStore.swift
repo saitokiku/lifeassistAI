@@ -14,6 +14,12 @@ struct MirrorEntity: Codable {
     let name: String
 }
 
+struct BudgetCategoryMirror: Codable {
+    let id: String
+    let name: String
+    let monthlyTargetCents: Int?
+}
+
 struct TimeBudgetMirror: Codable {
     let id: String
     let name: String
@@ -23,7 +29,7 @@ struct TimeBudgetMirror: Codable {
 struct EntityMirror: Codable {
     let v: Int
     let generatedAt: String?
-    let budgetCategories: [MirrorEntity]
+    let budgetCategories: [BudgetCategoryMirror]
     let timeBudgets: [TimeBudgetMirror]
     let habits: [MirrorEntity]
 }
