@@ -133,8 +133,7 @@ struct UndoLastCaptureIntent: AppIntent {
             throw CaptureFailure.writeFailed
         }
         return .result(
-            dialog: "Removed \(last.summary). It disappears from the app "
-                + "the next time it opens.")
+            dialog: "Removed \(last.summary). It disappears from the app the next time it opens.")
     }
 }
 
@@ -149,8 +148,7 @@ struct GetUpNextIntent: AppIntent {
         guard let today = TodayStore.loadFresh(), let upNext = today.upNext
         else {
             return .result(
-                dialog: "Open Life Assist for a fresh look — I don't have "
-                    + "today's picture yet.")
+                dialog: "Open Life Assist for a fresh look — I don't have today's picture yet.")
         }
         if let score = today.score {
             return .result(
@@ -174,16 +172,14 @@ struct GetBudgetStatusIntent: AppIntent {
               let spent = spendByCategory[category.id]
         else {
             return .result(
-                dialog: "I don't have fresh numbers for "
-                    + "\(category.name) — open Life Assist to see the month.")
+                dialog: "I don't have fresh numbers for \(category.name) — open Life Assist to see the month.")
         }
         let target = EntityStore.load()?.budgetCategories
             .first { $0.id == category.id }?.monthlyTargetCents ?? 0
         if target > 0 {
             let flag = spent > target ? " That's over the target." : ""
             return .result(
-                dialog: "\(category.name): \(centsLabel(spent)) of "
-                    + "\(centsLabel(target)) this month.\(flag)")
+                dialog: "\(category.name): \(centsLabel(spent)) of \(centsLabel(target)) this month.\(flag)")
         }
         return .result(
             dialog: "\(category.name): \(centsLabel(spent)) this month.")

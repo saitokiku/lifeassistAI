@@ -185,8 +185,7 @@ struct LogExpenseBackgroundIntent: AppIntent {
                 "\(category.name) this month: \(centsLabel(spent + cents))"
         }
         return .result(
-            dialog: "Logged \(dollars(cents)) to \(target). Say 'undo that "
-                + "in Life Assist' to take it back.",
+            dialog: "Logged \(dollars(cents)) to \(target). Say 'undo that in Life Assist' to take it back.",
             view: CaptureSnippetView(
                 icon: "dollarsign.circle",
                 headline: "\(dollars(cents)) · \(target)",
