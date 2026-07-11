@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Life Dashboard</string>
+	<string>Life Assist</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,13 +15,44 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>life_dashboard</string>
+	<string>Life Assist</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>capture</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lifeassist</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock Life Assist with Face ID when app lock is on.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Life Assist reads steps, sleep, mindfulness, and workouts to check off the habits you map to them — on this device only.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Life Assist never opens the camera on its own. Access is only requested if you choose to capture a file with the camera while picking a file to import.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Life Assist never browses your photos. Access is only requested if you choose a file from your photo library while importing a backup or statement.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Life Assist does not use or track your location. This permission is referenced by a built-in file picker component and is never requested by the app.</string>
+	<key>LAHealthKitEnabled</key>
+	<false/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>

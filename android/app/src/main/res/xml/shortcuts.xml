@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press launcher shortcuts. Each fires the capture-bus deep link,
+     which opens the matching prefilled sheet. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="capture_expense"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_expense_short"
+        android:shortcutLongLabel="@string/shortcut_expense_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="lifeassist://capture?type=expense"
+            android:targetPackage="com.kaizen.life_dashboard"
+            android:targetClass="com.kaizen.life_dashboard.MainActivity"/>
+    </shortcut>
+    <shortcut
+        android:shortcutId="capture_step"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_step_short"
+        android:shortcutLongLabel="@string/shortcut_step_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="lifeassist://capture?type=step"
+            android:targetPackage="com.kaizen.life_dashboard"
+            android:targetClass="com.kaizen.life_dashboard.MainActivity"/>
+    </shortcut>
+    <shortcut
+        android:shortcutId="capture_idea"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_idea_short"
+        android:shortcutLongLabel="@string/shortcut_idea_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="lifeassist://capture?type=idea"
+            android:targetPackage="com.kaizen.life_dashboard"
+            android:targetClass="com.kaizen.life_dashboard.MainActivity"/>
+    </shortcut>
+    <shortcut
+        android:shortcutId="capture_time"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_time_short"
+        android:shortcutLongLabel="@string/shortcut_time_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="lifeassist://capture?type=time"
+            android:targetPackage="com.kaizen.life_dashboard"
+            android:targetClass="com.kaizen.life_dashboard.MainActivity"/>
+    </shortcut>
+</shortcuts>

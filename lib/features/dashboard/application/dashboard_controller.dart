@@ -1,27 +1,31 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
+import '../../focus/application/focus_controller.dart';
 import '../../habits/application/habits_controller.dart';
-import '../../identity/application/identity_controller.dart';
 import '../../ideas/application/ideas_controller.dart';
-import '../../kaizen/application/kaizen_controller.dart';
 import '../../money/application/money_controller.dart';
+import '../../review/application/review_controller.dart';
+import '../../settings/application/settings_controller.dart';
 import '../../time/application/time_controller.dart';
 import 'dashboard_state.dart';
 
 /// Aggregates the module states into one dashboard state.
 /// Null while any underlying stream is still loading.
 final dashboardStateProvider = Provider<DashboardState?>((ref) {
-  final kaizen = ref.watch(kaizenStateProvider);
+  final focus = ref.watch(focusStateProvider);
   final money = ref.watch(moneyStateProvider);
   final time = ref.watch(timeStateProvider);
-  final identity = ref.watch(identityStateProvider);
+  final settings = ref.watch(settingsProvider).valueOrNull;
   final habits = ref.watch(habitsStateProvider);
   final ideas = ref.watch(ideasStateProvider);
+  final dayPart = ref.watch(dayPartProvider);
+  final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
 
-  if (kaizen == null ||
+  if (focus == null ||
       money == null ||
       time == null ||
-      identity == null ||
+      settings == null ||
       habits == null ||
       ideas == null) {
     return null;
@@ -32,12 +36,14 @@ final dashboardStateProvider = Provider<DashboardState?>((ref) {
       habits.exerciseOrMeditationToday || time.healthHoursToday > 0;
 
   return DashboardState(
-    kaizen: kaizen,
+    focus: focus,
     money: money,
     time: time,
-    identity: identity,
+    settings: settings,
     exerciseOrMeditationToday: exerciseOrMeditationToday,
     parkedIdeaCount: ideas.parkedCount,
     ideasDueForReview: ideas.dueForReview.length,
+    dayPart: dayPart,
+    weeklyReviewDone: weeklyReview != null,
   );
 });

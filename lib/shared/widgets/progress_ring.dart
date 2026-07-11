@@ -26,12 +26,13 @@ class ProgressRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clamped = progress.clamp(0.0, 1.0).toDouble();
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return SizedBox(
       width: size,
       height: size,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: clamped, end: clamped),
-        duration: AppMotion.sweep,
+        duration: reduceMotion ? Duration.zero : AppMotion.sweep,
         curve: AppMotion.easeOut,
         builder: (context, animated, child) => CustomPaint(
           painter: _RingPainter(

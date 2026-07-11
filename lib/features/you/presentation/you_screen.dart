@@ -2,19 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../habits/application/habits_controller.dart';
 import '../../identity/application/identity_controller.dart';
+import '../../identity/presentation/widgets/philosophy_card.dart';
+import '../../identity/presentation/widgets/statement_editor.dart';
+import '../../identity/presentation/widgets/statement_list.dart';
 import '../../ideas/application/ideas_controller.dart';
+import '../../journal/application/journal_controller.dart';
 import '../../reminders/application/reminders_controller.dart';
+import '../../review/application/review_controller.dart';
+import '../../review/presentation/weekly_review_sheet.dart';
+import '../../search/presentation/search_sheet.dart';
+import '../../settings/application/settings_controller.dart';
 
-/// The You tab: direction and systems in one place.
-///
-/// Identity leads (the "why"), then the supporting systems — habits, ideas,
-/// reminders, settings — each with a live one-line status.
+/// The You tab: who this is for, in their own words — a personal line,
+/// operating principles — then the supporting systems, each with a live
+/// one-line status.
 class YouScreen extends ConsumerWidget {
   const YouScreen({super.key});
 
@@ -22,85 +31,72 @@ class YouScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final identity = ref.watch(identityStateProvider);
+    final settings = ref.watch(settingsProvider).valueOrNull;
     final habits = ref.watch(habitsStateProvider);
     final ideas = ref.watch(ideasStateProvider);
     final reminders = ref.watch(remindersStateProvider);
+    final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
+    final journalToday = ref.watch(todayJournalProvider).valueOrNull?.length;
 
     final doneToday = habits?.habits.where((h) => h.doneToday).length;
     final habitCount = habits?.habits.length;
     final dueCount = ideas?.dueForReview.length ?? 0;
     final coolingCount = ideas?.cooling.length ?? 0;
-    final goalCount = identity?.goals.length;
+
+    final name = settings?.displayName ?? '';
 
     return Scaffold(
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpace.screen, AppSpace.lg, AppSpace.screen, AppSpace.xxl,
+              AppSpace.screen,
+              AppSpace.lg,
+              AppSpace.screen,
+              AppSpace.xxl,
             ),
             children: [
-              Text('You', style: theme.textTheme.headlineSmall),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name.isEmpty ? 'You' : name,
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Search everything',
+                    onPressed: () => SearchSheet.show(context),
+                    icon: const Icon(Icons.search_rounded),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpace.xs),
               Text(
-                'Direction, systems, and settings.',
+                AppCopy.youTagline,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpace.xl),
-              AppCard(
-                tinted: true,
-                onTap: () => context.push('/identity'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Identity & direction',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: theme.colorScheme.textTertiary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      identity == null
-                          ? 'Philosophy, goals, and the freedom target.'
-                          : identity.philosophyText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    if (goalCount != null && goalCount > 0) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '$goalCount goal${goalCount == 1 ? '' : 's'} in play',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
+              PhilosophyCard(philosophyText: identity?.philosophyText ?? ''),
+              SectionHeader(
+                title: 'Operating principles',
+                trailing: TextButton.icon(
+                  onPressed: () => StatementEditor.show(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add'),
                 ),
               ),
-              const SizedBox(height: AppSpace.cardGap),
+              StatementList(statements: identity?.statements ?? const []),
+              const SectionHeader(title: 'Rituals'),
+              _ReviewRow(done: weeklyReview != null),
+              const SectionHeader(title: 'Systems'),
               _HubRow(
                 icon: Icons.check_circle_outline,
                 title: 'Habits',
                 caption: habitCount == null
-                    ? 'Daily support systems.'
+                    ? 'Small daily supports.'
                     : habitCount == 0
                         ? 'Nothing to check off yet.'
                         : '$doneToday of $habitCount done today',
@@ -111,11 +107,11 @@ class YouScreen extends ConsumerWidget {
                 icon: Icons.lightbulb_outline,
                 title: 'Ideas',
                 caption: ideas == null
-                    ? 'The parking lot.'
+                    ? 'A parking lot for new ideas.'
                     : dueCount > 0
-                        ? '$dueCount due for a verdict · $coolingCount cooling'
+                        ? '$dueCount waiting on a decision · $coolingCount cooling'
                         : coolingCount > 0
-                            ? '$coolingCount cooling — captured, not chased'
+                            ? '$coolingCount cooling — parked for now'
                             : 'The lot is clear.',
                 route: '/ideas',
                 attention: dueCount > 0,
@@ -125,24 +121,99 @@ class YouScreen extends ConsumerWidget {
                 icon: Icons.notifications_outlined,
                 title: 'Reminders',
                 caption: reminders == null
-                    ? 'The daily rhythm.'
+                    ? 'Gentle nudges through the day.'
                     : !reminders.platformSupported
                         ? 'Not available on web.'
                         : !reminders.appNotificationsEnabled
                             ? 'Paused — notifications are off'
-                            : '${reminders.enabledCount} on, holding the rhythm',
+                            : '${reminders.enabledCount} on through the day',
                 route: '/reminders',
+              ),
+              const SizedBox(height: AppSpace.cardGap),
+              _HubRow(
+                icon: Icons.edit_note_rounded,
+                title: 'Journal',
+                caption: journalToday == null
+                    ? 'One honest line a day.'
+                    : journalToday == 0
+                        ? "Today isn't written yet."
+                        : 'Today is written · '
+                            '$journalToday line${journalToday == 1 ? '' : 's'}',
+                route: '/journal',
               ),
               const SizedBox(height: AppSpace.cardGap),
               _HubRow(
                 icon: Icons.settings_outlined,
                 title: 'Settings',
-                caption: 'Targets, appearance, backup & data.',
+                caption: 'Name, targets, appearance, backup & data.',
                 route: '/settings',
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The weekly review ritual entry, with an honest status line.
+class _ReviewRow extends StatelessWidget {
+  const _ReviewRow({required this.done});
+
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return AppCard(
+      onTap: () => WeeklyReviewSheet.show(context),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: scheme.primaryTint,
+              borderRadius: BorderRadius.circular(AppRadius.chip + 2),
+            ),
+            child: const Icon(
+              Icons.history_edu_outlined,
+              size: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpace.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Weekly review', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  done
+                      ? 'This week is written. Edit any time.'
+                      : 'Five minutes to close the week — due Sunday.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: scheme.textTertiary,
+          ),
+        ],
       ),
     );
   }

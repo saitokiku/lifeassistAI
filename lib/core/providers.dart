@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'native/bridge_paths.dart';
+import 'native/capture_queue_drain.dart';
+import 'native/entity_mirror_service.dart';
+import 'notifications/habit_reminder_scheduler.dart';
 import 'notifications/notification_service.dart';
 import 'notifications/reminder_scheduler.dart';
 import 'storage/app_database.dart';
 import 'storage/preferences_service.dart';
+import 'utils/date_utils.dart';
 
 /// App-level singletons. Database and preferences are created in bootstrap
 /// and injected via ProviderScope overrides; tests override them the same way.
@@ -22,11 +27,66 @@ final reminderSchedulerProvider = Provider<ReminderScheduler>(
   (ref) => ReminderScheduler(ref.watch(notificationServiceProvider)),
 );
 
-/// A ticking "today" so week/month windows roll over without a restart.
+final habitReminderSchedulerProvider = Provider<HabitReminderScheduler>(
+  (ref) => HabitReminderScheduler(ref.watch(notificationServiceProvider)),
+);
+
+/// Filesystem bridge to the Swift side (entity mirror + capture queue).
+/// Overridden in bootstrap on mobile/desktop; absent on web.
+final bridgePathsProvider = Provider<BridgePaths>(
+  (ref) => throw UnimplementedError('Overridden in bootstrap'),
+);
+
+final captureQueueDrainProvider = Provider<CaptureQueueDrain>(
+  (ref) => CaptureQueueDrain(
+    ref.watch(databaseProvider),
+    ref.watch(bridgePathsProvider),
+  ),
+);
+
+/// The mirror writer started in bootstrap; the shell uses it to publish
+/// "today" aggregates for Siri answers. Overridden on mobile/desktop.
+final entityMirrorProvider = Provider<EntityMirrorService>(
+  (ref) => throw UnimplementedError('Overridden in bootstrap'),
+);
+
+/// A ticking clock so time-derived providers roll over without a restart.
+/// Nothing should watch this directly — depend on [dayProvider] or
+/// [dayPartProvider], which only notify when their coarser value changes.
 final clockProvider = StreamProvider<DateTime>((ref) async* {
   yield DateTime.now();
   yield* Stream.periodic(const Duration(minutes: 1), (_) => DateTime.now());
 });
 
-DateTime readNow(Ref ref) =>
-    ref.watch(clockProvider).valueOrNull ?? DateTime.now();
+/// Today as a date-only value. Recomputed every minute, but equal values
+/// don't notify — dependents (and their drift streams) rebuild once per
+/// calendar day instead of once per minute.
+final dayProvider = Provider<DateTime>((ref) {
+  final now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
+  return AppDateUtils.dateOnly(now);
+});
+
+/// The date every data window derives from.
+DateTime readToday(Ref ref) => ref.watch(dayProvider);
+
+/// Coarse time of day for greeting/emphasis. Notifies at most a few times
+/// a day, so hour-aware UI doesn't pay the per-minute rebuild either.
+enum DayPart {
+  late_,
+  morning,
+  afternoon,
+  evening;
+
+  static DayPart of(DateTime now) {
+    final h = now.hour;
+    if (h < 5) return DayPart.late_;
+    if (h < 12) return DayPart.morning;
+    if (h < 17) return DayPart.afternoon;
+    return DayPart.evening;
+  }
+}
+
+final dayPartProvider = Provider<DayPart>((ref) {
+  final now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
+  return DayPart.of(now);
+});

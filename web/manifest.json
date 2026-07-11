@@ -1,11 +1,11 @@
 {
-    "name": "life_dashboard",
-    "short_name": "life_dashboard",
+    "name": "Life Assist",
+    "short_name": "Life Assist",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "One quiet place to run your life.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

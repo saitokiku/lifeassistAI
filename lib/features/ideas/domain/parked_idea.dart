@@ -20,7 +20,6 @@ extension ParkedIdeaX on ParkedIdea {
       AppDateUtils.daysUntil(reviewDateTime, from: today);
 
   /// An idea may be activated (worked on) only when it directly helps
-  /// Kaizen this week, or its 7-day cooling period has passed.
-  bool canActivate(DateTime today) =>
-      directlyHelpsKaizenThisWeek || !isCooling(today);
+  /// the main goal right now, or its 7-day cooling period has passed.
+  bool canActivate(DateTime today) => helpsMainGoal || !isCooling(today);
 }

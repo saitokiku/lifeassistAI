@@ -29,7 +29,6 @@ class SurplusCard extends StatelessWidget {
     final label = ScoreUtils.surplusLabel(
       projectedSurplus: snapshot.projectedSurplus,
       targetSurplusLow: snapshot.targetSurplusLow,
-      targetSurplusHigh: snapshot.targetSurplusHigh,
     );
 
     return AppCard(

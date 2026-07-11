@@ -10,6 +10,9 @@ class AppDateUtils {
 
   static DateTime parseDateKey(String key) => DateTime.parse(key);
 
+  /// Like [parseDateKey] but null on malformed input instead of throwing.
+  static DateTime? tryParseDateKey(String key) => DateTime.tryParse(key);
+
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   static bool isSameDay(DateTime a, DateTime b) =>
@@ -25,7 +28,8 @@ class AppDateUtils {
   static DateTime endOfWeek(DateTime date) =>
       startOfWeek(date).add(const Duration(days: 6));
 
-  static DateTime startOfMonth(DateTime date) => DateTime(date.year, date.month);
+  static DateTime startOfMonth(DateTime date) =>
+      DateTime(date.year, date.month);
 
   static int daysInMonth(DateTime date) =>
       DateTime(date.year, date.month + 1, 0).day;
@@ -74,9 +78,9 @@ class AppDateUtils {
     return dateOnly(target).difference(a).inDays;
   }
 
-  /// Roth IRA contribution deadline for the tax year containing [now]:
-  /// April 15 of the following year.
-  static DateTime rothIraDeadline(DateTime now) {
+  /// Retirement-contribution deadline for the tax year containing [now]:
+  /// April 15 of the following year (used by a legacy dynamic countdown).
+  static DateTime retirementContributionDeadline(DateTime now) {
     final thisYearDeadline = DateTime(now.year, 4, 15);
     if (!dateOnly(now).isAfter(thisYearDeadline)) return thisYearDeadline;
     return DateTime(now.year + 1, 4, 15);

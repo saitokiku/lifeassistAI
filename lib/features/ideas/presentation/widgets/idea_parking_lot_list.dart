@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/haptics.dart';
@@ -42,8 +43,8 @@ class _IdeaParkingLotListState extends State<IdeaParkingLotList> {
         child: EmptyState(
           icon: Icons.lightbulb_outline,
           title: 'The lot is empty.',
-          message: 'When the next shiny idea shows up, park it here — '
-              'it keeps the hunt clean.',
+          message: 'Park the next idea that grabs you. '
+              '${AppCopy.ideasCoolingExplainer}',
           actionLabel: 'Park an idea',
           onAction: () => IdeaCaptureForm.show(context),
         ),
@@ -85,12 +86,37 @@ class _IdeaParkingLotListState extends State<IdeaParkingLotList> {
             ),
           ),
           if (_showDecided)
-            for (final idea in decided)
-              _DecidedRow(idea: idea, today: state.today),
+            // Grouped by verdict so the pile reads as three piles, not one.
+            for (final verdict in const [
+              IdeaDecision.integrate,
+              IdeaDecision.later,
+              IdeaDecision.ignore,
+            ])
+              ..._verdictGroup(verdict, decided, state.today),
         ],
       ],
     );
   }
+}
+
+List<Widget> _verdictGroup(
+  IdeaDecision verdict,
+  List<ParkedIdea> decided,
+  DateTime today,
+) {
+  final group = decided.where((i) => i.decisionEnum == verdict).toList();
+  if (group.isEmpty) return const [];
+  return [
+    Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm, left: AppSpace.xs),
+      child: StatusBadge(
+        label: '${verdict.label} · ${group.length}',
+        level: verdict.level,
+      ),
+    ),
+    for (final idea in group) _DecidedRow(idea: idea, today: today),
+    const SizedBox(height: AppSpace.sm),
+  ];
 }
 
 /// A settled idea, kept compact. The only action is Reopen — re-deciding

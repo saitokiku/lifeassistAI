@@ -9,10 +9,9 @@ import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
 import '../../../settings/application/settings_controller.dart';
-import '../../domain/life_philosophy.dart';
 
-/// The philosophy card: the user's one line up top, the triad underneath.
-/// Tap anywhere (or the pencil) to edit the line — it saves via settings.
+/// The user's personal line — a short reminder of how they want to live.
+/// Tap anywhere (or the pencil) to edit; it saves via settings.
 class PhilosophyCard extends ConsumerWidget {
   const PhilosophyCard({super.key, required this.philosophyText});
 
@@ -34,18 +33,17 @@ class PhilosophyCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'PHILOSOPHY',
+                  'YOUR LINE',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.primary,
+                    color: theme.colorScheme.brandLabel,
                   ),
                 ),
               ),
               IconButton(
-                tooltip: 'Edit philosophy',
+                tooltip: 'Edit your line',
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => _edit(context),
                 icon: Icon(
                   Icons.edit_outlined,
@@ -57,20 +55,15 @@ class PhilosophyCard extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpace.xs),
           Text(
-            hasLine ? line : 'Write the one line you run on.',
+            hasLine
+                ? line
+                : 'A short line that reminds you what this is all for. '
+                    'Optional.',
             style: hasLine
                 ? theme.textTheme.titleMedium?.copyWith(height: 1.4)
                 : theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-          ),
-          const SizedBox(height: AppSpace.md),
-          Text(
-            LifePhilosophy.triad.join(' · '),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.textTertiary,
-              letterSpacing: 0.2,
-            ),
           ),
         ],
       ),
@@ -124,8 +117,8 @@ class _PhilosophyEditorState extends ConsumerState<_PhilosophyEditor> {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: 'Philosophy',
-      subtitle: 'The one line you run on.',
+      title: 'Your line',
+      subtitle: 'A sentence that keeps you pointed the right way.',
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
         AppTextField(

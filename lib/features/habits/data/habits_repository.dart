@@ -20,14 +20,29 @@ class HabitsRepository {
     return query.watch();
   }
 
-  Stream<List<HabitLog>> watchAllLogs() => (_db.select(_db.habitLogs)
-        ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-      .watch();
+  Future<List<Habit>> getHabits() => _db.select(_db.habits).get();
+
+  /// Logs newest-first, bounded to a trailing window — enough for streaks
+  /// and the heatmap without streaming the whole table forever.
+  Stream<List<HabitLog>> watchRecentLogs(
+      {required DateTime today, int sinceDays = 190}) {
+    final from = AppDateUtils.dateKey(
+        today.subtract(Duration(days: sinceDays)));
+    return (_db.select(_db.habitLogs)
+          ..where((t) => t.date.isBiggerOrEqualValue(from))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
 
   Future<void> createHabit({
     required String name,
     required String type,
     String? unit,
+    int weekdays = 127,
+    int? reminderHour,
+    int? reminderMinute,
+    String? healthMetric,
+    double? healthTarget,
   }) async {
     final existing = await _db.select(_db.habits).get();
     await _db.into(_db.habits).insert(Habit(
@@ -35,13 +50,19 @@ class HabitsRepository {
           name: name,
           type: type,
           unit: unit,
+          weekdays: weekdays,
+          reminderHour: reminderHour,
+          reminderMinute: reminderMinute,
+          healthMetric: healthMetric,
+          healthTarget: healthTarget,
           sortOrder: existing.length,
           isArchived: false,
           createdAt: DateTime.now(),
         ));
   }
 
-  Future<void> updateHabit(Habit habit) => _db.update(_db.habits).replace(habit);
+  Future<void> updateHabit(Habit habit) =>
+      _db.update(_db.habits).replace(habit);
 
   Future<void> deleteHabit(String id) => _db.transaction(() async {
         await (_db.delete(_db.habitLogs)..where((t) => t.habitId.equals(id)))
@@ -49,12 +70,14 @@ class HabitsRepository {
         await (_db.delete(_db.habits)..where((t) => t.id.equals(id))).go();
       });
 
-  /// Logs (or replaces) a habit's value for a date.
+  /// Logs (or replaces) a habit's value for a date. [source] records who
+  /// wrote it; a manual edit of an automated log takes ownership.
   Future<void> upsertLog({
     required String habitId,
     required DateTime date,
     required double value,
     String? note,
+    String source = 'manual',
   }) async {
     final key = AppDateUtils.dateKey(date);
     final existing = await (_db.select(_db.habitLogs)
@@ -62,7 +85,11 @@ class HabitsRepository {
         .getSingleOrNull();
     if (existing != null) {
       await (_db.update(_db.habitLogs)..where((t) => t.id.equals(existing.id)))
-          .write(HabitLogsCompanion(value: Value(value), note: Value(note)));
+          .write(HabitLogsCompanion(
+        value: Value(value),
+        note: Value(note),
+        source: Value(source),
+      ));
     } else {
       await _db.into(_db.habitLogs).insert(HabitLog(
             id: _uuid.v4(),
@@ -70,6 +97,7 @@ class HabitsRepository {
             date: key,
             value: value,
             note: note,
+            source: source,
           ));
     }
   }

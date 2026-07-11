@@ -67,8 +67,9 @@ class TimeState {
       .where((p) => p.kind == kind)
       .fold(0.0, (sum, p) => sum + p.targetHours);
 
-  double get kaizenHoursThisWeek => hoursForKind(TimeCategoryKind.kaizen);
-  double get kaizenWeeklyTarget => targetForKind(TimeCategoryKind.kaizen);
+  /// Hours invested in the main goal this week, and their target.
+  double get goalHoursThisWeek => hoursForKind(TimeCategoryKind.goal);
+  double get goalWeeklyTarget => targetForKind(TimeCategoryKind.goal);
 
   double get recoveryHoursThisWeek =>
       progress.where((p) => p.kind.countsAsRecovery).fold(
@@ -90,13 +91,13 @@ class TimeState {
         .toSet();
     final todayKey = AppDateUtils.dateKey(now);
     return weekBlocks
-        .where((b) => b.date == todayKey && healthBudgetIds.contains(b.budgetId))
+        .where(
+            (b) => b.date == todayKey && healthBudgetIds.contains(b.budgetId))
         .fold(0.0, (sum, b) => sum + b.hours);
   }
 
   /// The unlogged remainder of today. Available time is the real budget.
-  double get availableHoursToday =>
-      (24 - hoursLoggedToday).clamp(0.0, 24.0);
+  double get availableHoursToday => (24 - hoursLoggedToday).clamp(0.0, 24.0);
 
   double get totalTargetHours =>
       progress.fold(0.0, (sum, p) => sum + p.targetHours);

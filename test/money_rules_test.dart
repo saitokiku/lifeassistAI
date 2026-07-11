@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_dashboard/core/storage/app_database.dart';
+import 'package:life_dashboard/core/utils/money.dart';
 import 'package:life_dashboard/core/utils/money_math.dart';
 import 'package:life_dashboard/features/money/domain/money_flag.dart';
 import 'package:life_dashboard/features/money/domain/monthly_money_snapshot.dart';
@@ -14,7 +15,7 @@ BudgetCategory category({
   return BudgetCategory(
     id: id,
     name: name,
-    monthlyTarget: target,
+    monthlyTargetCents: centsFromAmount(target),
     flagType: flagType,
     sortOrder: 0,
     createdAt: now,
@@ -32,7 +33,7 @@ TransactionEntry tx({
       id: 'tx-$amount-$categoryId',
       categoryId: categoryId,
       date: date,
-      amount: amount,
+      amountCents: centsFromAmount(amount),
       description: 'test',
       isIntentional: intentional,
       createdAt: DateTime(2026),
@@ -42,18 +43,21 @@ void main() {
   group('MoneyMath projections', () {
     test('projected spend extrapolates linearly', () {
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 10, daysInMonth: 30),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 10, daysInMonth: 30),
         300,
       );
     });
 
     test('guards day zero and invalid inputs', () {
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 0, daysInMonth: 30),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 0, daysInMonth: 30),
         100,
       );
       expect(
-        MoneyMath.projectedSpend(spendSoFar: 100, dayOfMonth: 5, daysInMonth: 0),
+        MoneyMath.projectedSpend(
+            spendSoFar: 100, dayOfMonth: 5, daysInMonth: 0),
         100,
       );
     });
@@ -67,21 +71,24 @@ void main() {
 
     test('within target pace', () {
       expect(
-        MoneyMath.withinTargetPace(projectedSurplus: 3200, targetSurplusLow: 3200),
+        MoneyMath.withinTargetPace(
+            projectedSurplus: 3200, targetSurplusLow: 3200),
         isTrue,
       );
       expect(
-        MoneyMath.withinTargetPace(projectedSurplus: 3100, targetSurplusLow: 3200),
+        MoneyMath.withinTargetPace(
+            projectedSurplus: 3100, targetSurplusLow: 3200),
         isFalse,
       );
     });
   });
 
   group('Category flag rules', () {
-    test('warnOverTarget: Amazon over \$258 warns', () {
+    test('warnOverTarget: spending past the target warns', () {
       final flag = MoneyFlagRules.evaluateCategory(
-        category: category(name: 'Amazon', target: 258, flagType: 'warnOverTarget'),
-        spent: 259,
+        category:
+            category(name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
+        spentCents: centsFromAmount(259),
         allIntentional: false,
       );
       expect(flag, isNotNull);
@@ -89,19 +96,20 @@ void main() {
 
       expect(
         MoneyFlagRules.evaluateCategory(
-          category:
-              category(name: 'Amazon', target: 258, flagType: 'warnOverTarget'),
-          spent: 258,
+          category: category(
+              name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
+          spentCents: centsFromAmount(258),
           allIntentional: false,
         ),
         isNull,
       );
     });
 
-    test('criticalOverZero: any weed/poker spend is critical', () {
+    test('criticalOverZero: any spend at all is critical', () {
       final flag = MoneyFlagRules.evaluateCategory(
-        category: category(name: 'Weed', target: 0, flagType: 'criticalOverZero'),
-        spent: 0.01,
+        category: category(
+            name: 'Impulse buys', target: 0, flagType: 'criticalOverZero'),
+        spentCents: centsFromAmount(0.01),
         allIntentional: true,
       );
       expect(flag!.severity, MoneyFlagSeverity.critical);
@@ -110,7 +118,7 @@ void main() {
     test('warnOverZero: travel spend warns', () {
       final flag = MoneyFlagRules.evaluateCategory(
         category: category(name: 'Travel', target: 0, flagType: 'warnOverZero'),
-        spent: 50,
+        spentCents: centsFromAmount(50),
         allIntentional: true,
       );
       expect(flag!.severity, MoneyFlagSeverity.warning);
@@ -118,17 +126,17 @@ void main() {
 
     test('warnOverZeroUnlessIntentional respects intentional flag', () {
       final cat = category(
-          name: 'Restaurants/desserts',
+          name: 'Eating out',
           target: 0,
           flagType: 'warnOverZeroUnlessIntentional');
       expect(
         MoneyFlagRules.evaluateCategory(
-            category: cat, spent: 40, allIntentional: false),
+            category: cat, spentCents: centsFromAmount(40), allIntentional: false),
         isNotNull,
       );
       expect(
         MoneyFlagRules.evaluateCategory(
-            category: cat, spent: 40, allIntentional: true),
+            category: cat, spentCents: centsFromAmount(40), allIntentional: true),
         isNull,
       );
     });
@@ -137,7 +145,7 @@ void main() {
       expect(
         MoneyFlagRules.evaluateCategory(
           category: category(name: 'Housing', target: 0, flagType: 'none'),
-          spent: 99999,
+          spentCents: centsFromAmount(99999),
           allIntentional: false,
         ),
         isNull,
@@ -165,36 +173,41 @@ void main() {
 
   group('MonthlyMoneySnapshot', () {
     test('computes rollup, projections, and flags from transactions', () {
-      final amazon = category(
-          name: 'Amazon', target: 258, flagType: 'warnOverTarget', id: 'amazon');
-      final weed = category(
-          name: 'Weed', target: 0, flagType: 'criticalOverZero', id: 'weed');
+      final shopping = category(
+          name: 'Shopping',
+          target: 258,
+          flagType: 'warnOverTarget',
+          id: 'shopping');
+      final impulse = category(
+          name: 'Impulse buys',
+          target: 0,
+          flagType: 'criticalOverZero',
+          id: 'impulse');
 
       final snapshot = MonthlyMoneySnapshot.compute(
         now: DateTime(2026, 7, 10), // day 10 of 31
         monthlyNetIncome: 6942,
         targetSurplusLow: 3200,
         targetSurplusHigh: 3800,
-        categories: [amazon, weed],
+        categories: [shopping, impulse],
         monthTransactions: [
-          tx(amount: 300, categoryId: 'amazon'),
-          tx(amount: 20, categoryId: 'weed'),
+          tx(amount: 300, categoryId: 'shopping'),
+          tx(amount: 20, categoryId: 'impulse'),
           tx(amount: 50, categoryId: null), // uncategorized fog
         ],
-        rothIraAnnualTarget: 7000,
-        rothIraContributed: 3500,
+        retirementAnnualTarget: 7000,
+        retirementContributed: 3500,
         brokerageBalance: 0,
         savingsBalance: 0,
       );
 
       expect(snapshot.spendSoFar, 370);
       expect(snapshot.projectedSpend, closeTo(370 / 10 * 31, 0.001));
-      expect(snapshot.projectedSurplus,
-          closeTo(6942 - 370 / 10 * 31, 0.001));
+      expect(snapshot.projectedSurplus, closeTo(6942 - 370 / 10 * 31, 0.001));
       expect(snapshot.uncategorizedCount, 1);
-      expect(snapshot.rothIraProgress, 0.5);
+      expect(snapshot.retirementProgress, 0.5);
 
-      // Flags: amazon over target (warning), weed critical, uncategorized.
+      // Flags: shopping over target (warning), impulse critical, uncategorized.
       expect(
         snapshot.flags.where((f) => f.severity == MoneyFlagSeverity.critical),
         hasLength(1),

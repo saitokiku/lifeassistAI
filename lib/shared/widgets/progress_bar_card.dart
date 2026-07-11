@@ -53,7 +53,9 @@ class LabeledProgressBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(height / 2),
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: clamped, end: clamped),
-            duration: AppMotion.sweep,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : AppMotion.sweep,
             curve: AppMotion.easeOut,
             builder: (context, value, _) => LinearProgressIndicator(
               value: value,

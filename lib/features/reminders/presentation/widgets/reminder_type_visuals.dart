@@ -13,7 +13,7 @@ const Color _nightIndigo = Color(0xFF8DA2F2);
 extension ReminderTypeVisuals on ReminderType {
   IconData get glyph => switch (this) {
         ReminderType.morningCommand => Icons.wb_twilight,
-        ReminderType.kaizenExperiment => Icons.science,
+        ReminderType.dailyAction => Icons.add_task_rounded,
         ReminderType.moneyCheck => Icons.account_balance_wallet,
         ReminderType.nightReview => Icons.nightlight,
         ReminderType.custom => Icons.notifications,
@@ -21,7 +21,7 @@ extension ReminderTypeVisuals on ReminderType {
 
   Color get tint => switch (this) {
         ReminderType.morningCommand => AppColors.watch,
-        ReminderType.kaizenExperiment => AppColors.primary,
+        ReminderType.dailyAction => AppColors.primary,
         ReminderType.moneyCheck => AppColors.aligned,
         ReminderType.nightReview => _nightIndigo,
         ReminderType.custom => AppColors.neutral,
@@ -31,7 +31,7 @@ extension ReminderTypeVisuals on ReminderType {
   /// prefill only — never forced on saved reminders.
   TimeOfDay get typicalTime => switch (this) {
         ReminderType.morningCommand => const TimeOfDay(hour: 8, minute: 0),
-        ReminderType.kaizenExperiment => const TimeOfDay(hour: 12, minute: 0),
+        ReminderType.dailyAction => const TimeOfDay(hour: 12, minute: 0),
         ReminderType.moneyCheck => const TimeOfDay(hour: 18, minute: 0),
         ReminderType.nightReview => const TimeOfDay(hour: 22, minute: 0),
         ReminderType.custom => const TimeOfDay(hour: 9, minute: 0),

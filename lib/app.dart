@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/constants/app_constants.dart';
+import 'core/security/app_lock.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/application/settings_controller.dart';
 import 'routing/app_router.dart';
@@ -21,6 +22,8 @@ class LifeDashboardApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) =>
+          AppLockGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }

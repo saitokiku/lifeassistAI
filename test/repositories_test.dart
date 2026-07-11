@@ -1,12 +1,14 @@
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_dashboard/core/storage/app_database.dart';
 import 'package:life_dashboard/core/storage/seed_service.dart';
+import 'package:life_dashboard/features/focus/data/focus_repository.dart';
 import 'package:life_dashboard/features/habits/data/habits_repository.dart';
 import 'package:life_dashboard/features/ideas/data/ideas_repository.dart';
-import 'package:life_dashboard/features/kaizen/data/kaizen_repository.dart';
+import 'package:life_dashboard/features/journal/data/journal_repository.dart';
 import 'package:life_dashboard/features/money/data/money_repository.dart';
+import 'package:life_dashboard/features/search/data/search_repository.dart';
 import 'package:life_dashboard/features/settings/data/backup_service.dart';
 import 'package:life_dashboard/features/settings/data/settings_repository.dart';
 import 'package:life_dashboard/features/time/data/time_repository.dart';
@@ -23,41 +25,93 @@ void main() {
   });
 
   group('SeedService', () {
-    test('seeds defaults once and is idempotent', () async {
+    test('seeds neutral defaults once and is idempotent', () async {
       final seed = SeedService(db);
       await seed.seedIfNeeded();
       await seed.seedIfNeeded(); // second run must not duplicate
 
       final categories = await db.select(db.budgetCategories).get();
-      expect(categories, hasLength(12));
-      expect(categories.map((c) => c.name), contains('Amazon'));
+      expect(categories, hasLength(8));
+      expect(categories.map((c) => c.name), contains('Groceries'));
+      // Categories start unopinionated: no targets, no flag rules.
+      expect(categories.every((c) => c.monthlyTargetCents == 0), isTrue);
 
       final budgets = await db.select(db.timeBudgets).get();
-      expect(budgets, hasLength(10));
+      expect(budgets, hasLength(6));
       expect(
-        budgets.firstWhere((b) => b.kind == 'kaizen').weeklyTargetHours,
-        42,
+        budgets.firstWhere((b) => b.kind == 'goal').weeklyTargetHours,
+        10,
       );
 
-      final habits = await db.select(db.habits).get();
-      expect(habits, hasLength(6));
+      expect(await db.select(db.habits).get(), hasLength(3));
+      expect(await db.select(db.reminders).get(), hasLength(3));
+      expect(await db.select(db.countdowns).get(), hasLength(2));
 
-      final reminders = await db.select(db.reminders).get();
-      expect(reminders, hasLength(4));
-
-      final metrics = await db.select(db.growthMetrics).get();
-      expect(metrics.where((m) => m.isActive), hasLength(1));
+      // No goal, metric, statements, or freedom target are pre-seeded —
+      // those are the user's to define.
+      expect(await db.select(db.mainGoals).get(), isEmpty);
+      expect(await db.select(db.growthMetrics).get(), isEmpty);
+      expect(await db.select(db.identityStatements).get(), isEmpty);
+      expect(await db.select(db.freedomTargets).get(), isEmpty);
 
       final settings = await SettingsRepository(db).getSettings();
-      expect(settings.monthlyNetIncome, 6942);
-      expect(settings.targetSurplusLow, 3200);
-      expect(settings.targetSurplusHigh, 3800);
+      expect(settings.monthlyNetIncome, 0);
+      expect(settings.hasIncome, isFalse);
+      expect(settings.philosophyText, isEmpty);
     });
   });
 
-  group('KaizenRepository', () {
+  group('FocusRepository — main goal', () {
+    test('create/watch/status transitions, one open goal at a time', () async {
+      final repo = FocusRepository(db);
+      final first = await repo.createGoal(title: 'Kaizen', why: 'because');
+      expect((await repo.watchCurrentGoal().first)!.id, first.id);
+
+      await repo.setGoalStatus(first.id, 'paused');
+      expect((await repo.watchCurrentGoal().first)!.status, 'paused');
+
+      // A new goal archives the old one.
+      final second = await repo.createGoal(title: 'Run a marathon');
+      final current = await repo.watchCurrentGoal().first;
+      expect(current!.id, second.id);
+      final all = await repo.watchAllGoals().first;
+      expect(all.firstWhere((g) => g.id == first.id).status, 'archived');
+
+      // Completing keeps it current (celebrated, not vanished) and stamps
+      // completedAt; only archiving removes it from the stage.
+      await repo.setGoalStatus(second.id, 'completed');
+      final completed = await repo.watchCurrentGoal().first;
+      expect(completed!.id, second.id);
+      expect(completed.status, 'completed');
+      expect(completed.completedAt, isNotNull);
+
+      await repo.setGoalStatus(second.id, 'archived');
+      expect(await repo.watchCurrentGoal().first, isNull);
+    });
+  });
+
+  group('FocusRepository — milestones', () {
+    test('create, order, done state, delete', () async {
+      final repo = FocusRepository(db);
+      final a = await repo.createMilestone(title: 'Outline');
+      final b = await repo.createMilestone(title: 'First draft');
+      expect(a.sortOrder, 0);
+      expect(b.sortOrder, 1);
+
+      await repo.setMilestoneDone(a.id, true);
+      final ordered = await repo.watchMilestones().first;
+      // Undone milestones lead; done ones sink to the bottom.
+      expect(ordered.first.id, b.id);
+      expect(ordered.last.isDone, isTrue);
+
+      await repo.deleteMilestone(a.id);
+      expect(await repo.watchMilestones().first, hasLength(1));
+    });
+  });
+
+  group('FocusRepository — measures & daily actions', () {
     test('metric CRUD, single-active rule, entry upsert', () async {
-      final repo = KaizenRepository(db);
+      final repo = FocusRepository(db);
       final m1 = await repo.createMetric(
           name: 'Users', unit: 'users', weeklyTarget: 10, makeActive: true);
       final m2 = await repo.createMetric(
@@ -92,9 +146,9 @@ void main() {
       );
     });
 
-    test('experiments persist and delete', () async {
-      final repo = KaizenRepository(db);
-      await repo.logExperiment(
+    test('daily actions persist and delete', () async {
+      final repo = FocusRepository(db);
+      await repo.logAction(
         date: DateTime(2026, 7, 7),
         hypothesis: 'H',
         actionTaken: 'A',
@@ -103,7 +157,7 @@ void main() {
       );
       final all = await db.select(db.dailyExperiments).get();
       expect(all, hasLength(1));
-      await repo.deleteExperiment(all.single.id);
+      await repo.deleteAction(all.single.id);
       expect(await db.select(db.dailyExperiments).get(), isEmpty);
     });
   });
@@ -123,7 +177,7 @@ void main() {
       await repo.deleteCategory(cat.id);
 
       final txs = await db.select(db.transactionEntries).get();
-      expect(txs.single.categoryId, isNull); // fog, not deleted
+      expect(txs.single.categoryId, isNull); // uncategorized, not deleted
     });
 
     test('month filter only returns the current month', () async {
@@ -153,7 +207,8 @@ void main() {
   group('TimeRepository', () {
     test('week blocks filter by week and cascade on budget delete', () async {
       final repo = TimeRepository(db);
-      await repo.createBudget(name: 'Kaizen', kind: 'kaizen', weeklyTargetHours: 42);
+      await repo.createBudget(
+          name: 'Main goal', kind: 'goal', weeklyTargetHours: 10);
       final budget = (await db.select(db.timeBudgets).get()).single;
 
       await repo.logBlock(
@@ -172,7 +227,7 @@ void main() {
     test('blocks since a date, oldest first (history chart)', () async {
       final repo = TimeRepository(db);
       await repo.createBudget(
-          name: 'Kaizen', kind: 'kaizen', weeklyTargetHours: 42);
+          name: 'Main goal', kind: 'goal', weeklyTargetHours: 10);
       final budget = (await db.select(db.timeBudgets).get()).single;
 
       await repo.logBlock(
@@ -210,7 +265,7 @@ void main() {
       final repo = IdeasRepository(db);
       await repo.captureIdea(
         title: 'Shiny thing',
-        directlyHelpsKaizenThisWeek: false,
+        helpsMainGoal: false,
         capturedOn: DateTime(2026, 7, 7),
       );
       final idea = (await db.select(db.parkedIdeas).get()).single;
@@ -221,12 +276,17 @@ void main() {
   });
 
   group('BackupService', () {
-    test('export/import round-trips all tables', () async {
+    test('export/import round-trips all tables including the goal', () async {
       await SeedService(db).seedIfNeeded();
-      final kaizen = KaizenRepository(db);
-      final metric = (await db.select(db.growthMetrics).get()).single;
-      await kaizen.upsertEntry(
+      final focus = FocusRepository(db);
+      await focus.createGoal(title: 'Kaizen', why: 'compounding');
+      await focus.createMilestone(title: 'First milestone');
+      final metric = await focus.createMetric(
+          name: 'Learners', unit: 'users', weeklyTarget: 10, makeActive: true);
+      await focus.upsertEntry(
           metricId: metric.id, date: DateTime(2026, 7, 7), value: 3);
+      await JournalRepository(db)
+          .addEntry('Shipped the export.', now: DateTime(2026, 7, 7));
 
       final backup = BackupService(db);
       final json = await backup.exportJson();
@@ -238,18 +298,59 @@ void main() {
       final result = await backup.importJson(json);
       expect(result.isSuccess, isTrue, reason: result.errorOrNull ?? '');
 
-      expect(await db.select(db.budgetCategories).get(), hasLength(12));
-      expect(await db.select(db.timeBudgets).get(), hasLength(10));
+      expect(await db.select(db.budgetCategories).get(), hasLength(8));
+      expect(await db.select(db.timeBudgets).get(), hasLength(6));
       expect(await db.select(db.growthMetricEntries).get(), hasLength(1));
-      final settings = await SettingsRepository(db).getSettings();
-      expect(settings.monthlyNetIncome, 6942);
+      final goal = (await db.select(db.mainGoals).get()).single;
+      expect(goal.title, 'Kaizen');
+      expect(goal.why, 'compounding');
+      expect(await db.select(db.goals).get(), hasLength(1));
+      expect(
+        (await db.select(db.journalEntries).get()).single.content,
+        'Shipped the export.',
+      );
     });
 
     test('rejects malformed JSON without touching data', () async {
       await SeedService(db).seedIfNeeded();
       final result = await BackupService(db).importJson('not json at all');
       expect(result.isSuccess, isFalse);
-      expect(await db.select(db.budgetCategories).get(), hasLength(12));
+      expect(await db.select(db.budgetCategories).get(), hasLength(8));
+    });
+  });
+
+  group('JournalRepository', () {
+    test('add lands on the given day; edit keeps it there', () async {
+      final repo = JournalRepository(db);
+      await repo.addEntry('  Walked the long way home.  ',
+          now: DateTime(2026, 7, 9, 21));
+      await repo.addEntry('Shipped the pricing page.',
+          now: DateTime(2026, 7, 10, 22));
+
+      final recent = await repo.watchRecent().first;
+      expect(recent, hasLength(2));
+      // Newest day first; whitespace trimmed at the boundary.
+      expect(recent.first.content, 'Shipped the pricing page.');
+      expect(recent.last.content, 'Walked the long way home.');
+      expect(recent.last.date, '2026-07-09');
+
+      final yesterday = recent.last;
+      await repo.updateEntry(yesterday.copyWith(content: 'Long way home.'));
+      final edited = (await repo.watchForDate('2026-07-09').first).single;
+      expect(edited.content, 'Long way home.');
+      expect(edited.date, '2026-07-09'); // editing never moves the day
+
+      await repo.deleteEntry(edited.id);
+      expect(await repo.watchForDate('2026-07-09').first, isEmpty);
+      expect(await repo.watchRecent().first, hasLength(1));
+    });
+
+    test('journal lines show up in search', () async {
+      await JournalRepository(db)
+          .addEntry('Shipped the pricing page.', now: DateTime(2026, 7, 10));
+      final hits = await SearchRepository(db).search('pricing');
+      expect(hits.where((h) => h.group == 'Journal'), hasLength(1));
+      expect(hits.first.route, '/journal');
     });
   });
 }

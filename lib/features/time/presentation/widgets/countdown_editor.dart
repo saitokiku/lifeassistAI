@@ -215,8 +215,7 @@ class _CountdownEditorState extends ConsumerState<CountdownEditor> {
               decoration: InputDecoration(
                 labelText: 'Target date',
                 errorText: _missingDate ? 'Pick a target date.' : null,
-                suffixIcon:
-                    const Icon(Icons.calendar_today_outlined, size: 18),
+                suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
               ),
               isEmpty: _date == null,
               child: _date == null

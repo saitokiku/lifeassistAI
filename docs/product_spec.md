@@ -1,5 +1,10 @@
 # Product spec — Life Dashboard v1
 
+> **Historical (v1).** This document describes the original
+> single-owner build. The v2 revamp made the product universal —
+> see `README.md`, `docs/data_model.md`, and `docs/roadmap.md`
+> for current behavior.
+
 ## Purpose
 
 A local-first personal life operating system for a high-novelty,

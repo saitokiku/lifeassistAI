@@ -77,4 +77,9 @@ extension AppColorsX on ColorScheme {
 
   /// Border for brand-tinted surfaces.
   Color get primaryTintBorder => AppColors.primary.withValues(alpha: 0.28);
+
+  /// Brand color for small text labels. The bright teal reads fine on dark
+  /// surfaces but is ~1.9:1 on white, so light mode uses the deep teal.
+  Color get brandLabel =>
+      _isDark ? AppColors.primary : AppColors.primaryDim;
 }

@@ -20,8 +20,8 @@ class HabitValueSheet extends ConsumerStatefulWidget {
   final HabitView view;
 
   /// Returns true when a value was logged or updated.
-  static Future<bool> show(BuildContext context, {required HabitView view})
-      async {
+  static Future<bool> show(BuildContext context,
+      {required HabitView view}) async {
     final logged = await showAppSheet<bool>(
       context,
       builder: (_) => HabitValueSheet(view: view),
@@ -114,8 +114,7 @@ class _HabitValueSheetState extends ConsumerState<HabitValueSheet> {
           child: TextFormField(
             controller: _value,
             autofocus: true,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],

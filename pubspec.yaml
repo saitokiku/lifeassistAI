@@ -1,7 +1,7 @@
 name: life_dashboard
-description: "Life Dashboard — a personal life operating system. Money = scoreboard. Curiosity = engine. Freedom = goal."
+description: "Life Assist — one quiet place to run your life. The Dart package keeps its original name (life_dashboard) so imports stay stable."
 publish_to: "none"
-version: 0.2.0+2
+version: 1.0.0+2
 
 environment:
   sdk: ^3.5.0
@@ -26,6 +26,9 @@ dependencies:
   share_plus: ^10.1.2
   file_picker: ^8.1.6
   package_info_plus: ^8.1.2
+  app_links: ^6.3.2
+  local_auth: ^2.3.0
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +36,17 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   drift_dev: ^2.20.0
   build_runner: ^2.4.13
+  flutter_launcher_icons: ^0.14.1
+
+# The launcher icon: the day-score ring on the console's dark surface.
+# Regenerate with `dart run flutter_launcher_icons` after editing the PNGs.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/icon/app_icon.png
+  adaptive_icon_background: "#10141B"
+  adaptive_icon_foreground: assets/icon/app_icon_foreground.png
 
 flutter:
   uses-material-design: true

@@ -15,7 +15,7 @@ final ideasProvider = StreamProvider<List<ParkedIdea>>(
 );
 
 final ideasStateProvider = Provider<IdeasState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final ideas = ref.watch(ideasProvider).valueOrNull;
   if (ideas == null) return null;
   return IdeasState(ideas: ideas, today: AppDateUtils.dateOnly(now));
@@ -32,7 +32,7 @@ class IdeasController {
     String? category,
     String? whyTempting,
     String? potentialValue,
-    required bool directlyHelpsKaizenThisWeek,
+    required bool helpsMainGoal,
   }) =>
       _repo.captureIdea(
         title: title,
@@ -40,7 +40,7 @@ class IdeasController {
         category: category,
         whyTempting: whyTempting,
         potentialValue: potentialValue,
-        directlyHelpsKaizenThisWeek: directlyHelpsKaizenThisWeek,
+        helpsMainGoal: helpsMainGoal,
       );
 
   Future<void> updateIdea(ParkedIdea idea) => _repo.updateIdea(idea);

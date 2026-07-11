@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_expense_short">Add expense</string>
+    <string name="shortcut_expense_long">Add an expense</string>
+    <string name="shortcut_step_short">Log a step</string>
+    <string name="shortcut_step_long">Log a step toward your goal</string>
+    <string name="shortcut_idea_short">Park an idea</string>
+    <string name="shortcut_idea_long">Park an idea to decide later</string>
+    <string name="shortcut_time_short">Log time</string>
+    <string name="shortcut_time_long">Log a block of time</string>
+</resources>

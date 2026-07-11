@@ -10,7 +10,7 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
 );
 
-/// DB-backed user settings (income, targets, birthday, philosophy...).
+/// DB-backed user settings (name, income, targets, birthday, philosophy...).
 final settingsProvider = StreamProvider<UserSettings>(
   (ref) => ref.watch(settingsRepositoryProvider).watchSettings(),
 );
@@ -33,10 +33,14 @@ class SettingsController {
 
   SettingsRepository get _repo => _ref.read(settingsRepositoryProvider);
 
-  Future<void> setMonthlyNetIncome(double value) =>
-      _repo.setNumber(SettingsKeys.monthlyNetIncome, value);
+  Future<void> setDisplayName(String name) =>
+      _repo.setValue(SettingsKeys.displayName, name.trim());
 
-  Future<void> setTargetSurplus({required double low, required double high}) async {
+  Future<void> setMonthlyNetIncome(double value) =>
+      _repo.setMonthlyNetIncome(value);
+
+  Future<void> setTargetSurplus(
+      {required double low, required double high}) async {
     await _repo.setNumber(SettingsKeys.targetSurplusLow, low);
     await _repo.setNumber(SettingsKeys.targetSurplusHigh, high);
   }
@@ -45,6 +49,9 @@ class SettingsController {
 
   Future<void> setPhilosophyText(String text) =>
       _repo.setValue(SettingsKeys.philosophyText, text);
+
+  Future<void> setDashboardAreas(Set<DashboardArea> areas) =>
+      _repo.setValue(SettingsKeys.dashboardAreas, DashboardArea.encode(areas));
 
   Future<void> setThemeMode(ThemeMode mode) async {
     await _ref.read(preferencesProvider).setThemeMode(mode);

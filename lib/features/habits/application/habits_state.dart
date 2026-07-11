@@ -1,5 +1,6 @@
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/weekdays.dart';
 import '../domain/habit_log.dart';
 
 /// One habit with its derived streak/weekly numbers.
@@ -26,9 +27,24 @@ class HabitView {
 
   bool get doneToday => todayLog != null;
 
-  int get streak => HabitStats.streak(loggedDays, today);
+  /// Whether the habit's schedule includes today. Off-schedule days don't
+  /// nag and don't break streaks.
+  bool get dueToday => WeekdayMask.isDueOn(habit.weekdays, today);
+
+  /// True when the habit runs on a subset of the week.
+  bool get isScheduled => habit.weekdays & WeekdayMask.all != WeekdayMask.all;
+
+  int get streak =>
+      HabitStats.streak(loggedDays, today, weekdays: habit.weekdays);
 
   int get weeklyCount => HabitStats.weeklyCount(loggedDays, today);
+
+  /// Scheduled days per week, for honest x/y progress.
+  int get scheduledPerWeek =>
+      HabitStats.scheduledCountThisWeek(habit.weekdays);
+
+  bool get hasReminder =>
+      habit.reminderHour != null && habit.reminderMinute != null;
 }
 
 class HabitsState {

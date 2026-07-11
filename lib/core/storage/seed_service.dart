@@ -2,7 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../constants/default_targets.dart';
 import '../constants/reminder_templates.dart';
-import '../utils/date_utils.dart';
+import '../utils/money.dart';
 import 'app_database.dart';
 import 'settings_keys.dart';
 
@@ -10,6 +10,10 @@ import 'settings_keys.dart';
 /// user-editable database record — nothing here is read at display time.
 /// Idempotent: each section only seeds when its table is empty, so a reset
 /// or partial import doesn't duplicate rows.
+///
+/// Seeds are starting points, not opinions: neutral category and budget
+/// names with zeroed money targets. The user's own numbers arrive through
+/// onboarding and the editors.
 class SeedService {
   SeedService(this._db);
 
@@ -27,9 +31,6 @@ class SeedService {
       await _seedHabits(at);
       await _seedReminders(at);
       await _seedCountdowns(at);
-      await _seedIdentity();
-      await _seedFreedomTarget(at);
-      await _seedGrowthMetric(at);
     });
   }
 
@@ -50,13 +51,12 @@ class SeedService {
         DefaultTargets.targetSurplusLow.toString());
     await put(SettingsKeys.targetSurplusHigh,
         DefaultTargets.targetSurplusHigh.toString());
-    await put(SettingsKeys.rothIraAnnualTarget,
-        DefaultTargets.rothIraAnnualTarget.toString());
-    await put(SettingsKeys.rothIraContributed, '0');
+    await put(SettingsKeys.retirementAnnualTarget,
+        DefaultTargets.retirementAnnualTarget.toString());
+    await put(SettingsKeys.retirementContributed, '0');
     await put(SettingsKeys.brokerageBalance, '0');
     await put(SettingsKeys.savingsBalance, '0');
-    await put(SettingsKeys.philosophyText,
-        'Money = scoreboard · Curiosity = engine · Freedom = goal');
+    await put(SettingsKeys.philosophyText, '');
   }
 
   Future<void> _seedBudgetCategories(DateTime at) async {
@@ -67,7 +67,7 @@ class SeedService {
       await _db.into(_db.budgetCategories).insert(BudgetCategory(
             id: _uuid.v4(),
             name: name,
-            monthlyTarget: target,
+            monthlyTargetCents: centsFromAmount(target),
             flagType: flag,
             sortOrder: order++,
             createdAt: at,
@@ -101,6 +101,7 @@ class SeedService {
             name: name,
             type: type,
             unit: unit,
+            weekdays: 127,
             sortOrder: order++,
             isArchived: false,
             createdAt: at,
@@ -120,6 +121,7 @@ class SeedService {
             type: type,
             hour: hour,
             minute: minute,
+            weekdays: 127,
             enabled: true,
             notificationId: notificationIdFor(id),
             createdAt: at,
@@ -132,20 +134,8 @@ class SeedService {
     final count = await _db.select(_db.countdowns).get();
     if (count.isNotEmpty) return;
     final entries = <(String, String?, String?)>[
-      ('Age 28 lock-in', null, 'age28'),
-      ('End of current year', null, 'endOfYear'),
-      ('End of current month', null, 'endOfMonth'),
-      ('Roth IRA contribution deadline', null, 'rothIraDeadline'),
-      (
-        'Lease renewal',
-        AppDateUtils.dateKey(DateTime(at.year + 1, at.month, 1)),
-        null
-      ),
-      (
-        'Kaizen milestone deadline',
-        AppDateUtils.dateKey(AppDateUtils.dateOnly(at).add(const Duration(days: 90))),
-        null
-      ),
+      ('End of the year', null, 'endOfYear'),
+      ('End of the month', null, 'endOfMonth'),
     ];
     var order = 0;
     for (final (title, date, key) in entries) {
@@ -157,51 +147,5 @@ class SeedService {
             sortOrder: order++,
           ));
     }
-  }
-
-  Future<void> _seedIdentity() async {
-    final count = await _db.select(_db.identityStatements).get();
-    if (count.isNotEmpty) return;
-    var order = 0;
-    for (final statement in DefaultTargets.identityStatements) {
-      await _db.into(_db.identityStatements).insert(IdentityStatement(
-            id: _uuid.v4(),
-            content: statement,
-            sortOrder: order++,
-          ));
-    }
-  }
-
-  Future<void> _seedFreedomTarget(DateTime at) async {
-    final count = await _db.select(_db.freedomTargets).get();
-    if (count.isNotEmpty) return;
-    await _db.into(_db.freedomTargets).insert(FreedomTarget(
-          id: _uuid.v4(),
-          title: DefaultTargets.defaultFreedomTargetTitle,
-          description: DefaultTargets.defaultFreedomTargetDescription,
-          targetMonthlyPassiveIncome:
-              DefaultTargets.defaultTargetMonthlyPassiveIncome,
-          targetLiquidNetWorth: DefaultTargets.defaultTargetLiquidNetWorth,
-          currentMonthlyPassiveIncome: 0,
-          currentLiquidNetWorth: 0,
-          targetDate: null,
-          createdAt: at,
-          updatedAt: at,
-        ));
-  }
-
-  Future<void> _seedGrowthMetric(DateTime at) async {
-    final count = await _db.select(_db.growthMetrics).get();
-    if (count.isNotEmpty) return;
-    await _db.into(_db.growthMetrics).insert(GrowthMetric(
-          id: _uuid.v4(),
-          name: DefaultTargets.defaultGrowthMetricName,
-          unit: DefaultTargets.defaultGrowthMetricUnit,
-          currentValue: 0,
-          weeklyTarget: DefaultTargets.defaultGrowthMetricWeeklyTarget,
-          isActive: true,
-          createdAt: at,
-          updatedAt: at,
-        ));
   }
 }

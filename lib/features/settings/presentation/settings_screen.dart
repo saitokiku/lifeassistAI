@@ -13,8 +13,13 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
+import '../../../core/health/health_habit_sync.dart';
+import '../../../core/health/health_service.dart';
+import '../../../core/native/capture_queue_drain.dart';
 import '../../../core/providers.dart';
+import '../../../core/security/app_lock.dart';
 import '../../../core/storage/seed_service.dart';
+import '../../../core/storage/settings_keys.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/formatters.dart';
@@ -63,7 +68,10 @@ class SettingsScreen extends ConsumerWidget {
     } else {
       body = ListView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.screen, AppSpace.lg, AppSpace.screen, AppSpace.xxl,
+          AppSpace.screen,
+          AppSpace.lg,
+          AppSpace.screen,
+          AppSpace.xxl,
         ),
         children: [
           Row(
@@ -74,25 +82,20 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpace.xs),
           Text(
-            'Targets, appearance, and your data.',
+            AppCopy.settingsTagline,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SectionHeader(title: 'Targets'),
+          const SectionHeader(title: 'About you'),
           _SettingsGroup(children: [
             _SettingsRow(
-              icon: Icons.payments_outlined,
-              title: 'Net monthly income',
-              value: Formatters.money(settings.monthlyNetIncome),
-              onTap: () => _IncomeSheet.show(context, settings: settings),
-            ),
-            _SettingsRow(
-              icon: Icons.savings_outlined,
-              title: 'Target surplus range',
-              value:
-                  '${Formatters.money(settings.targetSurplusLow)} – ${Formatters.money(settings.targetSurplusHigh)}',
-              onTap: () => _SurplusSheet.show(context, settings: settings),
+              icon: Icons.person_outline,
+              title: 'Your name',
+              value: settings.displayName.isEmpty
+                  ? 'Not set'
+                  : settings.displayName,
+              onTap: () => _NameSheet.show(context, settings: settings),
             ),
             _SettingsRow(
               icon: Icons.cake_outlined,
@@ -103,10 +106,29 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => _BirthdaySheet.show(context, settings: settings),
             ),
             _SettingsRow(
-              icon: Icons.format_quote_outlined,
-              title: 'Philosophy line',
-              value: settings.philosophyText,
-              onTap: () => _PhilosophySheet.show(context, settings: settings),
+              icon: Icons.outlined_flag,
+              title: 'Main goal',
+              subtitle: 'On the Focus tab.',
+              link: true,
+              onTap: () => context.go('/focus'),
+            ),
+          ]),
+          const SectionHeader(title: 'Targets'),
+          _SettingsGroup(children: [
+            _SettingsRow(
+              icon: Icons.payments_outlined,
+              title: 'Net monthly income',
+              value: settings.hasIncome
+                  ? Formatters.money(settings.monthlyNetIncome)
+                  : 'Not set',
+              onTap: () => _IncomeSheet.show(context, settings: settings),
+            ),
+            _SettingsRow(
+              icon: Icons.savings_outlined,
+              title: 'Target surplus range',
+              value:
+                  '${Formatters.money(settings.targetSurplusLow)} – ${Formatters.money(settings.targetSurplusHigh)}',
+              onTap: () => _SurplusSheet.show(context, settings: settings),
             ),
             _SettingsRow(
               icon: Icons.pie_chart_outline,
@@ -123,6 +145,8 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.go('/time'),
             ),
           ]),
+          const SectionHeader(title: 'Today screen'),
+          _AreasCard(settings: settings),
           const SectionHeader(title: 'Appearance'),
           const _ThemeCard(),
           const SectionHeader(title: 'Notifications'),
@@ -136,10 +160,14 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.go('/reminders'),
             ),
           ]),
+          const SectionHeader(title: 'Privacy'),
+          const _SettingsGroup(children: [_AppLockRow()]),
           const SectionHeader(title: 'Data'),
           const _SettingsGroup(children: [
             _ExportRow(),
             _ImportRow(),
+            _HealthRow(),
+            _FailedCapturesRow(),
           ]),
           const SectionHeader(title: 'Danger zone'),
           _SettingsGroup(children: [
@@ -155,7 +183,8 @@ class SettingsScreen extends ConsumerWidget {
           const SectionHeader(title: 'About'),
           const _SettingsGroup(children: [_AboutRow()]),
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.lg, AppSpace.xs, 0),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpace.xs, AppSpace.lg, AppSpace.xs, 0),
             child: Text(
               'Local-first. No account, no cloud, no analytics.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -272,8 +301,8 @@ class _SettingsRow extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: titleColor),
+                    style:
+                        theme.textTheme.bodyMedium?.copyWith(color: titleColor),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
@@ -336,7 +365,10 @@ class _ThemeCard extends ConsumerWidget {
           const _SettingsRow(icon: Icons.dark_mode_outlined, title: 'Theme'),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpace.lg, 0, AppSpace.lg, AppSpace.lg - AppSpace.xs,
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.lg - AppSpace.xs,
             ),
             child: SegmentedButton<ThemeMode>(
               expandedInsets: EdgeInsets.zero,
@@ -386,7 +418,7 @@ class _NotificationsRowState extends ConsumerState<_NotificationsRow> {
           showErrorSnack(
             context,
             'Blocked at the system level. Allow notifications for '
-            'Life Dashboard, then try again.',
+            '${AppConstants.appName}, then try again.',
           );
         }
       } else {
@@ -421,6 +453,50 @@ class _NotificationsRowState extends ConsumerState<_NotificationsRow> {
   }
 }
 
+/// Biometric/PIN gate on open. Hidden on unsupported devices instead of
+/// showing a switch that can't work.
+class _AppLockRow extends ConsumerStatefulWidget {
+  const _AppLockRow();
+
+  @override
+  ConsumerState<_AppLockRow> createState() => _AppLockRowState();
+}
+
+class _AppLockRowState extends ConsumerState<_AppLockRow> {
+  Future<void> _toggle(bool value) async {
+    Haptics.select();
+    await ref.read(preferencesProvider).setAppLockEnabled(value);
+    if (!mounted) return;
+    setState(() {});
+    showSuccessSnack(
+      context,
+      value ? 'App lock on. Locks when you leave the app.' : 'App lock off.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supported =
+        ref.watch(appLockSupportedProvider).valueOrNull ?? false;
+    final enabled = ref.read(preferencesProvider).appLockEnabled;
+
+    return _SettingsRow(
+      icon: Icons.lock_outline_rounded,
+      title: 'App lock',
+      subtitle: !supported
+          ? 'No screen lock set up on this device.'
+          : enabled
+              ? 'Asks for Face ID / fingerprint / PIN on open.'
+              : 'Off. The app opens without asking.',
+      trailing: Switch(
+        value: enabled && supported,
+        onChanged: supported ? _toggle : null,
+      ),
+      onTap: supported ? () => _toggle(!enabled) : null,
+    );
+  }
+}
+
 /// Export row with an in-row progress state — the tap never feels dead.
 class _ExportRow extends ConsumerStatefulWidget {
   const _ExportRow();
@@ -444,10 +520,24 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
 
   @override
   Widget build(BuildContext context) {
+    final lastBackupAt =
+        ref.watch(settingsProvider).valueOrNull?.lastBackupAt;
+    final String subtitle;
+    if (lastBackupAt == null) {
+      subtitle = 'Everything as one file. Never backed up yet.';
+    } else {
+      final days = DateTime.now().difference(lastBackupAt).inDays;
+      subtitle = switch (days) {
+        0 => 'Last backup: today.',
+        1 => 'Last backup: yesterday.',
+        _ => 'Last backup: $days days ago.',
+      };
+    }
+
     return _SettingsRow(
       icon: Icons.ios_share_outlined,
       title: 'Export backup',
-      subtitle: 'Everything as one file. Also copied to clipboard.',
+      subtitle: subtitle,
       trailing: _busy
           ? const SizedBox(
               width: 16,
@@ -474,6 +564,93 @@ class _ImportRow extends StatelessWidget {
   }
 }
 
+/// Siri/widget captures that couldn't be read stay in a capped graveyard
+/// instead of vanishing — this row exists only while any do.
+/// Apple Health connection row. Invisible unless this build actually
+/// has HealthKit switched on (capability + LAHealthKitEnabled), so a
+/// TestFlight build without it shows nothing to configure.
+class _HealthRow extends ConsumerStatefulWidget {
+  const _HealthRow();
+
+  @override
+  ConsumerState<_HealthRow> createState() => _HealthRowState();
+}
+
+class _HealthRowState extends ConsumerState<_HealthRow> {
+  bool _requested = false;
+
+  Future<void> _connect() async {
+    final service = ref.read(healthServiceProvider);
+    await service.requestPermission();
+    // HealthKit hides read grants; all we honestly know is that the
+    // sheet ran. Sync now — data appears if access was allowed.
+    await ref.read(healthHabitSyncProvider).sync();
+    if (mounted) setState(() => _requested = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    final availability = ref.watch(healthAvailabilityProvider).valueOrNull;
+    if (availability != HealthAvailability.ready) {
+      return const SizedBox.shrink();
+    }
+    return _SettingsRow(
+      icon: Icons.favorite_outline,
+      title: 'Apple Health',
+      subtitle: _requested
+          ? 'Requested. Mapped habits update when the app opens.'
+          : 'Allow access, then map habits to steps, sleep, and more.',
+      onTap: _connect,
+    );
+  }
+}
+
+class _FailedCapturesRow extends ConsumerStatefulWidget {
+  const _FailedCapturesRow();
+
+  @override
+  ConsumerState<_FailedCapturesRow> createState() =>
+      _FailedCapturesRowState();
+}
+
+class _FailedCapturesRowState extends ConsumerState<_FailedCapturesRow> {
+  Future<void> _clear() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Discard unreadable captures?',
+      message: 'These Siri captures could not be imported (unknown '
+          'category, malformed data). Discarding cannot be undone.',
+      confirmLabel: 'Discard them',
+    );
+    if (!confirmed || !mounted) return;
+    await CaptureQueueDrain.clearFailed(ref.read(bridgePathsProvider));
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    final int count;
+    try {
+      count = CaptureQueueDrain.failedCount(ref.watch(bridgePathsProvider));
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+    if (count == 0) return const SizedBox.shrink();
+
+    return _SettingsRow(
+      icon: Icons.error_outline_rounded,
+      iconColor: AppColors.watch,
+      title: count == 1
+          ? '1 Siri capture couldn\'t be read'
+          : '$count Siri captures couldn\'t be read',
+      subtitle: 'Kept for review. Tap to discard.',
+      onTap: _clear,
+    );
+  }
+}
+
 /// Version row with reserved layout — the value fades in, no '…' flash.
 class _AboutRow extends StatefulWidget {
   const _AboutRow();
@@ -493,7 +670,7 @@ class _AboutRowState extends State<_AboutRow> {
         final info = snapshot.data;
         return _SettingsRow(
           icon: Icons.info_outline,
-          title: 'Life Dashboard',
+          title: AppConstants.appName,
           trailing: AnimatedOpacity(
             opacity: info == null ? 0 : 1,
             duration: AppMotion.standard,
@@ -511,24 +688,41 @@ class _AboutRowState extends State<_AboutRow> {
 
 // --- export flow -------------------------------------------------------------
 
-/// Serializes everything, copies it to the clipboard, then opens the OS
-/// share sheet anchored to [context]'s render box (iPad popover contract).
-/// A cancelled share is a quiet no-op — the clipboard copy still stands.
+/// Serializes everything and opens the OS share sheet anchored to
+/// [context]'s render box (iPad popover contract). The clipboard is an
+/// explicit opt-in fallback — a whole-database copy never lands there
+/// silently, because synced clipboards leak.
 Future<void> _runExport(BuildContext context, WidgetRef ref) async {
   // Anchor the share popover (required by iPad; ignored elsewhere).
   final box = context.findRenderObject() as RenderBox?;
-  final origin =
-      box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+  final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
 
   final String json;
   try {
     json = await ref.read(backupServiceProvider).exportJson();
-    // Clipboard is a universal fallback the user can always rely on.
-    await Clipboard.setData(ClipboardData(text: json));
   } catch (_) {
     if (!context.mounted) return;
     showErrorSnack(context, "That didn't export. Try again.");
     return;
+  }
+
+  Future<void> markBackedUp() => ref
+      .read(settingsRepositoryProvider)
+      .setValue(SettingsKeys.lastBackupAt, DateTime.now().toIso8601String());
+
+  void offerClipboardFallback() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Share dismissed. Copy it instead?'),
+        action: SnackBarAction(
+          label: 'Copy',
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: json));
+            await markBackedUp();
+          },
+        ),
+      ),
+    );
   }
 
   final stamp =
@@ -545,7 +739,7 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
       );
       result = await Share.shareXFiles(
         [xfile],
-        text: 'Life Dashboard backup',
+        text: '${AppConstants.appName} backup',
         sharePositionOrigin: origin,
       );
     } else {
@@ -554,20 +748,22 @@ Future<void> _runExport(BuildContext context, WidgetRef ref) async {
       await file.writeAsString(json);
       result = await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Life Dashboard backup',
+        text: '${AppConstants.appName} backup',
         sharePositionOrigin: origin,
       );
     }
     if (!context.mounted) return;
     if (result.status == ShareResultStatus.success) {
-      showSuccessSnack(context, 'Backup shared. Also on your clipboard.');
+      await markBackedUp();
+      if (!context.mounted) return;
+      showSuccessSnack(context, 'Backup saved.');
     } else {
-      showSuccessSnack(context, 'Backup copied to your clipboard.');
+      offerClipboardFallback();
     }
   } catch (_) {
-    // Share cancelled or unavailable; the clipboard copy still stands.
+    // Share unavailable on this platform; offer the clipboard explicitly.
     if (!context.mounted) return;
-    showSuccessSnack(context, 'Backup copied to your clipboard.');
+    offerClipboardFallback();
   }
 }
 
@@ -723,8 +919,8 @@ class _SurplusSheetState extends ConsumerState<_SurplusSheet> {
   }
 }
 
-class _PhilosophySheet extends ConsumerStatefulWidget {
-  const _PhilosophySheet({required this.settings});
+class _NameSheet extends ConsumerStatefulWidget {
+  const _NameSheet({required this.settings});
 
   final UserSettings settings;
 
@@ -734,31 +930,27 @@ class _PhilosophySheet extends ConsumerStatefulWidget {
   }) =>
       showAppSheet<void>(
         context,
-        builder: (_) => _PhilosophySheet(settings: settings),
+        builder: (_) => _NameSheet(settings: settings),
       );
 
   @override
-  ConsumerState<_PhilosophySheet> createState() => _PhilosophySheetState();
+  ConsumerState<_NameSheet> createState() => _NameSheetState();
 }
 
-class _PhilosophySheetState extends ConsumerState<_PhilosophySheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final _text = TextEditingController(
-    text: widget.settings.philosophyText,
+class _NameSheetState extends ConsumerState<_NameSheet> {
+  late final _name = TextEditingController(
+    text: widget.settings.displayName,
   );
 
   @override
   void dispose() {
-    _text.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
     final navigator = Navigator.of(context);
-    await ref
-        .read(settingsControllerProvider)
-        .setPhilosophyText(_text.text.trim());
+    await ref.read(settingsControllerProvider).setDisplayName(_name.text);
     Haptics.medium();
     if (!mounted) return;
     showSuccessSnack(context, 'Saved.');
@@ -768,21 +960,73 @@ class _PhilosophySheetState extends ConsumerState<_PhilosophySheet> {
   @override
   Widget build(BuildContext context) {
     return AppSheet(
-      title: 'Philosophy line',
-      subtitle: 'One line at the top of Today. Make it yours.',
+      title: 'Your name',
+      subtitle: 'Used for greetings only. Leave it empty to skip.',
       footer: AppSheetButton(label: 'Save', onPressed: _save),
       children: [
-        Form(
-          key: _formKey,
-          child: AppTextField(
-            label: 'Philosophy line',
-            hint: AppConstants.philosophyLine,
-            controller: _text,
-            maxLines: 2,
-            validator: (v) => Validators.required(v, label: 'Philosophy line'),
-          ),
+        AppTextField(
+          label: 'Name',
+          hint: 'What should we call you?',
+          controller: _name,
+          autofocus: true,
         ),
       ],
+    );
+  }
+}
+
+/// Which optional modules the Today screen shows.
+class _AreasCard extends ConsumerWidget {
+  const _AreasCard({required this.settings});
+
+  final UserSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        AppSpace.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Today shows these areas',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Your goal always shows. Turn the rest on or off.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Wrap(
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            children: [
+              for (final area in DashboardArea.values)
+                FilterChip(
+                  label: Text(area.label),
+                  selected: settings.showsArea(area),
+                  onSelected: (on) {
+                    Haptics.select();
+                    final next = {...settings.dashboardAreas};
+                    on ? next.add(area) : next.remove(area);
+                    ref
+                        .read(settingsControllerProvider)
+                        .setDashboardAreas(next);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -834,7 +1078,7 @@ class _BirthdaySheet extends ConsumerWidget {
 
     return AppSheet(
       title: 'Birthday',
-      subtitle: 'Drives the age-${AppConstants.lockInAge} countdown.',
+      subtitle: 'Used for age-based countdowns. Nothing else.',
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -947,10 +1191,13 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
   String? _staticCheck(String raw) {
     final envelope = _Envelope.tryParse(raw);
     if (envelope == null || !envelope.hasData) {
-      return "That file doesn't look like a Life Dashboard backup.";
+      return "That file doesn't look like a ${AppConstants.appName} backup.";
     }
-    if (envelope.schemaVersion != null &&
-        envelope.schemaVersion != AppConstants.exportSchemaVersion) {
+    final version = int.tryParse(envelope.schemaVersion ?? '');
+    final current = int.parse(AppConstants.exportSchemaVersion);
+    // Older backups import fine (they're normalized on the way in); only a
+    // backup from a NEWER app is unreadable.
+    if (version != null && version > current) {
       return 'This backup is from a newer version of the app.';
     }
     return null;
@@ -990,9 +1237,8 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     setState(() {
       _fileName = null;
       _fileContent = null;
-      _envelope = _paste.text.trim().isEmpty
-          ? null
-          : _Envelope.tryParse(_paste.text);
+      _envelope =
+          _paste.text.trim().isEmpty ? null : _Envelope.tryParse(_paste.text);
       _error = null;
     });
   }
@@ -1012,14 +1258,15 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Replace everything?',
-      message:
-          'Your current data is deleted and replaced with this backup. '
+      message: 'Your current data is deleted and replaced with this backup. '
           'There is no undo.',
       confirmLabel: 'Replace data',
     );
     if (!confirmed || !mounted) return;
 
     final navigator = Navigator.of(context);
+    // The next launch re-runs seed + legacy migration over the restored data.
+    await ref.read(preferencesProvider).clearDataRevision();
     final result = await ref.read(backupServiceProvider).importJson(raw);
     if (!mounted) return;
 
@@ -1044,7 +1291,8 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
       case Failure<int>():
         // Human copy only — never surface exception internals.
         setState(
-          () => _error = "That backup couldn't be restored. Nothing was changed.",
+          () =>
+              _error = "That backup couldn't be restored. Nothing was changed.",
         );
     }
   }
@@ -1064,7 +1312,9 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
           onPressed: _pickFile,
           icon: const Icon(Icons.folder_open_outlined, size: 20),
           label: Text(
-            _fileName == null ? 'Choose a backup file' : 'Choose a different file',
+            _fileName == null
+                ? 'Choose a backup file'
+                : 'Choose a different file',
           ),
         ),
         if (_fileName != null) ...[
@@ -1180,6 +1430,11 @@ class _ResetSheetState extends ConsumerState<_ResetSheet> {
     Haptics.medium();
     final navigator = Navigator.of(context);
     final db = ref.read(databaseProvider);
+    final prefs = ref.read(preferencesProvider);
+    // Clearing the revision first makes the next launch re-run seeding
+    // even if the app dies between the clear and the re-seed below.
+    await prefs.clearDataRevision();
+    await prefs.clearRunningTimer();
     // Order is load-bearing: clear, then re-seed the empty tables.
     await db.clearAllTables();
     await SeedService(db).seedIfNeeded();

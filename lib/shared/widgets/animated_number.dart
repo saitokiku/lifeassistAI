@@ -20,9 +20,10 @@ class AnimatedNumber extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: value, end: value),
-      duration: AppMotion.sweep,
+      duration: reduceMotion ? Duration.zero : AppMotion.sweep,
       curve: AppMotion.easeOut,
       builder: (context, animated, _) => Text(format(animated), style: style),
     );

@@ -94,6 +94,17 @@ class TimeRepository {
   Future<void> deleteBlock(String id) =>
       (_db.delete(_db.timeBlocks)..where((t) => t.id.equals(id))).go();
 
+  /// Total hours already logged on [date], optionally ignoring one block
+  /// (the one being edited). Backs the 24h/day honesty cap.
+  Future<double> hoursOnDate(DateTime date, {String? excludeBlockId}) async {
+    final rows = await (_db.select(_db.timeBlocks)
+          ..where((t) => t.date.equals(AppDateUtils.dateKey(date))))
+        .get();
+    return rows
+        .where((b) => b.id != excludeBlockId)
+        .fold<double>(0, (sum, b) => sum + b.hours);
+  }
+
   // --- Countdowns -----------------------------------------------------------
 
   Stream<List<Countdown>> watchCountdowns() => (_db.select(_db.countdowns)

@@ -122,7 +122,9 @@ class SurplusHistoryChart extends ConsumerWidget {
                     getTooltipItem: (group, _, rod, __) {
                       final p = history[group.x];
                       return BarTooltipItem(
-                        '${Formatters.moneySigned(p.surplus)}${p.isPartial ? ' (so far)' : ''}\nspent ${Formatters.money(p.spend)}',
+                        !p.hasData
+                            ? 'Nothing logged'
+                            : '${Formatters.moneySigned(p.surplus)}${p.isPartial ? ' (so far)' : ''}\nspent ${Formatters.money(p.spend)}',
                         TextStyle(
                           color: theme.colorScheme.onInverseSurface,
                           fontSize: 12,
@@ -137,15 +139,23 @@ class SurplusHistoryChart extends ConsumerWidget {
                     BarChartGroupData(
                       x: i,
                       barRods: [
-                        if (history[i].isPartial)
+                        if (!history[i].hasData)
+                          // A month with nothing logged is a gap, not a
+                          // triumphant full-income surplus bar.
+                          BarChartRodData(
+                            toY: 0,
+                            width: 16,
+                            color: Colors.transparent,
+                          )
+                        else if (history[i].isPartial)
                           // Outlined: this month is still accumulating.
                           BarChartRodData(
                             toY: history[i].surplus,
                             width: 16,
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
-                            color: _colorFor(history[i])
-                                .withValues(alpha: 0.18),
+                            color:
+                                _colorFor(history[i]).withValues(alpha: 0.18),
                             borderSide: BorderSide(
                               color: _colorFor(history[i]),
                               width: 1.4,
@@ -167,7 +177,7 @@ class SurplusHistoryChart extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpace.sm),
           Text(
-            'Outlined bar is this month, still in motion. Assumes current income across past months.',
+            'Outlined bar is this month, still in motion. Months with nothing logged stay empty.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.textTertiary,
             ),

@@ -15,6 +15,7 @@ import '../../../../shared/widgets/loading_view.dart';
 import '../../application/money_controller.dart';
 import '../../application/money_state.dart';
 import '../../domain/transaction_entry.dart';
+import '../../../../core/utils/money.dart';
 import 'money_chips.dart';
 import 'money_snacks.dart';
 import 'transaction_entry_form.dart';
@@ -50,13 +51,13 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
     if (!mounted) return;
     showUndoSnack(
       context,
-      '${Formatters.moneyCents(tx.amount)} removed.',
+      '${Formatters.moneyCents(amountFromCents(tx.amountCents))} removed.',
       onUndo: () {
         unawaited(
           controller
               .addTransaction(
                 date: AppDateUtils.parseDateKey(tx.date),
-                amount: tx.amount,
+                amount: amountFromCents(tx.amountCents),
                 description: tx.description,
                 categoryId: tx.categoryId,
                 isIntentional: tx.isIntentional,
@@ -71,8 +72,7 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
   String _dayLabel(DateTime day) {
     final now = widget.state.now;
     if (AppDateUtils.isSameDay(day, now)) return 'Today';
-    if (AppDateUtils.isSameDay(
-        day, now.subtract(const Duration(days: 1)))) {
+    if (AppDateUtils.isSameDay(day, now.subtract(const Duration(days: 1)))) {
       return 'Yesterday';
     }
     return Formatters.shortDate(day);
@@ -82,8 +82,7 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
   Widget build(BuildContext context) {
     final all = widget.state.monthTransactions;
     // Ids that have left the stream no longer need filtering.
-    _pendingDelete
-        .removeWhere((id) => !all.any((t) => t.id == id));
+    _pendingDelete.removeWhere((id) => !all.any((t) => t.id == id));
     final transactions = [
       for (final t in all)
         if (!_pendingDelete.contains(t.id)) t,
@@ -128,7 +127,8 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
                 ),
                 Text(
                   Formatters.moneyCents(
-                    entry.value.fold<double>(0, (sum, t) => sum + t.amount),
+                    amountFromCents(entry.value
+                        .fold<int>(0, (sum, t) => sum + t.amountCents)),
                   ),
                   style: theme.textTheme.numberBody.copyWith(
                     color: theme.colorScheme.textTertiary,
@@ -216,9 +216,7 @@ class _TransactionRow extends StatelessWidget {
                       Flexible(
                         child: MoneyChip(
                           label: categoryName ?? 'Uncategorized',
-                          color: categoryName == null
-                              ? AppColors.watch
-                              : null,
+                          color: categoryName == null ? AppColors.watch : null,
                         ),
                       ),
                       if (tx.isIntentional) ...[
@@ -228,8 +226,7 @@ class _TransactionRow extends StatelessWidget {
                           child: Icon(
                             Icons.task_alt,
                             size: 14,
-                            color: AppColors.primary
-                                .withValues(alpha: 0.85),
+                            color: AppColors.primary.withValues(alpha: 0.85),
                           ),
                         ),
                       ],
@@ -240,7 +237,7 @@ class _TransactionRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpace.sm),
             Text(
-              Formatters.moneyCents(tx.amount),
+              Formatters.moneyCents(amountFromCents(tx.amountCents)),
               style: theme.textTheme.numberBody,
             ),
             PopupMenuButton<String>(

@@ -6,19 +6,24 @@ import '../../core/theme/app_tokens.dart';
 import 'app_sheet.dart';
 
 /// What the user wants to capture, chosen from the quick-add sheet.
-enum QuickAddAction { timeBlock, transaction, metricValue, experiment, idea }
+enum QuickAddAction { timeBlock, transaction, metricValue, goalStep, idea }
 
-/// Global quick capture: one sheet, five one-tap destinations.
+/// Global quick capture: one sheet, one-tap destinations.
 /// Returns the chosen action; the caller opens the matching form so the
-/// capture flow always runs on a live screen context.
-Future<QuickAddAction?> showQuickAddSheet(BuildContext context) {
+/// capture flow always runs on a live screen context. Pass [actions] to
+/// show only what applies right now (e.g. no metric → no metric tile).
+Future<QuickAddAction?> showQuickAddSheet(
+  BuildContext context, {
+  List<QuickAddAction> actions = QuickAddAction.values,
+}) {
   return showAppSheet<QuickAddAction>(
     context,
     builder: (sheetContext) => AppSheet(
       title: 'Quick add',
-      subtitle: 'Get it out of your head and into the system.',
+      subtitle: 'Get it out of your head and into the app.',
       children: [
         _ActionGrid(
+          actions: actions,
           onPick: (action) => Navigator.of(sheetContext).pop(action),
         ),
       ],
@@ -27,18 +32,23 @@ Future<QuickAddAction?> showQuickAddSheet(BuildContext context) {
 }
 
 class _ActionGrid extends ConsumerWidget {
-  const _ActionGrid({required this.onPick});
+  const _ActionGrid({required this.actions, required this.onPick});
 
+  final List<QuickAddAction> actions;
   final ValueChanged<QuickAddAction> onPick;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const items = [
+    const all = [
+      (QuickAddAction.goalStep, Icons.add_task_rounded, 'Goal step'),
+      (QuickAddAction.transaction, Icons.receipt_long_outlined, 'Add expense'),
       (QuickAddAction.timeBlock, Icons.schedule_outlined, 'Log time'),
-      (QuickAddAction.transaction, Icons.receipt_long_outlined, 'Log spend'),
-      (QuickAddAction.metricValue, Icons.trending_up, 'Metric value'),
-      (QuickAddAction.experiment, Icons.science_outlined, 'Experiment'),
+      (QuickAddAction.metricValue, Icons.trending_up, 'Measure value'),
       (QuickAddAction.idea, Icons.lightbulb_outline, 'Park an idea'),
+    ];
+    final items = [
+      for (final item in all)
+        if (actions.contains(item.$1)) item,
     ];
 
     return LayoutBuilder(

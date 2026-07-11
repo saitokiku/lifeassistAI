@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -11,6 +12,7 @@ import '../application/habits_controller.dart';
 import 'widgets/archived_habits_section.dart';
 import 'widgets/habit_checklist.dart';
 import 'widgets/habit_editor.dart';
+import 'widgets/habit_heatmap.dart';
 import 'widgets/habit_streak_card.dart';
 
 /// Habits — the daily support systems. One unified list: check off, see the
@@ -66,7 +68,7 @@ class HabitsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpace.xs),
                         Text(
-                          'Support systems, not the mission.',
+                          AppCopy.habitsTagline,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -76,8 +78,8 @@ class HabitsScreen extends ConsumerWidget {
                           EmptyState(
                             icon: Icons.check_circle_outline,
                             title: 'Nothing to check off yet.',
-                            message:
-                                'Add one habit that supports the mission.',
+                            message: 'Start with one habit you want to keep '
+                                'showing up for.',
                             actionLabel: 'New habit',
                             onAction: () => HabitEditor.show(context),
                           )
@@ -85,6 +87,8 @@ class HabitsScreen extends ConsumerWidget {
                           HabitStreakCard(state: state),
                           const SizedBox(height: AppSpace.cardGap),
                           HabitChecklist(state: state),
+                          const SizedBox(height: AppSpace.cardGap),
+                          HabitHeatmap(state: state),
                         ],
                         const ArchivedHabitsSection(),
                       ],

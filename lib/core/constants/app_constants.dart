@@ -2,48 +2,46 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'Life Dashboard';
-
-  /// Placeholder bundle id. Change in Xcode / android/app/build.gradle when
-  /// wiring real signing. Kept here so docs and code agree on one string.
-  static const String bundleIdPlaceholder = 'com.kaizen.lifedashboard';
-
-  static const String philosophyLine =
-      'Money = scoreboard · Curiosity = engine · Freedom = goal';
+  static const String appName = 'Life Assist';
 
   /// Parked ideas cool off for this many days before activation is allowed
-  /// (unless they directly help Kaizen this week).
+  /// (unless they directly help the main goal right now).
   static const int ideaCoolingDays = 7;
-
-  /// Age the user wants to hit their lock-in deadline by.
-  static const int lockInAge = 28;
 
   /// Weeks start on Monday everywhere in the app.
   static const int firstDayOfWeek = DateTime.monday;
 
-  static const String exportSchemaVersion = '1';
+  /// '4' stores money as integer cents and adds the journal. Older
+  /// backups are still importable; see BackupService and LegacyMigration.
+  static const String exportSchemaVersion = '4';
+
+  /// Bump when SeedService or LegacyMigration gain new work. Bootstrap
+  /// skips both while the stored preference matches; reset and import
+  /// clear the preference so the next launch re-runs them.
+  static const int dataRevision = 3;
 }
 
-/// Short, direct operator copy used across the app.
+/// Short, plain product copy used across the app. One voice: calm, direct,
+/// no jargon, never scolding.
 class AppCopy {
   AppCopy._();
 
-  static const String moneyScoreboard = 'Money is the scoreboard, not the mission.';
-  static const String curiosityCaptured = 'Curiosity captured. Not chased.';
-  static const String recoveryLoadBearing = 'Recovery floor is load-bearing.';
-  static const String oneHunt = 'Point the engine at one hunt.';
-  static const String freedomGoal = 'Freedom is the goal.';
-  static const String buildFenced = 'Build mode is fenced. Growth mode first.';
-  static const String oneTestOneVerdict = 'One test. One verdict.';
-  static const String growthHuntFirst = 'Growth hunt first.';
-  static const String buildHuntFenced = 'Build hunt is fenced.';
-  static const String noVerdictYet = 'No verdict yet. One test before research.';
-  static const String miscFog = 'Undefined misc is fog. Categorize it.';
-  static const String surplusFreedom = 'Surplus must move toward freedom.';
-  static const String availableTimeBudget = 'Available time is the real budget.';
-  static const String kaizenPriorityBlock = 'Kaizen is the priority block.';
-  static const String recoveryNotZero = 'Recovery floor cannot hit zero.';
-  static const String habitsSupport = 'Habits support the mission. They are not the mission.';
-  static const String engineOneHunt = 'The engine is good. Point it at one hunt.';
-  static const String experimentBeforeResearch = "Run today's Kaizen experiment before research.";
+  // Screen orientation lines
+  static const String moneyTagline = 'Where the month stands.';
+  static const String timeTagline = 'Your week, in hours.';
+  static const String youTagline = 'Principles, systems, and settings.';
+  static const String habitsTagline = 'Small daily supports.';
+  static const String ideasTagline = 'Catch ideas now, decide later.';
+  static const String remindersTagline = 'Gentle nudges through the day.';
+  static const String settingsTagline = 'Targets, appearance, and your data.';
+
+  // Shared feedback
+  static const String dataSafeRetry = 'Your data is safe. Give it another try.';
+
+  // Concept explanations, used in empty states and helper text
+  static const String ideasCoolingExplainer =
+      'New ideas wait a week before you act on them. Most lose their shine; '
+      'the good ones survive the wait.';
+  static const String recoveryExplainer =
+      'Downtime is part of the plan, not a failure of it.';
 }

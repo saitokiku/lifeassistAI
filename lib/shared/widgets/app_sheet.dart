@@ -48,7 +48,10 @@ class AppSheet extends StatelessWidget {
       padding: EdgeInsets.only(bottom: bottomInset),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpace.screen, AppSpace.md, AppSpace.screen, AppSpace.xl,
+          AppSpace.screen,
+          AppSpace.md,
+          AppSpace.screen,
+          AppSpace.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -131,17 +134,15 @@ class _AppSheetButtonState extends State<AppSheetButton> {
               foregroundColor: scheme.onError,
             )
           : null,
-      onPressed:
-          widget.onPressed == null || _busy ? null : () => _handle(),
+      onPressed: widget.onPressed == null || _busy ? null : () => _handle(),
       child: _busy
           ? SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2.4,
-                color: widget.destructive
-                    ? scheme.onError
-                    : AppColors.onPrimary,
+                color:
+                    widget.destructive ? scheme.onError : AppColors.onPrimary,
               ),
             )
           : Text(widget.label),

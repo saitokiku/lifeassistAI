@@ -1,9 +1,43 @@
 # iOS release guide
 
-Nothing here is automatic. This walks from a fresh clone to a
-TestFlight-ready build. You need a Mac with Xcode and an Apple Developer
-Program membership ($99/yr) for device installs beyond 7 days and for
-TestFlight/App Store.
+Two paths. The **fast loop needs no Mac**: CI builds a sideloadable
+unsigned IPA on every iOS-touching push. The **release path** (TestFlight
+/ App Store) uses your Mac and paid Apple Developer membership.
+
+## 0. Fast loop — CI-built unsigned IPA (no Mac)
+
+Every push touching `ios/**` (or a manual run of the **iOS** workflow in
+the Actions tab) produces the artifact **`LifeAssist-unsigned-ipa`**:
+`flutter build ios --release --no-codesign` packaged as
+`Payload/Runner.app` → `LifeAssist-unsigned.ipa`.
+
+1. Download the artifact from the workflow run.
+2. Install via **AltStore**, **SideStore**, or **Sideloadly** — they
+   re-sign with your Apple ID on install (free ID: 7-day cert; paid: 1 yr).
+3. App Shortcut phrases ("Log an expense in Life Assist") register on
+   first launch — no setup.
+
+Everything in Phases 0–4 of [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md)
+works on a sideloaded build; entitlements only enter at HealthKit
+(Phase 5) and App Groups/widgets (Phase 6). Cost note: macOS runners
+bill 10× minutes on private repos — the workflow is path-filtered and
+cancels superseded runs; a public repo makes them free.
+
+### On-device test checklist (per blueprint phase)
+
+- **Phase 0**: "Hey Siri, log an expense in Life Assist" from a locked
+  phone → app opens on the prefilled expense sheet.
+- **Phase 2**: same phrase, phone locked → Siri confirms WITHOUT opening
+  the app; open later → the row exists exactly once (also force-kill the
+  app right after Siri confirms, reopen, recheck). Create a reminder by
+  voice, never open the app, and wait for it to fire.
+- **Phase 3** (iOS 27): unphrased "log twelve fifty for groceries…" →
+  the right category entity resolves; the snippet's month-to-date total
+  appears only when fresh; Undo removes the row; Spotlight surfaces
+  budget names.
+- **Phase 4** (Apple-Intelligence device): smart-capture field appears on
+  Today; "coffee 4.50 yesterday and 2h deep work" → two chips; on a
+  non-AI device the field is absent entirely.
 
 ## 1. Flutter setup
 
@@ -22,21 +56,49 @@ flutter test && flutter analyze
 open ios/Runner.xcworkspace
 ```
 
-In Runner → Targets → Runner:
+Almost everything is pre-set in the repo; on the Mac you only add the
+Team:
 
-- **General → Identity**: set Bundle Identifier to
-  `com.kaizen.lifedashboard` (placeholder — any reverse-DNS id you own
-  works; keep it consistent forever once TestFlight sees it). Set the
-  Display Name to "Life Dashboard".
+- **Bundle Identifier**: already `com.saitokiku.lifeassist` (in
+  project.pbxproj). If you prefer a different reverse-DNS id, change it
+  BEFORE the first TestFlight upload — it can never change after. The
+  App Store Connect app record must use the exact same id.
+- **Display name**: already "Life Assist". **Version**: pubspec.yaml
+  `version: 1.0.0+1` flows into CFBundleShortVersionString/Version —
+  bump the `+N` build number for every new upload.
+- **Privacy manifest**: `ios/Runner/PrivacyInfo.xcprivacy` ships in the
+  bundle (no tracking, no collected data, UserDefaults + file-timestamp
+  required-reason declarations). Export compliance is pre-answered.
 - **Signing & Capabilities**: check "Automatically manage signing", pick
-  your Team (create one by signing into Xcode → Settings → Accounts with
-  your Apple ID). Xcode creates the provisioning profile.
-- Minimum iOS version: Flutter's default (see `ios/Podfile`); raise only if
-  needed.
+  your Team (sign into Xcode → Settings → Accounts with your Apple ID).
+  Xcode creates the provisioning profile. No capabilities are required
+  for the 1.0 feature set — Siri App Intents need none.
+- Minimum iOS version: **17.0** (set in project.pbxproj). Everything
+  newer is availability-gated, so one binary serves 17 → 27: Siri AI
+  entity schemas light up on 26/27, on-device AI (Foundation Models) on
+  26+ Apple-Intelligence devices, semantic Spotlight on 18+.
 
 Notifications: `flutter_local_notifications` needs no special capability
 for local notifications; the app requests permission at runtime from the
 Reminders screen or onboarding.
+
+### Optional capabilities (scaffolded, off by default)
+
+- **HealthKit (Phase 5)**: add the HealthKit capability to the Runner
+  target, then flip `LAHealthKitEnabled` to `YES` in Info.plist. Until
+  both happen, HealthBridge answers "disabledInBuild" and the app shows
+  nothing. The read-permission usage string is already in Info.plist.
+- **Widgets + App Group (Phase 6)**: the LifeAssistWidgets extension
+  target is already in the project (score, up-next, interactive habit
+  check, an iOS 18 Control Center button, and the focus-timer Live
+  Activity). One Mac-side step remains: Signing & Capabilities → add the
+  App Group `group.com.saitokiku.lifeassist` to BOTH targets. The bridge
+  (entities.json, today.json, capture queue) relocates to the shared
+  container automatically on both the Swift and Dart sides, and old
+  pending captures still drain from the previous location. Until the
+  group exists, widgets say "Open Life Assist for a fresh look" instead
+  of guessing. (`scripts/ios/add_widget_extension.rb` regenerates the
+  target from scratch if it's ever removed; it's a no-op otherwise.)
 
 ## 3. Run on your iPhone (development build)
 
@@ -67,16 +129,32 @@ Output: `build/ios/ipa/*.ipa` plus an `.xcarchive` under
 `build/ios/archive/`. If signing fails, fix Signing & Capabilities in
 Xcode first — Flutter uses the same settings.
 
-## 6. TestFlight (later, manual)
+## 6. TestFlight — the full path, start to finish
 
-1. appstoreconnect.apple.com → My Apps → "+" → New App. Pick the same
-   bundle id, name "Life Dashboard", primary language, SKU.
-2. Upload the build: Xcode Organizer → Distribute App → App Store Connect,
-   or `xcrun altool`/Transporter with the `.ipa`.
-3. Wait for processing, answer the export-compliance question (this app
-   uses only standard encryption → usually "No").
-4. TestFlight tab → add yourself as an internal tester → install via the
-   TestFlight app.
+One-time setup:
+
+1. developer.apple.com → Certificates, Identifiers & Profiles →
+   Identifiers → register `com.saitokiku.lifeassist` (App ID, "App"
+   type; no extra capabilities needed for 1.0).
+2. appstoreconnect.apple.com → My Apps → "+" → New App: platform iOS,
+   name "Life Assist", primary language, the same bundle id, any SKU
+   (e.g. `lifeassist-001`).
+
+Every upload:
+
+3. `flutter build ipa --release` (or Xcode → Product → Archive with
+   "Any iOS Device (arm64)"). Output: `build/ios/ipa/*.ipa`.
+4. Upload: open the `.ipa` with the **Transporter** app (App Store),
+   or Xcode Organizer → Distribute App → App Store Connect. CLI:
+   `xcrun altool --upload-app -f build/ios/ipa/*.ipa -t ios
+   --apiKey <key> --apiIssuer <issuer>`.
+5. Processing takes ~5–15 min. Export compliance is pre-answered
+   (`ITSAppUsesNonExemptEncryption = NO`); the privacy manifest rides in
+   the bundle, so no missing-API-declaration mail.
+6. TestFlight tab → Internal Testing → add yourself → install from the
+   TestFlight app on the phone. Siri App Shortcut phrases register on
+   first launch.
+7. Next build: bump `+N` in pubspec.yaml `version:`, rebuild, re-upload.
 
 See docs/app_store_checklist.md for the full store checklist.
 

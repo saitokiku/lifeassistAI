@@ -3,8 +3,13 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 
 /// Persistence for budget categories and transactions.
+///
+/// Money crosses into cents here: public methods accept user-entered
+/// dollar doubles and store integer cents; everything read back out is
+/// already cents.
 class MoneyRepository {
   MoneyRepository(this._db);
 
@@ -28,7 +33,7 @@ class MoneyRepository {
     await _db.into(_db.budgetCategories).insert(BudgetCategory(
           id: _uuid.v4(),
           name: name,
-          monthlyTarget: monthlyTarget,
+          monthlyTargetCents: centsFromAmount(monthlyTarget),
           flagType: flagType,
           sortOrder: existing.length,
           createdAt: now,
@@ -82,17 +87,69 @@ class MoneyRepository {
     required double amount,
     required String description,
     String? categoryId,
+    String? accountId,
+    String? sourceRecurringId,
     bool isIntentional = false,
   }) =>
       _db.into(_db.transactionEntries).insert(TransactionEntry(
             id: _uuid.v4(),
             categoryId: categoryId,
+            accountId: accountId,
+            sourceRecurringId: sourceRecurringId,
             date: AppDateUtils.dateKey(date),
-            amount: amount,
+            amountCents: centsFromAmount(amount),
             description: description,
             isIntentional: isIntentional,
             createdAt: DateTime.now(),
           ));
+
+  /// Inserts many rows in one transaction (statement import). Each row
+  /// may carry its own category (AI suggestions are per-row). Amounts
+  /// arrive as cents — CSV parsing converts at extraction.
+  Future<void> addTransactionsBatch(
+    List<
+            ({
+              DateTime date,
+              int amountCents,
+              String description,
+              String? categoryId,
+            })>
+        rows, {
+    String? accountId,
+  }) async {
+    final now = DateTime.now();
+    await _db.batch((batch) {
+      batch.insertAll(_db.transactionEntries, [
+        for (final row in rows)
+          TransactionEntry(
+            id: _uuid.v4(),
+            categoryId: row.categoryId,
+            accountId: accountId,
+            sourceRecurringId: null,
+            date: AppDateUtils.dateKey(row.date),
+            amountCents: row.amountCents,
+            description: row.description,
+            isIntentional: false,
+            createdAt: now,
+          ),
+      ]);
+    });
+  }
+
+  /// Duplicate-detection index for statement import: keys of every
+  /// transaction in [days] recent days (see CsvImport.duplicateKey).
+  Future<Set<String>> recentDuplicateKeys({int days = 400}) async {
+    final from = AppDateUtils.dateKey(
+        DateTime.now().subtract(Duration(days: days)));
+    final rows = await (_db.select(_db.transactionEntries)
+          ..where((t) => t.date.isBiggerOrEqualValue(from)))
+        .get();
+    return {
+      for (final r in rows)
+        '${r.date}|${r.amountCents}|'
+            '${r.description.trim().toLowerCase()}',
+    };
+  }
 
   Future<void> updateTransaction(TransactionEntry entry) =>
       _db.update(_db.transactionEntries).replace(entry);

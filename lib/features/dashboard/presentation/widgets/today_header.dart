@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -11,27 +13,32 @@ import '../../../../shared/widgets/progress_ring.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../application/dashboard_state.dart';
 
-/// Greeting, date + philosophy line, and the compact focus ring.
-/// Tapping the ring opens the score breakdown.
-class TodayHeader extends StatelessWidget {
+/// Greeting (by name when known), date, the user's line if they wrote one,
+/// and the day score ring. Tapping the ring opens the score breakdown.
+class TodayHeader extends ConsumerWidget {
   const TodayHeader({super.key, required this.state});
 
   final DashboardState state;
 
-  String get _greeting {
-    final hour = state.time.now.hour;
-    if (hour < 5) return 'Late shift.';
-    if (hour < 12) return 'Good morning.';
-    if (hour < 17) return 'Good afternoon.';
-    return 'Good evening.';
+  String _greeting(DayPart part) {
+    final name = state.settings.displayName;
+    final base = switch (part) {
+      DayPart.late_ => 'Up late',
+      DayPart.morning => 'Good morning',
+      DayPart.afternoon => 'Good afternoon',
+      DayPart.evening => 'Good evening',
+    };
+    return name.isEmpty ? '$base.' : '$base, $name.';
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final dayPart = ref.watch(dayPartProvider);
     final score = state.focusScore;
     final status = ScoreUtils.focusScoreStatus(score.total);
     final date = DateFormat('EEEE, MMM d').format(state.time.now);
+    final line = state.settings.philosophyText.trim();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +47,7 @@ class TodayHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting, style: theme.textTheme.headlineSmall),
+              Text(_greeting(dayPart), style: theme.textTheme.headlineSmall),
               const SizedBox(height: AppSpace.xs),
               Text(
                 date,
@@ -48,37 +55,41 @@ class TodayHeader extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                state.identity.philosophyText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.textTertiary,
-                  letterSpacing: 0.2,
+              if (line.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  line,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.textTertiary,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
-        const SizedBox(width: AppSpace.lg),
-        Semantics(
-          label: 'Focus score ${score.total} of 100. Tap for breakdown.',
-          button: true,
-          child: GestureDetector(
-            onTap: () => _showBreakdown(context),
-            child: ProgressRing(
-              progress: score.total / 100,
-              color: status.color,
-              size: 52,
-              strokeWidth: 5,
-              center: Text(
-                '${score.total}',
-                style: theme.textTheme.numberMedium.copyWith(fontSize: 16),
+        if (state.showScore) ...[
+          const SizedBox(width: AppSpace.lg),
+          Semantics(
+            label: "Today's score ${score.total} of 100. Tap for breakdown.",
+            button: true,
+            child: GestureDetector(
+              onTap: () => _showBreakdown(context),
+              child: ProgressRing(
+                progress: score.total / 100,
+                color: status.color,
+                size: 52,
+                strokeWidth: 5,
+                center: Text(
+                  '${score.total}',
+                  style: theme.textTheme.numberMedium.copyWith(fontSize: 16),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -87,14 +98,15 @@ class TodayHeader extends StatelessWidget {
     final score = state.focusScore;
     final status = ScoreUtils.focusScoreStatus(score.total);
     final label = ScoreUtils.focusScoreLabel(score.total);
+    final goalTitle = state.goal?.title ?? 'your goal';
 
     showAppSheet<void>(
       context,
       builder: (sheetContext) {
         final theme = Theme.of(sheetContext);
         return AppSheet(
-          title: 'Focus integrity',
-          subtitle: 'Five signals, one honest number. Drift shows up here first.',
+          title: "Today's score",
+          subtitle: 'Five honest signals of whether today moved you forward.',
           children: [
             Row(
               children: [
@@ -113,11 +125,16 @@ class TodayHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpace.xxl),
-            _part(theme, 'Kaizen hours', score.kaizenScore, 35),
-            _part(theme, 'Daily experiment', score.experimentScore, 20),
-            _part(theme, 'Money pace', score.moneyScore, 15),
-            _part(theme, 'Exercise or meditation', score.healthScore, 15),
-            _part(theme, 'Recovery floor', score.recoveryScore, 15),
+            _part(theme, 'Hours on $goalTitle', score.goalScore, 35),
+            _part(theme, 'Daily step', score.actionScore, 20),
+            // Hidden areas are excluded from the score, so they don't
+            // appear here either.
+            if (score.moneyScore case final money?)
+              _part(theme, 'Money pace', money, 15),
+            if (score.healthScore case final health?)
+              _part(theme, 'Exercise or meditation', health, 15),
+            if (score.recoveryScore case final recovery?)
+              _part(theme, 'Downtime', recovery, 15),
           ],
         );
       },

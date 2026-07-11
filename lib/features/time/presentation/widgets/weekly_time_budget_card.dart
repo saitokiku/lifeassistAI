@@ -43,8 +43,7 @@ class WeeklyTimeBudgetCard extends StatelessWidget {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(64, 40),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpace.xl),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
                 ),
                 onPressed: () => TimeBudgetEditor.show(context),
                 child: const Text('Create category'),
@@ -55,8 +54,8 @@ class WeeklyTimeBudgetCard extends StatelessWidget {
       );
     }
 
-    final recoveryAtZero = state.recoveryWeeklyTarget > 0 &&
-        state.recoveryHoursThisWeek <= 0;
+    final recoveryAtZero =
+        state.recoveryWeeklyTarget > 0 && state.recoveryHoursThisWeek <= 0;
 
     return AppCard(
       child: Column(
@@ -73,7 +72,7 @@ class WeeklyTimeBudgetCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      AppCopy.recoveryLoadBearing,
+                      AppCopy.recoveryExplainer,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.critical,
                       ),
@@ -155,11 +154,11 @@ class _BudgetRow extends StatelessWidget {
     );
   }
 
-  /// Calm by default: brand color for Kaizen, neutral for the rest.
+  /// Calm by default: brand color for main-goal time, neutral for the rest.
   /// Warning tints appear only when a category is meaningfully over plan —
-  /// and never for Kaizen, where extra hours are the point.
+  /// and never for goal time, where extra hours are the point.
   Color _barColor(WeeklyTimeBudgetProgress p) {
-    if (p.kind == TimeCategoryKind.kaizen) return AppColors.primary;
+    if (p.kind == TimeCategoryKind.goal) return AppColors.primary;
     final overBy = p.actualHours - p.targetHours;
     if (p.isOverTarget && overBy >= 0.5) {
       return p.actualHours >= p.targetHours * 1.5

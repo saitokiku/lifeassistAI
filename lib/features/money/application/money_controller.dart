@@ -4,8 +4,11 @@ import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/settings_keys.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 import '../../settings/application/settings_controller.dart';
+import '../../settings/data/settings_repository.dart';
 import '../data/money_repository.dart';
+import '../data/recurring_repository.dart';
 import '../domain/monthly_money_snapshot.dart';
 import 'money_state.dart';
 
@@ -19,14 +22,14 @@ final budgetCategoriesProvider = StreamProvider<List<BudgetCategory>>(
 
 /// Transactions for the current month; re-created when the month rolls over.
 final monthTransactionsProvider = StreamProvider<List<TransactionEntry>>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final month = DateTime(now.year, now.month);
   return ref.watch(moneyRepositoryProvider).watchMonthTransactions(month);
 });
 
 /// Combined money view state; null while sources are loading.
 final moneyStateProvider = Provider<MoneyState?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final settings = ref.watch(settingsProvider).valueOrNull;
   final categories = ref.watch(budgetCategoriesProvider).valueOrNull;
   final transactions = ref.watch(monthTransactionsProvider).valueOrNull;
@@ -41,8 +44,8 @@ final moneyStateProvider = Provider<MoneyState?>((ref) {
     targetSurplusHigh: settings.targetSurplusHigh,
     categories: categories,
     monthTransactions: transactions,
-    rothIraAnnualTarget: settings.rothIraAnnualTarget,
-    rothIraContributed: settings.rothIraContributed,
+    retirementAnnualTarget: settings.retirementAnnualTarget,
+    retirementContributed: settings.retirementContributed,
     brokerageBalance: settings.brokerageBalance,
     savingsBalance: settings.savingsBalance,
   );
@@ -55,6 +58,81 @@ final moneyStateProvider = Provider<MoneyState?>((ref) {
   );
 });
 
+// --- Recurring expenses ------------------------------------------------------
+
+final recurringRepositoryProvider = Provider<RecurringRepository>(
+  (ref) => RecurringRepository(ref.watch(databaseProvider)),
+);
+
+final recurringProvider = StreamProvider<List<RecurringTransaction>>(
+  (ref) => ref.watch(recurringRepositoryProvider).watchRecurring(),
+);
+
+/// Materializes due recurring expenses into real transactions. Watched by
+/// the Money screen; re-runs on day rollover. Idempotent per month.
+final recurringMaterializerProvider = FutureProvider<int>((ref) {
+  final today = readToday(ref);
+  return ref.watch(recurringRepositoryProvider).materialize(now: today);
+});
+
+// --- Month browsing ----------------------------------------------------------
+
+/// How many months back the Money screen is looking (0 = this month).
+final viewedMonthOffsetProvider = StateProvider<int>((ref) => 0);
+
+final viewedMonthProvider = Provider<DateTime>((ref) {
+  final today = readToday(ref);
+  final offset = ref.watch(viewedMonthOffsetProvider);
+  return DateTime(today.year, today.month - offset);
+});
+
+final _monthTransactionsForProvider = StreamProvider.autoDispose
+    .family<List<TransactionEntry>, DateTime>((ref, month) {
+  return ref.watch(moneyRepositoryProvider).watchMonthTransactions(month);
+});
+
+/// Money state for the month the user is looking at. Identical to
+/// [moneyStateProvider] for the current month; for a finished month the
+/// "projection" is pinned to the month's end, so projected == actual.
+final viewedMoneyStateProvider = Provider<MoneyState?>((ref) {
+  if (ref.watch(viewedMonthOffsetProvider) == 0) {
+    return ref.watch(moneyStateProvider);
+  }
+  final month = ref.watch(viewedMonthProvider);
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  final categories = ref.watch(budgetCategoriesProvider).valueOrNull;
+  final transactions =
+      ref.watch(_monthTransactionsForProvider(month)).valueOrNull;
+  final snapshots = ref.watch(incomeSnapshotsProvider).valueOrNull;
+  if (settings == null || categories == null || transactions == null) {
+    return null;
+  }
+
+  final monthEnd = AppDateUtils.endOfMonth(month);
+  final snapshot = MonthlyMoneySnapshot.compute(
+    now: monthEnd,
+    monthlyNetIncome: snapshots == null
+        ? settings.monthlyNetIncome
+        : SettingsRepository.incomeForMonth(
+            snapshots, month, settings.monthlyNetIncome),
+    targetSurplusLow: settings.targetSurplusLow,
+    targetSurplusHigh: settings.targetSurplusHigh,
+    categories: categories,
+    monthTransactions: transactions,
+    retirementAnnualTarget: settings.retirementAnnualTarget,
+    retirementContributed: settings.retirementContributed,
+    brokerageBalance: settings.brokerageBalance,
+    savingsBalance: settings.savingsBalance,
+  );
+
+  return MoneyState(
+    snapshot: snapshot,
+    categories: categories,
+    monthTransactions: transactions,
+    now: monthEnd,
+  );
+});
+
 /// One month's spend vs income for the surplus history chart.
 class MonthlySurplusPoint {
   const MonthlySurplusPoint({
@@ -62,6 +140,7 @@ class MonthlySurplusPoint {
     required this.income,
     required this.spend,
     required this.isPartial,
+    required this.hasData,
   });
 
   final DateTime month;
@@ -71,46 +150,66 @@ class MonthlySurplusPoint {
   /// True for the current month (still accumulating).
   final bool isPartial;
 
+  /// False when the month has no logged transactions at all — the chart
+  /// shows a gap instead of pretending the month was a perfect surplus.
+  final bool hasData;
+
   double get surplus => income - spend;
 }
 
 /// How many months of history the money chart shows.
 const int kMonthlyHistoryMonths = 6;
 
-final _txSinceProvider =
-    StreamProvider.family<List<TransactionEntry>, DateTime>((ref, since) {
+/// autoDispose: the `since` argument advances as months roll over, so old
+/// instances must release their drift subscriptions instead of leaking.
+final _txSinceProvider = StreamProvider.autoDispose
+    .family<List<TransactionEntry>, DateTime>((ref, since) {
   return ref.watch(moneyRepositoryProvider).watchTransactionsSince(since);
 });
 
-/// Last [kMonthlyHistoryMonths] months of surplus (oldest first). Income is
-/// the current configured monthly net income applied to each month (we don't
-/// keep historical income). Null while sources load.
+/// Month key → income snapshot, for honest history math.
+final incomeSnapshotsProvider = StreamProvider<Map<String, double>>(
+  (ref) => ref.watch(settingsRepositoryProvider).watchIncomeSnapshots(),
+);
+
+/// Last [kMonthlyHistoryMonths] months of surplus (oldest first). Each
+/// month uses the income snapshot that applied back then; months without
+/// any logged transactions carry [MonthlySurplusPoint.hasData] = false.
+/// Null while sources load.
 final monthlySurplusHistoryProvider =
     Provider<List<MonthlySurplusPoint>?>((ref) {
-  final now = readNow(ref);
+  final now = readToday(ref);
   final settings = ref.watch(settingsProvider).valueOrNull;
+  final snapshots = ref.watch(incomeSnapshotsProvider).valueOrNull;
   final firstMonth =
       DateTime(now.year, now.month - (kMonthlyHistoryMonths - 1));
   final txs = ref.watch(_txSinceProvider(firstMonth)).valueOrNull;
-  if (settings == null || txs == null) return null;
+  if (settings == null || txs == null || snapshots == null) return null;
 
-  final spendByMonth = <String, double>{};
+  // Sum in cents, convert once per month bucket.
+  final spendCentsByMonth = <String, int>{};
   for (final tx in txs) {
     final d = AppDateUtils.parseDateKey(tx.date);
-    final key = '${d.year}-${d.month}';
-    spendByMonth[key] = (spendByMonth[key] ?? 0) + tx.amount;
+    final key = SettingsRepository.monthKey(d);
+    spendCentsByMonth[key] = (spendCentsByMonth[key] ?? 0) + tx.amountCents;
   }
 
   return [
     for (var i = 0; i < kMonthlyHistoryMonths; i++)
       () {
         final month = DateTime(firstMonth.year, firstMonth.month + i);
-        final key = '${month.year}-${month.month}';
+        final key = SettingsRepository.monthKey(month);
+        final isPartial = month.year == now.year && month.month == now.month;
+        final hasData = isPartial || spendCentsByMonth.containsKey(key);
         return MonthlySurplusPoint(
           month: month,
-          income: settings.monthlyNetIncome,
-          spend: spendByMonth[key] ?? 0,
-          isPartial: month.year == now.year && month.month == now.month,
+          income: hasData
+              ? SettingsRepository.incomeForMonth(
+                  snapshots, month, settings.monthlyNetIncome)
+              : 0,
+          spend: amountFromCents(spendCentsByMonth[key] ?? 0),
+          isPartial: isPartial,
+          hasData: hasData,
         );
       }(),
   ];
@@ -156,23 +255,67 @@ class MoneyController {
 
   Future<void> deleteTransaction(String id) => _repo.deleteTransaction(id);
 
-  Future<void> setMonthlyNetIncome(double value) => _ref
-      .read(settingsRepositoryProvider)
-      .setNumber(SettingsKeys.monthlyNetIncome, value);
+  // Recurring expenses
 
-  Future<void> setTargetSurplus({required double low, required double high}) async {
+  Future<void> createRecurring({
+    required double amount,
+    required String description,
+    required int dayOfMonth,
+    String? categoryId,
+    bool isIntentional = true,
+  }) async {
+    await _ref.read(recurringRepositoryProvider).createRecurring(
+          amount: amount,
+          description: description,
+          dayOfMonth: dayOfMonth,
+          categoryId: categoryId,
+          isIntentional: isIntentional,
+        );
+    // A newly added expense whose day already passed lands this month too.
+    await _ref.read(recurringRepositoryProvider).materialize();
+  }
+
+  Future<void> updateRecurring(RecurringTransaction row) =>
+      _ref.read(recurringRepositoryProvider).updateRecurring(row);
+
+  Future<void> deleteRecurring(String id) =>
+      _ref.read(recurringRepositoryProvider).deleteRecurring(id);
+
+  // Statement import
+
+  Future<void> importTransactions(
+    List<
+            ({
+              DateTime date,
+              int amountCents,
+              String description,
+              String? categoryId,
+            })>
+        rows, {
+    String? accountId,
+  }) =>
+      _repo.addTransactionsBatch(rows, accountId: accountId);
+
+  Future<Set<String>> recentDuplicateKeys() => _repo.recentDuplicateKeys();
+
+  Future<void> setMonthlyNetIncome(double value) =>
+      _ref.read(settingsRepositoryProvider).setMonthlyNetIncome(value);
+
+  Future<void> setTargetSurplus(
+      {required double low, required double high}) async {
     final repo = _ref.read(settingsRepositoryProvider);
     await repo.setNumber(SettingsKeys.targetSurplusLow, low);
     await repo.setNumber(SettingsKeys.targetSurplusHigh, high);
   }
 
-  Future<void> setRothIra({double? annualTarget, double? contributed}) async {
+  Future<void> setRetirement(
+      {double? annualTarget, double? contributed}) async {
     final repo = _ref.read(settingsRepositoryProvider);
     if (annualTarget != null) {
-      await repo.setNumber(SettingsKeys.rothIraAnnualTarget, annualTarget);
+      await repo.setNumber(SettingsKeys.retirementAnnualTarget, annualTarget);
     }
     if (contributed != null) {
-      await repo.setNumber(SettingsKeys.rothIraContributed, contributed);
+      await repo.setNumber(SettingsKeys.retirementContributed, contributed);
     }
   }
 

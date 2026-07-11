@@ -23,7 +23,7 @@ class IdeasRepository {
     String? category,
     String? whyTempting,
     String? potentialValue,
-    required bool directlyHelpsKaizenThisWeek,
+    required bool helpsMainGoal,
     DateTime? capturedOn,
   }) async {
     final now = DateTime.now();
@@ -40,7 +40,7 @@ class IdeasRepository {
             captured.add(const Duration(days: AppConstants.ideaCoolingDays)),
           ),
           decision: 'undecided',
-          directlyHelpsKaizenThisWeek: directlyHelpsKaizenThisWeek,
+          helpsMainGoal: helpsMainGoal,
           createdAt: now,
           updatedAt: now,
         ));

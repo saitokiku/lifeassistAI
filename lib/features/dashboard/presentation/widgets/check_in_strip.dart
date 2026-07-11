@@ -13,51 +13,65 @@ import '../../../../shared/widgets/loading_view.dart';
 import '../../../habits/application/habits_controller.dart';
 import '../../../habits/application/habits_state.dart';
 import '../../../habits/domain/habit.dart';
-import '../../../kaizen/presentation/widgets/experiment_log_form.dart';
-import '../../../kaizen/presentation/widgets/growth_metric_entry_form.dart';
+import '../../../settings/domain/user_settings.dart';
+import '../../../focus/presentation/widgets/action_log_form.dart';
+import '../../../focus/presentation/widgets/growth_metric_entry_form.dart';
 import '../../application/dashboard_state.dart';
 
-/// One-tap daily check-ins: habits, the experiment, the metric value.
+/// One-tap daily check-ins: the goal step, the tracked measure, habits.
 /// Boolean habits toggle instantly; value habits open a two-field sheet.
 /// Unchecking is undoable — never silently destructive.
+/// Renders nothing when there is nothing to check in on.
 class CheckInStrip extends ConsumerWidget {
   const CheckInStrip({super.key, required this.state});
 
   final DashboardState state;
+
+  /// Whether any chip would render (the screen hides the header otherwise).
+  static bool hasChips(DashboardState state, {required bool anyHabits}) =>
+      state.goalActive || (state.showsArea(DashboardArea.habits) && anyHabits);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final habits = ref.watch(habitsStateProvider);
     final chips = <Widget>[];
 
-    // The experiment — the day's core ritual leads.
-    final experiment = state.kaizen.todayExperiment;
-    chips.add(_CheckChip(
-      label: 'Experiment',
-      checked: experiment != null,
-      onTap: () => ExperimentLogForm.show(context, experiment: experiment),
-    ));
-
-    // The active metric value.
-    final metric = state.kaizen.activeMetric;
-    if (metric != null) {
-      final logged = state.kaizen.todayMetricValue != null;
+    // The daily step toward the goal leads.
+    if (state.goalActive) {
+      final action = state.focus.todayAction;
       chips.add(_CheckChip(
-        label: logged
-            ? '${metric.name} · ${Formatters.number(state.kaizen.todayMetricValue!)}'
-            : metric.name,
-        checked: logged,
-        onTap: () => GrowthMetricEntryForm.show(context, metric: metric),
+        label: "Today's step",
+        checked: action != null,
+        onTap: () => ActionLogForm.show(context, action: action),
       ));
+
+      // The tracked measure's value.
+      final metric = state.focus.activeMetric;
+      if (metric != null) {
+        final logged = state.focus.todayMetricValue != null;
+        chips.add(_CheckChip(
+          label: logged
+              ? '${metric.name} · ${Formatters.number(state.focus.todayMetricValue!)}'
+              : metric.name,
+          checked: logged,
+          onTap: () => GrowthMetricEntryForm.show(context, metric: metric),
+        ));
+      }
     }
 
-    for (final h in habits?.habits ?? const <HabitView>[]) {
-      chips.add(_CheckChip(
-        label: _habitLabel(h),
-        checked: h.doneToday,
-        onTap: () => _toggleHabit(context, ref, h),
-      ));
+    if (state.showsArea(DashboardArea.habits)) {
+      for (final h in habits?.habits ?? const <HabitView>[]) {
+        // Off-schedule habits sit out of today's check-in strip entirely.
+        if (!h.dueToday) continue;
+        chips.add(_CheckChip(
+          label: _habitLabel(h),
+          checked: h.doneToday,
+          onTap: () => _toggleHabit(context, ref, h),
+        ));
+      }
     }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -77,8 +91,7 @@ class CheckInStrip extends ConsumerWidget {
     final log = h.todayLog;
     final type = HabitType.parse(h.habit.type);
     if (log == null || type == HabitType.boolean) return h.habit.name;
-    final unit =
-        type == HabitType.duration ? 'min' : (h.habit.unit ?? '');
+    final unit = type == HabitType.duration ? 'min' : (h.habit.unit ?? '');
     final value = Formatters.number(log.value);
     return '${h.habit.name} · $value${unit.isEmpty ? '' : ' $unit'}';
   }
@@ -95,7 +108,14 @@ class CheckInStrip extends ConsumerWidget {
       // Unchecking preserves the entry via undo — never silent data loss.
       final log = h.todayLog!;
       final messenger = ScaffoldMessenger.of(context);
-      await controller.unlogHabit(habitId: h.habit.id, date: today);
+      try {
+        await controller.unlogHabit(habitId: h.habit.id, date: today);
+      } catch (_) {
+        if (context.mounted) {
+          showErrorSnack(context, "That didn't save. Try again.");
+        }
+        return;
+      }
       if (!context.mounted) return;
       messenger.hideCurrentSnackBar();
       showUndoSnack(
@@ -113,7 +133,13 @@ class CheckInStrip extends ConsumerWidget {
 
     final type = HabitType.parse(h.habit.type);
     if (type == HabitType.boolean) {
-      await controller.logHabit(habitId: h.habit.id, date: today, value: 1);
+      try {
+        await controller.logHabit(habitId: h.habit.id, date: today, value: 1);
+      } catch (_) {
+        if (context.mounted) {
+          showErrorSnack(context, "That didn't save. Try again.");
+        }
+      }
       return;
     }
 
@@ -149,11 +175,18 @@ class CheckInStrip extends ConsumerWidget {
           onPressed: () async {
             if (!(formKey.currentState?.validate() ?? false)) return;
             final navigator = Navigator.of(sheetContext);
-            await controller.logHabit(
-              habitId: h.habit.id,
-              date: h.today,
-              value: Validators.parseNumber(valueController.text),
-            );
+            try {
+              await controller.logHabit(
+                habitId: h.habit.id,
+                date: h.today,
+                value: Validators.parseNumber(valueController.text),
+              );
+            } catch (_) {
+              if (sheetContext.mounted) {
+                showErrorSnack(sheetContext, "That didn't save. Try again.");
+              }
+              return;
+            }
             Haptics.light();
             navigator.pop();
           },
@@ -218,9 +251,7 @@ class _CheckChip extends StatelessWidget {
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: checked
-                      ? scheme.onSurface
-                      : scheme.onSurfaceVariant,
+                  color: checked ? scheme.onSurface : scheme.onSurfaceVariant,
                 ),
               ),
             ],
