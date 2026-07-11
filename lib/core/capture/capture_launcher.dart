@@ -10,6 +10,7 @@ import '../../features/reminders/presentation/widgets/reminder_editor.dart';
 import '../../features/time/application/time_controller.dart';
 import '../../features/time/presentation/widgets/time_block_log_form.dart';
 import 'capture_request.dart';
+import 'name_resolver.dart';
 
 /// Opens the sheet a [CaptureRequest] asks for, prefilled.
 ///
@@ -46,7 +47,7 @@ class CaptureLauncher {
           initialAmount: request.amount,
           initialDescription: request.text,
           initialCategoryId:
-              _resolveByName(request.category, {for (final c in categories) c.id: c.name}),
+              resolveByName(request.category, {for (final c in categories) c.id: c.name}),
         );
       case CaptureType.time:
         final budgets = await ref.read(timeBudgetsProvider.future);
@@ -55,7 +56,7 @@ class CaptureLauncher {
           context,
           budgets: budgets,
           initialBudgetId:
-              _resolveByName(request.category, {for (final b in budgets) b.id: b.name}),
+              resolveByName(request.category, {for (final b in budgets) b.id: b.name}),
           initialHours: request.hours,
           initialNote: request.text,
         );
@@ -82,31 +83,4 @@ class CaptureLauncher {
     }
   }
 
-  /// Case-insensitive spoken-name → id resolution ("groceries" → category).
-  /// Exact match first, then prefix, then contains; null when ambiguous or
-  /// unknown so the sheet just opens unprefilled.
-  static String? _resolveByName(String? spoken, Map<String, String> idToName) {
-    if (spoken == null || spoken.trim().isEmpty) return null;
-    final needle = spoken.trim().toLowerCase();
-    String? exact, prefix, contains;
-    var prefixCount = 0, containsCount = 0;
-    for (final entry in idToName.entries) {
-      final name = entry.value.toLowerCase();
-      if (name == needle) {
-        exact = entry.key;
-        break;
-      }
-      if (name.startsWith(needle)) {
-        prefix = entry.key;
-        prefixCount++;
-      } else if (name.contains(needle)) {
-        contains = entry.key;
-        containsCount++;
-      }
-    }
-    if (exact != null) return exact;
-    if (prefixCount == 1) return prefix;
-    if (prefixCount == 0 && containsCount == 1) return contains;
-    return null;
-  }
 }

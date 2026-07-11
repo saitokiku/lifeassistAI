@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'native/bridge_paths.dart';
+import 'native/capture_queue_drain.dart';
 import 'notifications/habit_reminder_scheduler.dart';
 import 'notifications/notification_service.dart';
 import 'notifications/reminder_scheduler.dart';
@@ -26,6 +28,19 @@ final reminderSchedulerProvider = Provider<ReminderScheduler>(
 
 final habitReminderSchedulerProvider = Provider<HabitReminderScheduler>(
   (ref) => HabitReminderScheduler(ref.watch(notificationServiceProvider)),
+);
+
+/// Filesystem bridge to the Swift side (entity mirror + capture queue).
+/// Overridden in bootstrap on mobile/desktop; absent on web.
+final bridgePathsProvider = Provider<BridgePaths>(
+  (ref) => throw UnimplementedError('Overridden in bootstrap'),
+);
+
+final captureQueueDrainProvider = Provider<CaptureQueueDrain>(
+  (ref) => CaptureQueueDrain(
+    ref.watch(databaseProvider),
+    ref.watch(bridgePathsProvider),
+  ),
 );
 
 /// A ticking clock so time-derived providers roll over without a restart.

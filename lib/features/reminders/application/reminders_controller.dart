@@ -52,6 +52,10 @@ class RemindersController {
         );
   }
 
+  /// Reconciles the OS schedule with the table right now — used after
+  /// the Siri capture queue drains reminder rows written by Swift.
+  Future<Result<int>> resyncNow() => _resync();
+
   Future<Result<int>> createReminder({
     required String title,
     required String message,

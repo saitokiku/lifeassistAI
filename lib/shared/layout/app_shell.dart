@@ -8,8 +8,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
+import '../../core/native/capture_queue_drain.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
+import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
 import '../haptics.dart';
@@ -34,7 +36,8 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   StreamSubscription<Uri>? _linkSub;
 
   /// Captured at init so dispose() can unhook without touching ref.
@@ -48,17 +51,67 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _wireCaptureSources();
     // The router's /capture redirect may have parked a request before this
     // widget existed (cold-start deep link) — drain it on first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _drainPending();
+      _announceBootstrapDrain();
       // Weekly local safety copy; never blocks and never throws.
       AutoBackupService(
         BackupService(ref.read(databaseProvider)),
         ref.read(preferencesProvider),
       ).maybeRun();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning to the foreground covers "Siri captured while the app was
+    // backgrounded" — including the Siri-overlay-over-the-app case.
+    if (state == AppLifecycleState.resumed) _drainCaptureQueue();
+  }
+
+  /// Bootstrap already drained (and re-armed reminders) before runApp;
+  /// this just voices the result once the UI exists.
+  void _announceBootstrapDrain() {
+    final result = CaptureQueueDrain.lastResult;
+    if (result == null || !mounted) return;
+    CaptureQueueDrain.lastResult = null;
+    _toastDrain(result);
+  }
+
+  Future<void> _drainCaptureQueue() async {
+    if (kIsWeb) return;
+    final DrainResult result;
+    try {
+      result = await ref.read(captureQueueDrainProvider).drain();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    if (result.cancelNotificationIds.isNotEmpty) {
+      await ref
+          .read(notificationServiceProvider)
+          .cancelMany(result.cancelNotificationIds);
+    }
+    if (result.remindersChanged) {
+      await ref.read(remindersControllerProvider).resyncNow();
+    }
+    if (mounted) _toastDrain(result);
+  }
+
+  void _toastDrain(DrainResult result) {
+    if (result.imported <= 0) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 3),
+      content: Text(
+        result.imported == 1
+            ? 'Added 1 capture from Siri.'
+            : 'Added ${result.imported} captures from Siri.',
+      ),
+    ));
   }
 
   Future<void> _wireCaptureSources() async {
@@ -77,6 +130,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     _notifications?.onTap = null;
     super.dispose();

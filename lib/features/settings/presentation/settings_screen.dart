@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
+import '../../../core/native/capture_queue_drain.dart';
 import '../../../core/providers.dart';
 import '../../../core/security/app_lock.dart';
 import '../../../core/storage/seed_service.dart';
@@ -163,6 +164,7 @@ class SettingsScreen extends ConsumerWidget {
           const _SettingsGroup(children: [
             _ExportRow(),
             _ImportRow(),
+            _FailedCapturesRow(),
           ]),
           const SectionHeader(title: 'Danger zone'),
           _SettingsGroup(children: [
@@ -555,6 +557,53 @@ class _ImportRow extends StatelessWidget {
       title: 'Import backup',
       subtitle: 'Replace everything with a saved backup.',
       onTap: () => _ImportSheet.show(context),
+    );
+  }
+}
+
+/// Siri/widget captures that couldn't be read stay in a capped graveyard
+/// instead of vanishing — this row exists only while any do.
+class _FailedCapturesRow extends ConsumerStatefulWidget {
+  const _FailedCapturesRow();
+
+  @override
+  ConsumerState<_FailedCapturesRow> createState() =>
+      _FailedCapturesRowState();
+}
+
+class _FailedCapturesRowState extends ConsumerState<_FailedCapturesRow> {
+  Future<void> _clear() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Discard unreadable captures?',
+      message: 'These Siri captures could not be imported (unknown '
+          'category, malformed data). Discarding cannot be undone.',
+      confirmLabel: 'Discard them',
+    );
+    if (!confirmed || !mounted) return;
+    await CaptureQueueDrain.clearFailed(ref.read(bridgePathsProvider));
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    final int count;
+    try {
+      count = CaptureQueueDrain.failedCount(ref.watch(bridgePathsProvider));
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+    if (count == 0) return const SizedBox.shrink();
+
+    return _SettingsRow(
+      icon: Icons.error_outline_rounded,
+      iconColor: AppColors.watch,
+      title: count == 1
+          ? '1 Siri capture couldn\'t be read'
+          : '$count Siri captures couldn\'t be read',
+      subtitle: 'Kept for review. Tap to discard.',
+      onTap: _clear,
     );
   }
 }

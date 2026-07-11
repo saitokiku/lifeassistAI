@@ -1,8 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/constants/app_constants.dart';
+import 'core/native/bridge_paths.dart';
+import 'core/native/capture_queue_drain.dart';
+import 'core/native/entity_mirror_service.dart';
+import 'core/notifications/notification_service.dart';
+import 'core/notifications/reminder_scheduler.dart';
 import 'core/providers.dart';
 import 'core/storage/app_database.dart';
 import 'core/storage/database_connection.dart';
@@ -40,11 +46,34 @@ Future<void> bootstrap() async {
     // first launch of each month.
     await SettingsRepository(database).ensureIncomeSnapshot();
 
+    // The Swift bridge: mirror the app's nouns for Siri's entity queries
+    // and drain any captures Siri wrote while the engine was down. Web
+    // has neither a filesystem contract nor Siri.
+    BridgePaths? bridge;
+    if (!kIsWeb) {
+      bridge = await BridgePaths.resolve();
+      await EntityMirrorService(database, bridge).start();
+      final drain = CaptureQueueDrain(database, bridge);
+      final result = await drain.drain();
+      // Reminders captured by voice need their OS schedule reconciled the
+      // moment we can (Swift already armed a provisional notification).
+      if ((result.remindersChanged ||
+              result.cancelNotificationIds.isNotEmpty) &&
+          preferences.notificationsEnabled) {
+        final notifications = NotificationService();
+        await notifications.cancelMany(result.cancelNotificationIds);
+        final reminders = await database.select(database.reminders).get();
+        await ReminderScheduler(notifications)
+            .syncAll(reminders, appEnabled: true);
+      }
+    }
+
     runApp(
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(database),
           preferencesProvider.overrideWithValue(preferences),
+          if (bridge != null) bridgePathsProvider.overrideWithValue(bridge),
         ],
         child: const LifeDashboardApp(),
       ),

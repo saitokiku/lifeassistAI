@@ -15,7 +15,7 @@ import AppIntents
 import UIKit
 
 struct LogExpenseIntent: AppIntent {
-    static let title: LocalizedStringResource = "Log an expense"
+    static let title: LocalizedStringResource = "Log an expense and review"
     static let description = IntentDescription(
         "Opens Life Assist with a prefilled expense to confirm.")
     static let openAppWhenRun = true
@@ -46,7 +46,7 @@ struct LogExpenseIntent: AppIntent {
 }
 
 struct LogTimeIntent: AppIntent {
-    static let title: LocalizedStringResource = "Log time"
+    static let title: LocalizedStringResource = "Log time and review"
     static let description = IntentDescription(
         "Opens Life Assist with prefilled hours to confirm.")
     static let openAppWhenRun = true
@@ -103,7 +103,7 @@ struct LogStepIntent: AppIntent {
 }
 
 struct ParkIdeaIntent: AppIntent {
-    static let title: LocalizedStringResource = "Park an idea"
+    static let title: LocalizedStringResource = "Park an idea and review"
     static let description = IntentDescription(
         "Opens Life Assist with the idea title prefilled.")
     static let openAppWhenRun = true
@@ -128,7 +128,7 @@ struct ParkIdeaIntent: AppIntent {
 }
 
 struct AddReminderIntent: AppIntent {
-    static let title: LocalizedStringResource = "Add a reminder"
+    static let title: LocalizedStringResource = "Add a reminder and review"
     static let description = IntentDescription(
         "Opens Life Assist with a new reminder prefilled.")
     static let openAppWhenRun = true
@@ -153,11 +153,14 @@ struct AddReminderIntent: AppIntent {
 }
 
 /// The phrases Siri listens for without any user setup ("Hey Siri, log an
-/// expense in Life Assist"). Each also appears in the Shortcuts app.
+/// expense in Life Assist"). Phrases point at the BACKGROUND intents —
+/// captures land with the phone locked; the "…and review" foreground
+/// variants stay available in the Shortcuts app. The daily step keeps its
+/// foreground flow on purpose: the outcome verdict is the user's call.
 struct LifeAssistShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
-            intent: LogExpenseIntent(),
+            intent: LogExpenseBackgroundIntent(),
             phrases: [
                 "Log an expense in \(.applicationName)",
                 "Add an expense to \(.applicationName)",
@@ -166,7 +169,7 @@ struct LifeAssistShortcuts: AppShortcutsProvider {
             systemImageName: "dollarsign.circle"
         )
         AppShortcut(
-            intent: LogTimeIntent(),
+            intent: LogTimeBackgroundIntent(),
             phrases: [
                 "Log time in \(.applicationName)",
                 "Log hours in \(.applicationName)",
@@ -184,7 +187,7 @@ struct LifeAssistShortcuts: AppShortcutsProvider {
             systemImageName: "figure.walk"
         )
         AppShortcut(
-            intent: ParkIdeaIntent(),
+            intent: ParkIdeaBackgroundIntent(),
             phrases: [
                 "Park an idea in \(.applicationName)",
                 "Save an idea in \(.applicationName)",
@@ -193,13 +196,22 @@ struct LifeAssistShortcuts: AppShortcutsProvider {
             systemImageName: "lightbulb"
         )
         AppShortcut(
-            intent: AddReminderIntent(),
+            intent: AddReminderBackgroundIntent(),
             phrases: [
                 "Add a reminder in \(.applicationName)",
                 "Remind me in \(.applicationName)",
             ],
             shortTitle: "Add reminder",
             systemImageName: "bell"
+        )
+        AppShortcut(
+            intent: CheckHabitBackgroundIntent(),
+            phrases: [
+                "Check off a habit in \(.applicationName)",
+                "Mark a habit done in \(.applicationName)",
+            ],
+            shortTitle: "Check habit",
+            systemImageName: "checkmark.circle"
         )
     }
 }
