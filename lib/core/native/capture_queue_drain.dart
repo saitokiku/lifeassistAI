@@ -75,12 +75,22 @@ class CaptureQueueDrain {
 
   Future<DrainResult> _drain() async {
     await _paths.ensureDirs();
-    final files = _paths.pendingDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.json'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path)); // epoch-prefixed names
+    List<File> pendingIn(Directory dir) => !dir.existsSync()
+        ? const []
+        : dir
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.json'))
+            .toList();
+
+    // Records from before an App Group container move drain right along
+    // with current ones (idempotent inserts make double-reads harmless).
+    final files = [
+      ...pendingIn(_paths.pendingDir),
+      if (_paths.legacyPendingDir case final legacy?) ...pendingIn(legacy),
+    ]..sort(
+        (a, b) => a.path.split('/').last.compareTo(b.path.split('/').last),
+      ); // epoch-prefixed names
 
     if (files.isEmpty) return const DrainResult();
 

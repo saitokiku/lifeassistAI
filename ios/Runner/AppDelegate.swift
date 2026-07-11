@@ -15,5 +15,25 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AiBridge") {
       AiBridge.register(with: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "HealthBridge") {
+      HealthBridge.register(with: registrar)
+    }
+    // Dart asks where the bridge lives so both sides agree the moment
+    // the App Group entitlement appears (Phase 6 widgets); without it
+    // this answers with the app container, same as before.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PathsBridge") {
+      let channel = FlutterMethodChannel(
+        name: "lifeassist/paths", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { call, result in
+        switch call.method {
+        case "bridgeRoot":
+          result(BridgePaths.root.path)
+        case "legacyBridgeRoot":
+          result(BridgePaths.appContainerRoot.path)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
   }
 }

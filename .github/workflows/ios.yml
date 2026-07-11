@@ -14,6 +14,10 @@ on:
         description: 'Also run xcodebuild App Intents tests on a simulator'
         type: boolean
         default: false
+      build_widget_experiment:
+        description: 'EXPERIMENTAL: script the widget extension target in, then build'
+        type: boolean
+        default: false
   push:
     branches: ['**']
     paths:
@@ -43,7 +47,7 @@ jobs:
         run: |
           cd ios/Runner
           # Files importing Flutter are covered by the full build job.
-          FILES=$(ls *.swift | grep -v -e AppDelegate.swift -e SceneDelegate.swift -e AiBridge.swift)
+          FILES=$(ls *.swift | grep -v -e AppDelegate.swift -e SceneDelegate.swift -e AiBridge.swift -e HealthBridge.swift)
           echo "Typechecking: $FILES"
           xcrun swiftc -typecheck \
             -sdk "$(xcrun --show-sdk-path --sdk iphoneos)" \
@@ -76,6 +80,35 @@ jobs:
           name: LifeAssist-unsigned-ipa
           path: build/ipa/LifeAssist-unsigned.ipa
           retention-days: 30
+
+  # Opt-in, EXPERIMENTAL (Phase 6): scripts the LifeAssistWidgets
+  # extension target into a scratch copy of the project and proves the
+  # widget sources compile. Nothing is committed — the patched pbxproj is
+  # uploaded as an artifact for inspection.
+  widget-experiment:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_widget_experiment }}
+    runs-on: macos-latest
+    needs: swift-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter 3.44.6
+        run: |
+          curl -sSL -o /tmp/flutter.zip \
+            https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.44.6-stable.zip
+          unzip -q /tmp/flutter.zip -d "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - name: Add widget extension target
+        run: |
+          gem install xcodeproj --no-document
+          ruby scripts/ios/add_widget_extension.rb
+      - run: flutter pub get
+      - name: Build with widget target (unsigned)
+        run: flutter build ios --release --no-codesign
+      - uses: actions/upload-artifact@v4
+        with:
+          name: widget-experiment-pbxproj
+          path: ios/Runner.xcodeproj/project.pbxproj
+          retention-days: 14
 
   # Opt-in: exercises the App Intents through real system pathways on a
   # simulator (App Intents Testing Framework tests live in RunnerTests).

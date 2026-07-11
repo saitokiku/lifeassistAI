@@ -12,8 +12,11 @@ compile-verified from this Linux repo via a macOS CI loop first.*
 
 *Execution: Phases 0–4 are implemented and CI-verified (Phase 1 ran
 last, after Phase 4 — the queue/AI contracts already spoke integer
-cents, so nothing froze a float format). Phases 5–7 are the next
-sessions' work.*
+cents, so nothing froze a float format). Phase 5 (HealthBridge) and
+Phase 6 (App-Group paths, widget sources, target-generator script) are
+scaffolded dormant; Phase 7 store readiness (privacy manifest, bundle
+id, TestFlight guide) is done. Where on-device AI goes next lives in
+[EDGE_AI_ROADMAP.md](EDGE_AI_ROADMAP.md).*
 
 ---
 
