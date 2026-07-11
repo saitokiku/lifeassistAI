@@ -42,6 +42,13 @@ group = project.main_group.new_group(TARGET_NAME, 'LifeAssistWidgets')
 swift = group.new_file('LifeAssistWidgets.swift')
 widget.add_file_references([swift])
 
+# The Live Activity attributes are shared with Runner: same file,
+# compiled into both targets (ActivityKit matches by type name+shape).
+shared = project.files.find { |f| f.path == 'FocusTimerAttributes.swift' }
+shared ||= project.main_group.new_group('Shared', 'Shared')
+               .new_file('FocusTimerAttributes.swift')
+widget.add_file_references([shared])
+
 widget.build_configurations.each do |config|
   s = config.build_settings
   s['PRODUCT_BUNDLE_IDENTIFIER'] = BUNDLE_ID

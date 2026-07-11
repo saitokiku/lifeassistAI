@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +15,7 @@ import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
 import '../../core/utils/date_utils.dart';
 import '../../features/dashboard/application/dashboard_controller.dart';
+import '../../features/habits/application/habits_controller.dart';
 import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
@@ -207,6 +209,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final state = ref.read(dashboardStateProvider);
       if (state == null) return;
       final timer = ref.read(preferencesProvider).runningTimer;
+      final habits = ref.read(habitsStateProvider);
       try {
         ref.read(entityMirrorProvider).writeToday({
           'dateKey': AppDateUtils.dateKey(DateTime.now()),
@@ -214,17 +217,36 @@ class _AppShellState extends ConsumerState<AppShell>
               '${DateTime.now().month.toString().padLeft(2, '0')}',
           'score': state.showScore ? state.focusScore.total : null,
           'upNext': state.upNextSpoken,
-          'habitsDueToday': null,
+          'habitsDueToday': habits == null
+              ? null
+              : [
+                  for (final h in habits.habits)
+                    if (h.dueToday && !h.habit.isArchived)
+                      {
+                        'id': h.habit.id,
+                        'name': h.habit.name,
+                        'done': h.doneToday,
+                      },
+                ],
           'timerStartedAt': timer?.startedAt.toIso8601String(),
           'monthSpendCentsByCategory': {
             for (final cs in state.money.snapshot.categorySpends)
               cs.category.id: cs.spentCents,
           },
-        });
+        }).then((_) => _pokeWidgets());
       } catch (_) {
         // Mirror unavailable (web/tests): nothing to publish.
       }
     });
+  }
+
+  /// Fresh today.json on disk — ask iOS to re-read the widget timelines.
+  /// Silently means nothing everywhere else.
+  void _pokeWidgets() {
+    if (kIsWeb) return;
+    const MethodChannel('lifeassist/paths')
+        .invokeMethod('todayPublished')
+        .catchError((_) => null);
   }
 
   @override

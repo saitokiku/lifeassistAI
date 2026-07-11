@@ -45,6 +45,8 @@
 	<string>Life Assist reads steps, sleep, mindfulness, and workouts to check off the habits you map to them — on this device only.</string>
 	<key>LAHealthKitEnabled</key>
 	<false/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>

@@ -88,13 +88,17 @@ Reminders screen or onboarding.
   target, then flip `LAHealthKitEnabled` to `YES` in Info.plist. Until
   both happen, HealthBridge answers "disabledInBuild" and the app shows
   nothing. The read-permission usage string is already in Info.plist.
-- **Widgets + App Group (Phase 6)**: run
-  `ruby scripts/ios/add_widget_extension.rb` (needs `gem install
-  xcodeproj`), then add the App Group `group.com.saitokiku.lifeassist`
-  to BOTH targets. The bridge (entities.json, today.json, capture queue)
-  relocates to the shared container automatically on both the Swift and
-  Dart sides, and old pending captures still drain from the previous
-  location.
+- **Widgets + App Group (Phase 6)**: the LifeAssistWidgets extension
+  target is already in the project (score, up-next, interactive habit
+  check, an iOS 18 Control Center button, and the focus-timer Live
+  Activity). One Mac-side step remains: Signing & Capabilities → add the
+  App Group `group.com.saitokiku.lifeassist` to BOTH targets. The bridge
+  (entities.json, today.json, capture queue) relocates to the shared
+  container automatically on both the Swift and Dart sides, and old
+  pending captures still drain from the previous location. Until the
+  group exists, widgets say "Open Life Assist for a fresh look" instead
+  of guessing. (`scripts/ios/add_widget_extension.rb` regenerates the
+  target from scratch if it's ever removed; it's a no-op otherwise.)
 
 ## 3. Run on your iPhone (development build)
 

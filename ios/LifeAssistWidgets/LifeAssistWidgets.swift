@@ -1,40 +1,49 @@
-// Phase 6 scaffold: home/lock-screen widgets over the today.json feed.
+// Phase 6: home/lock-screen widgets, an interactive habit check, an
+// iOS 18 control, and the focus-timer Live Activity UI.
 //
-// NOT part of the Runner target. These sources compile only after
-// scripts/ios/add_widget_extension.rb adds the LifeAssistWidgets
-// extension target (run it locally on a Mac, or dispatch the iOS
-// workflow with build_widget_experiment). The widgets read the same
-// today.json the Siri answers use — but from the App Group container,
-// which exists once the group.com.saitokiku.lifeassist capability is
-// added to both targets.
+// Everything reads the same today.json the Siri answers use — from the
+// App Group container (group.com.saitokiku.lifeassist), which exists
+// once that capability is added to both targets on a Mac. Without it,
+// widgets honestly say to open the app instead of guessing.
 //
-// Honesty contract carried over: numbers render only when the feed is
-// from today; otherwise the widget says to open the app rather than
-// showing stale figures.
+// The habit check writes a capture-queue record exactly like Siri's
+// background intents do; the app drains it into a real, source-tagged
+// HabitLog on next open. Until then the widget shows the habit as
+// queued — pending records are part of the truth.
 
+import AppIntents
 import SwiftUI
 import WidgetKit
 
 // MARK: - today.json (self-contained copy of the Runner-side contract)
+
+private struct HabitDue: Codable, Identifiable {
+    let id: String
+    let name: String
+    let done: Bool
+}
 
 private struct TodayFeed: Codable {
     let v: Int
     let dateKey: String?
     let score: Int?
     let upNext: String?
+    let habitsDueToday: [HabitDue]?
 }
 
 private enum Feed {
     static let appGroupId = "group.com.saitokiku.lifeassist"
 
-    static func load() -> TodayFeed? {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupId)
-        else { return nil }
-        let file = container
+    static var bridgeRoot: URL? {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupId)?
             .appendingPathComponent("lifeassist_bridge", isDirectory: true)
-            .appendingPathComponent("today.json")
-        guard let data = try? Data(contentsOf: file),
+    }
+
+    static func load() -> TodayFeed? {
+        guard let root = bridgeRoot,
+              let data = try? Data(
+                contentsOf: root.appendingPathComponent("today.json")),
               let feed = try? JSONDecoder().decode(TodayFeed.self, from: data)
         else { return nil }
         return feed
@@ -45,6 +54,87 @@ private enum Feed {
         f.dateFormat = "yyyy-MM-dd"
         return f.string(from: Date())
     }
+
+    /// Habits already checked via a widget tap but not yet drained by
+    /// the app — they must render as done, not tappable again.
+    static func pendingCheckedHabitIds() -> Set<String> {
+        guard let root = bridgeRoot else { return [] }
+        let pending = root
+            .appendingPathComponent("queue", isDirectory: true)
+            .appendingPathComponent("pending", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: pending, includingPropertiesForKeys: nil) else { return [] }
+        var ids = Set<String>()
+        for file in files where file.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: file),
+                  let record = try? JSONSerialization.jsonObject(with: data)
+                    as? [String: Any],
+                  record["type"] as? String == "habitLog",
+                  let fields = record["fields"] as? [String: Any],
+                  let habitId = fields["habitId"] as? String
+            else { continue }
+            ids.insert(habitId)
+        }
+        return ids
+    }
+}
+
+// MARK: - Queue write (mirror of CaptureQueue.swift's record shape)
+
+private enum WidgetQueue {
+    static func enqueueHabitCheck(habitId: String, habitName: String) throws {
+        guard let root = Feed.bridgeRoot else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let dir = root
+            .appendingPathComponent("queue", isDirectory: true)
+            .appendingPathComponent("pending", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true)
+        let id = UUID().uuidString.lowercased()
+        let record: [String: Any] = [
+            "v": 1,
+            "id": id,
+            "createdAt": ISO8601DateFormatter().string(from: Date()),
+            "source": "widget",
+            "type": "habitLog",
+            "fields": [
+                "habitId": habitId,
+                "habitName": habitName,
+                "value": 1,
+            ],
+        ]
+        let data = try JSONSerialization.data(withJSONObject: record)
+        let epoch = Int(Date().timeIntervalSince1970 * 1000)
+        let tmp = dir.appendingPathComponent("\(epoch)-\(id).tmp")
+        try data.write(to: tmp, options: .atomic)
+        try FileManager.default.moveItem(
+            at: tmp, to: dir.appendingPathComponent("\(epoch)-\(id).json"))
+    }
+}
+
+/// Interactive check straight from the widget. The record is the same
+/// one Siri would write; the app applies it exactly once on next open.
+struct CheckHabitFromWidgetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Check habit"
+    static let description =
+        IntentDescription("Checks off a habit in Life Assist.")
+
+    @Parameter(title: "Habit id") var habitId: String
+    @Parameter(title: "Habit name") var habitName: String
+
+    init() {}
+    init(habitId: String, habitName: String) {
+        self.habitId = habitId
+        self.habitName = habitName
+    }
+
+    func perform() async throws -> some IntentResult {
+        try WidgetQueue.enqueueHabitCheck(
+            habitId: habitId, habitName: habitName)
+        WidgetCenter.shared.reloadTimelines(ofKind: "LifeAssistHabits")
+        return .result()
+    }
 }
 
 // MARK: - Timeline
@@ -53,16 +143,23 @@ private struct Entry: TimelineEntry {
     let date: Date
     let score: Int?
     let upNext: String?
+    let habits: [HabitDue]
 
-    /// Nil-fielded entry meaning "no fresh picture — open the app".
     static func stale(_ date: Date) -> Entry {
-        Entry(date: date, score: nil, upNext: nil)
+        Entry(date: date, score: nil, upNext: nil, habits: [])
     }
 }
 
 private struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
-        Entry(date: Date(), score: 72, upNext: "Log today's step toward your goal.")
+        Entry(
+            date: Date(),
+            score: 72,
+            upNext: "Log today's step toward your goal.",
+            habits: [
+                HabitDue(id: "a", name: "Walk", done: true),
+                HabitDue(id: "b", name: "Read", done: false),
+            ])
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -79,11 +176,27 @@ private struct Provider: TimelineProvider {
         guard let feed = Feed.load(), feed.dateKey == Feed.todayKey else {
             return .stale(Date())
         }
-        return Entry(date: Date(), score: feed.score, upNext: feed.upNext)
+        let pending = Feed.pendingCheckedHabitIds()
+        let habits = (feed.habitsDueToday ?? []).map {
+            pending.contains($0.id)
+                ? HabitDue(id: $0.id, name: $0.name, done: true)
+                : $0
+        }
+        return Entry(
+            date: Date(), score: feed.score, upNext: feed.upNext,
+            habits: habits)
     }
 }
 
 // MARK: - Views
+
+private struct StaleView: View {
+    var body: some View {
+        Text("Open Life Assist for a fresh look.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+    }
+}
 
 private struct ScoreView: View {
     let entry: Entry
@@ -101,9 +214,7 @@ private struct ScoreView: View {
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
             } else {
-                Text("Open Life Assist for a fresh look.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                StaleView()
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
@@ -121,6 +232,46 @@ private struct UpNextView: View {
             Text(entry.upNext ?? "Open Life Assist for a fresh look.")
                 .font(.footnote)
                 .lineLimit(3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+}
+
+private struct HabitsView: View {
+    let entry: Entry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Habits")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            if entry.habits.isEmpty {
+                StaleView()
+            } else {
+                let done = entry.habits.filter(\.done).count
+                Text("\(done) of \(entry.habits.count) done")
+                    .font(.footnote)
+                if let next = entry.habits.first(where: { !$0.done }) {
+                    Button(intent: CheckHabitFromWidgetIntent(
+                        habitId: next.id, habitName: next.name)
+                    ) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "circle")
+                            Text(next.name).lineLimit(1)
+                        }
+                        .font(.footnote.weight(.medium))
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("All done today")
+                    }
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(.fill.tertiary, for: .widget)
@@ -151,10 +302,105 @@ struct UpNextWidget: Widget {
     }
 }
 
+struct HabitsWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "LifeAssistHabits", provider: Provider()) {
+            HabitsView(entry: $0)
+        }
+        .configurationDisplayName("Habit check")
+        .description("Check off the next habit without opening the app.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+// MARK: - Control Center (iOS 18+)
+
+@available(iOS 18.0, *)
+struct LogExpenseControlIntent: AppIntent {
+    static let title: LocalizedStringResource = "Log an expense"
+    static let openAppWhenRun = true
+
+    func perform() async throws -> some IntentResult & OpensIntent {
+        .result(opensIntent: OpenURLIntent(
+            URL(string: "lifeassist://capture?type=expense")!))
+    }
+}
+
+@available(iOS 18.0, *)
+struct LogExpenseControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "LifeAssistLogExpense") {
+            ControlWidgetButton(action: LogExpenseControlIntent()) {
+                Label("Log expense", systemImage: "dollarsign.circle")
+            }
+        }
+        .displayName("Log expense")
+        .description("Opens Life Assist on a fresh expense entry.")
+    }
+}
+
+// MARK: - Focus timer Live Activity
+
+#if canImport(ActivityKit)
+import ActivityKit
+
+struct FocusTimerLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: FocusTimerAttributes.self) { context in
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.attributes.label)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text("Focus block running")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(context.attributes.startedAt, style: .timer)
+                    .font(.title2.monospacedDigit())
+                    .frame(maxWidth: 90, alignment: .trailing)
+            }
+            .padding()
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Text(context.attributes.label)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(context.attributes.startedAt, style: .timer)
+                        .font(.title3.monospacedDigit())
+                        .frame(maxWidth: 80, alignment: .trailing)
+                }
+            } compactLeading: {
+                Image(systemName: "timer")
+            } compactTrailing: {
+                Text(context.attributes.startedAt, style: .timer)
+                    .monospacedDigit()
+                    .frame(maxWidth: 44)
+            } minimal: {
+                Image(systemName: "timer")
+            }
+        }
+    }
+}
+#endif
+
+// MARK: - Bundle
+
 @main
 struct LifeAssistWidgetBundle: WidgetBundle {
     var body: some Widget {
         ScoreWidget()
         UpNextWidget()
+        HabitsWidget()
+        #if canImport(ActivityKit)
+        FocusTimerLiveActivity()
+        #endif
+        if #available(iOS 18.0, *) {
+            LogExpenseControl()
+        }
     }
 }

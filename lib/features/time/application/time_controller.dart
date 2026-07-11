@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/native/live_activity_service.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
@@ -184,12 +185,22 @@ class TimeController {
   final Ref _ref;
   final TimeRepository _repo;
 
-  /// Starts the focus timer against [budgetId] (persisted across restarts).
+  /// Starts the focus timer against [budgetId] (persisted across
+  /// restarts) and mirrors it as a lock-screen Live Activity on iOS.
   Future<void> startTimer(String budgetId) async {
     final startedAt = DateTime.now();
     await _ref.read(preferencesProvider).setRunningTimer(budgetId, startedAt);
     _ref.read(runningTimerProvider.notifier).state =
         (budgetId: budgetId, startedAt: startedAt);
+    final budgets = _ref.read(timeBudgetsProvider).valueOrNull;
+    final label = budgets
+            ?.where((b) => b.id == budgetId)
+            .map((b) => b.name)
+            .firstOrNull ??
+        'Focus';
+    await _ref
+        .read(liveActivityServiceProvider)
+        .startFocusTimer(label: label, startedAt: startedAt);
   }
 
   /// Stops the timer and returns the elapsed hours (min 0.01) for the log
@@ -199,6 +210,7 @@ class TimeController {
     if (running == null) return null;
     await _ref.read(preferencesProvider).clearRunningTimer();
     _ref.read(runningTimerProvider.notifier).state = null;
+    await _ref.read(liveActivityServiceProvider).stopFocusTimer();
     final elapsed = DateTime.now().difference(running.startedAt);
     final hours =
         (elapsed.inSeconds / 3600).clamp(0.01, 24.0);
