@@ -279,6 +279,7 @@ class CaptureQueueDrain {
                   date: key,
                   value: (fields['value'] as num?)?.toDouble() ?? 1,
                   note: null,
+                  source: 'siri',
                 ),
                 mode: InsertMode.insertOrIgnore,
               );

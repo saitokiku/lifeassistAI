@@ -2,6 +2,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/health/health_habit_sync.dart';
+import '../../../../core/health/health_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/formatters.dart';
@@ -45,11 +47,17 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
           hour: widget.habit!.reminderHour!,
           minute: widget.habit!.reminderMinute ?? 0,
         );
+  late String? _healthMetric = widget.habit?.healthMetric;
+  late final _healthTarget = TextEditingController(
+      text: widget.habit?.healthTarget == null
+          ? ''
+          : Formatters.number(widget.habit!.healthTarget!, maxDecimals: 1));
 
   @override
   void dispose() {
     _name.dispose();
     _unit.dispose();
+    _healthTarget.dispose();
     super.dispose();
   }
 
@@ -78,6 +86,13 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
     final controller = ref.read(habitsControllerProvider);
     final navigator = Navigator.of(context);
     final unit = _unit.text.trim().isEmpty ? null : _unit.text.trim();
+    // A boolean habit needs a threshold to auto-check against; without
+    // one the mapping is meaningless, so it isn't saved.
+    final target = double.tryParse(_healthTarget.text.trim());
+    final metric = _healthMetric == null ||
+            (_type == HabitType.boolean && (target == null || target <= 0))
+        ? null
+        : _healthMetric;
     try {
       if (widget.habit == null) {
         await controller.createHabit(
@@ -87,6 +102,8 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
           weekdays: _weekdays,
           reminderHour: _reminder?.hour,
           reminderMinute: _reminder?.minute,
+          healthMetric: metric,
+          healthTarget: metric == null ? null : target,
         );
       } else {
         await controller.updateHabit(widget.habit!.copyWith(
@@ -96,6 +113,8 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
           weekdays: _weekdays,
           reminderHour: Value(_reminder?.hour),
           reminderMinute: Value(_reminder?.minute),
+          healthMetric: Value(metric),
+          healthTarget: Value(metric == null ? null : target),
         ));
       }
     } catch (_) {
@@ -273,6 +292,61 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
                   ),
                 ],
               ),
+              if (ref.watch(healthAvailabilityProvider).valueOrNull ==
+                  HealthAvailability.ready) ...[
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  'From Apple Health',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Wrap(
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.sm,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Off'),
+                      selected: _healthMetric == null,
+                      showCheckmark: false,
+                      onSelected: (_) {
+                        Haptics.select();
+                        setState(() => _healthMetric = null);
+                      },
+                    ),
+                    for (final entry in HealthHabitSync.metrics.entries)
+                      ChoiceChip(
+                        label: Text(entry.value),
+                        selected: _healthMetric == entry.key,
+                        showCheckmark: false,
+                        onSelected: (_) {
+                          Haptics.select();
+                          setState(() => _healthMetric = entry.key);
+                        },
+                      ),
+                  ],
+                ),
+                if (_healthMetric != null) ...[
+                  const SizedBox(height: AppSpace.md),
+                  if (_type == HabitType.boolean)
+                    AppTextField(
+                      label:
+                          'Counts as done at (${HealthHabitSync.metrics[_healthMetric]})',
+                      hint: _healthMetric == 'steps' ? '8000' : '30',
+                      controller: _healthTarget,
+                      keyboardType: TextInputType.number,
+                    )
+                  else
+                    Text(
+                      "The day's number is logged for you. Your own log "
+                      'always wins over the automatic one.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.textTertiary,
+                      ),
+                    ),
+                ],
+              ],
               if (hasLogs && _typeChanged) ...[
                 const SizedBox(height: AppSpace.md),
                 Row(

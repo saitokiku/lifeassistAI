@@ -13,6 +13,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
+import '../../../core/health/health_habit_sync.dart';
+import '../../../core/health/health_service.dart';
 import '../../../core/native/capture_queue_drain.dart';
 import '../../../core/providers.dart';
 import '../../../core/security/app_lock.dart';
@@ -164,6 +166,7 @@ class SettingsScreen extends ConsumerWidget {
           const _SettingsGroup(children: [
             _ExportRow(),
             _ImportRow(),
+            _HealthRow(),
             _FailedCapturesRow(),
           ]),
           const SectionHeader(title: 'Danger zone'),
@@ -563,6 +566,46 @@ class _ImportRow extends StatelessWidget {
 
 /// Siri/widget captures that couldn't be read stay in a capped graveyard
 /// instead of vanishing — this row exists only while any do.
+/// Apple Health connection row. Invisible unless this build actually
+/// has HealthKit switched on (capability + LAHealthKitEnabled), so a
+/// TestFlight build without it shows nothing to configure.
+class _HealthRow extends ConsumerStatefulWidget {
+  const _HealthRow();
+
+  @override
+  ConsumerState<_HealthRow> createState() => _HealthRowState();
+}
+
+class _HealthRowState extends ConsumerState<_HealthRow> {
+  bool _requested = false;
+
+  Future<void> _connect() async {
+    final service = ref.read(healthServiceProvider);
+    await service.requestPermission();
+    // HealthKit hides read grants; all we honestly know is that the
+    // sheet ran. Sync now — data appears if access was allowed.
+    await ref.read(healthHabitSyncProvider).sync();
+    if (mounted) setState(() => _requested = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    final availability = ref.watch(healthAvailabilityProvider).valueOrNull;
+    if (availability != HealthAvailability.ready) {
+      return const SizedBox.shrink();
+    }
+    return _SettingsRow(
+      icon: Icons.favorite_outline,
+      title: 'Apple Health',
+      subtitle: _requested
+          ? 'Requested. Mapped habits update when the app opens.'
+          : 'Allow access, then map habits to steps, sleep, and more.',
+      onTap: _connect,
+    );
+  }
+}
+
 class _FailedCapturesRow extends ConsumerStatefulWidget {
   const _FailedCapturesRow();
 

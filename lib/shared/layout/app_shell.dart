@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
+import '../../core/health/health_habit_sync.dart';
 import '../../core/native/capture_queue_drain.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
@@ -86,6 +87,7 @@ class _AppShellState extends ConsumerState<AppShell>
 
   Future<void> _drainCaptureQueue() async {
     if (kIsWeb) return;
+    _syncHealthHabits();
     final DrainResult result;
     try {
       result = await ref.read(captureQueueDrainProvider).drain();
@@ -102,6 +104,20 @@ class _AppShellState extends ConsumerState<AppShell>
       await ref.read(remindersControllerProvider).resyncNow();
     }
     if (mounted) _toastDrain(result);
+  }
+
+  /// Fire-and-forget: mapped habits pick up today's Health numbers on
+  /// every foreground. No-op unless the build has HealthKit enabled and
+  /// at least one habit is mapped; drift streams surface any change.
+  void _syncHealthHabits() {
+    if (kIsWeb) return;
+    try {
+      unawaited(
+        ref.read(healthHabitSyncProvider).sync().catchError((_) => 0),
+      );
+    } catch (_) {
+      // Provider unavailable (tests without overrides): nothing to sync.
+    }
   }
 
   void _toastDrain(DrainResult result) {

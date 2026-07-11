@@ -67,6 +67,8 @@ class HabitsController {
     int weekdays = 127,
     int? reminderHour,
     int? reminderMinute,
+    String? healthMetric,
+    double? healthTarget,
   }) async {
     await _repo.createHabit(
       name: name,
@@ -75,6 +77,8 @@ class HabitsController {
       weekdays: weekdays,
       reminderHour: reminderHour,
       reminderMinute: reminderMinute,
+      healthMetric: healthMetric,
+      healthTarget: healthTarget,
     );
     await _resyncReminders();
   }

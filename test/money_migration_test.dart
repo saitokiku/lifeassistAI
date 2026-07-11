@@ -259,6 +259,14 @@ Future<void> _plantV3Database(File file) async {
     'CREATE TABLE habit_logs (id TEXT NOT NULL PRIMARY KEY, '
         'habit_id TEXT NOT NULL, date TEXT NOT NULL, '
         'value REAL NOT NULL DEFAULT 1, note TEXT)',
+    // v5 ALTERs habits/habit_logs, so habits must exist too.
+    'CREATE TABLE habits (id TEXT NOT NULL PRIMARY KEY, '
+        "name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'boolean', "
+        'unit TEXT, weekdays INTEGER NOT NULL DEFAULT 127, '
+        'reminder_hour INTEGER, reminder_minute INTEGER, '
+        'sort_order INTEGER NOT NULL DEFAULT 0, '
+        'is_archived INTEGER NOT NULL DEFAULT 0, '
+        'created_at INTEGER NOT NULL)',
     'CREATE TABLE main_goals (id TEXT NOT NULL PRIMARY KEY, '
         "title TEXT NOT NULL, why TEXT NOT NULL DEFAULT '', "
         "target_date TEXT, status TEXT NOT NULL DEFAULT 'active', "

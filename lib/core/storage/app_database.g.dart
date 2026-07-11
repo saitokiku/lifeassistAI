@@ -5058,6 +5058,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
   late final GeneratedColumn<int> reminderMinute = GeneratedColumn<int>(
       'reminder_minute', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _healthMetricMeta =
+      const VerificationMeta('healthMetric');
+  @override
+  late final GeneratedColumn<String> healthMetric = GeneratedColumn<String>(
+      'health_metric', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _healthTargetMeta =
+      const VerificationMeta('healthTarget');
+  @override
+  late final GeneratedColumn<double> healthTarget = GeneratedColumn<double>(
+      'health_target', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _sortOrderMeta =
       const VerificationMeta('sortOrder');
   @override
@@ -5091,6 +5103,8 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         weekdays,
         reminderHour,
         reminderMinute,
+        healthMetric,
+        healthTarget,
         sortOrder,
         isArchived,
         createdAt
@@ -5140,6 +5154,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
           reminderMinute.isAcceptableOrUnknown(
               data['reminder_minute']!, _reminderMinuteMeta));
     }
+    if (data.containsKey('health_metric')) {
+      context.handle(
+          _healthMetricMeta,
+          healthMetric.isAcceptableOrUnknown(
+              data['health_metric']!, _healthMetricMeta));
+    }
+    if (data.containsKey('health_target')) {
+      context.handle(
+          _healthTargetMeta,
+          healthTarget.isAcceptableOrUnknown(
+              data['health_target']!, _healthTargetMeta));
+    }
     if (data.containsKey('sort_order')) {
       context.handle(_sortOrderMeta,
           sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta));
@@ -5179,6 +5205,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_hour']),
       reminderMinute: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_minute']),
+      healthMetric: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}health_metric']),
+      healthTarget: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}health_target']),
       sortOrder: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
       isArchived: attachedDatabase.typeMapping
@@ -5207,6 +5237,12 @@ class Habit extends DataClass implements Insertable<Habit> {
   /// Optional per-habit reminder time; both null = no reminder.
   final int? reminderHour;
   final int? reminderMinute;
+
+  /// Apple Health auto-check mapping: which daily metric feeds this habit
+  /// (steps | sleepHours | mindfulMinutes | workoutMinutes; null = manual
+  /// only) and the threshold that counts a boolean habit as done.
+  final String? healthMetric;
+  final double? healthTarget;
   final int sortOrder;
   final bool isArchived;
   final DateTime createdAt;
@@ -5218,6 +5254,8 @@ class Habit extends DataClass implements Insertable<Habit> {
       required this.weekdays,
       this.reminderHour,
       this.reminderMinute,
+      this.healthMetric,
+      this.healthTarget,
       required this.sortOrder,
       required this.isArchived,
       required this.createdAt});
@@ -5236,6 +5274,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     }
     if (!nullToAbsent || reminderMinute != null) {
       map['reminder_minute'] = Variable<int>(reminderMinute);
+    }
+    if (!nullToAbsent || healthMetric != null) {
+      map['health_metric'] = Variable<String>(healthMetric);
+    }
+    if (!nullToAbsent || healthTarget != null) {
+      map['health_target'] = Variable<double>(healthTarget);
     }
     map['sort_order'] = Variable<int>(sortOrder);
     map['is_archived'] = Variable<bool>(isArchived);
@@ -5256,6 +5300,12 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderMinute: reminderMinute == null && nullToAbsent
           ? const Value.absent()
           : Value(reminderMinute),
+      healthMetric: healthMetric == null && nullToAbsent
+          ? const Value.absent()
+          : Value(healthMetric),
+      healthTarget: healthTarget == null && nullToAbsent
+          ? const Value.absent()
+          : Value(healthTarget),
       sortOrder: Value(sortOrder),
       isArchived: Value(isArchived),
       createdAt: Value(createdAt),
@@ -5273,6 +5323,8 @@ class Habit extends DataClass implements Insertable<Habit> {
       weekdays: serializer.fromJson<int>(json['weekdays']),
       reminderHour: serializer.fromJson<int?>(json['reminderHour']),
       reminderMinute: serializer.fromJson<int?>(json['reminderMinute']),
+      healthMetric: serializer.fromJson<String?>(json['healthMetric']),
+      healthTarget: serializer.fromJson<double?>(json['healthTarget']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -5289,6 +5341,8 @@ class Habit extends DataClass implements Insertable<Habit> {
       'weekdays': serializer.toJson<int>(weekdays),
       'reminderHour': serializer.toJson<int?>(reminderHour),
       'reminderMinute': serializer.toJson<int?>(reminderMinute),
+      'healthMetric': serializer.toJson<String?>(healthMetric),
+      'healthTarget': serializer.toJson<double?>(healthTarget),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -5303,6 +5357,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           int? weekdays,
           Value<int?> reminderHour = const Value.absent(),
           Value<int?> reminderMinute = const Value.absent(),
+          Value<String?> healthMetric = const Value.absent(),
+          Value<double?> healthTarget = const Value.absent(),
           int? sortOrder,
           bool? isArchived,
           DateTime? createdAt}) =>
@@ -5316,6 +5372,10 @@ class Habit extends DataClass implements Insertable<Habit> {
             reminderHour.present ? reminderHour.value : this.reminderHour,
         reminderMinute:
             reminderMinute.present ? reminderMinute.value : this.reminderMinute,
+        healthMetric:
+            healthMetric.present ? healthMetric.value : this.healthMetric,
+        healthTarget:
+            healthTarget.present ? healthTarget.value : this.healthTarget,
         sortOrder: sortOrder ?? this.sortOrder,
         isArchived: isArchived ?? this.isArchived,
         createdAt: createdAt ?? this.createdAt,
@@ -5333,6 +5393,12 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderMinute: data.reminderMinute.present
           ? data.reminderMinute.value
           : this.reminderMinute,
+      healthMetric: data.healthMetric.present
+          ? data.healthMetric.value
+          : this.healthMetric,
+      healthTarget: data.healthTarget.present
+          ? data.healthTarget.value
+          : this.healthTarget,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isArchived:
           data.isArchived.present ? data.isArchived.value : this.isArchived,
@@ -5350,6 +5416,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('weekdays: $weekdays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('healthMetric: $healthMetric, ')
+          ..write('healthTarget: $healthTarget, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt')
@@ -5358,8 +5426,19 @@ class Habit extends DataClass implements Insertable<Habit> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, unit, weekdays, reminderHour,
-      reminderMinute, sortOrder, isArchived, createdAt);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      type,
+      unit,
+      weekdays,
+      reminderHour,
+      reminderMinute,
+      healthMetric,
+      healthTarget,
+      sortOrder,
+      isArchived,
+      createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5371,6 +5450,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.weekdays == this.weekdays &&
           other.reminderHour == this.reminderHour &&
           other.reminderMinute == this.reminderMinute &&
+          other.healthMetric == this.healthMetric &&
+          other.healthTarget == this.healthTarget &&
           other.sortOrder == this.sortOrder &&
           other.isArchived == this.isArchived &&
           other.createdAt == this.createdAt);
@@ -5384,6 +5465,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<int> weekdays;
   final Value<int?> reminderHour;
   final Value<int?> reminderMinute;
+  final Value<String?> healthMetric;
+  final Value<double?> healthTarget;
   final Value<int> sortOrder;
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
@@ -5396,6 +5479,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.weekdays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.healthMetric = const Value.absent(),
+    this.healthTarget = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5409,6 +5494,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.weekdays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.healthMetric = const Value.absent(),
+    this.healthTarget = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isArchived = const Value.absent(),
     required DateTime createdAt,
@@ -5424,6 +5511,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<int>? weekdays,
     Expression<int>? reminderHour,
     Expression<int>? reminderMinute,
+    Expression<String>? healthMetric,
+    Expression<double>? healthTarget,
     Expression<int>? sortOrder,
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
@@ -5437,6 +5526,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (weekdays != null) 'weekdays': weekdays,
       if (reminderHour != null) 'reminder_hour': reminderHour,
       if (reminderMinute != null) 'reminder_minute': reminderMinute,
+      if (healthMetric != null) 'health_metric': healthMetric,
+      if (healthTarget != null) 'health_target': healthTarget,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
@@ -5452,6 +5543,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       Value<int>? weekdays,
       Value<int?>? reminderHour,
       Value<int?>? reminderMinute,
+      Value<String?>? healthMetric,
+      Value<double?>? healthTarget,
       Value<int>? sortOrder,
       Value<bool>? isArchived,
       Value<DateTime>? createdAt,
@@ -5464,6 +5557,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       weekdays: weekdays ?? this.weekdays,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      healthMetric: healthMetric ?? this.healthMetric,
+      healthTarget: healthTarget ?? this.healthTarget,
       sortOrder: sortOrder ?? this.sortOrder,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
@@ -5495,6 +5590,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (reminderMinute.present) {
       map['reminder_minute'] = Variable<int>(reminderMinute.value);
     }
+    if (healthMetric.present) {
+      map['health_metric'] = Variable<String>(healthMetric.value);
+    }
+    if (healthTarget.present) {
+      map['health_target'] = Variable<double>(healthTarget.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -5520,6 +5621,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('weekdays: $weekdays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('healthMetric: $healthMetric, ')
+          ..write('healthTarget: $healthTarget, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt, ')
@@ -5563,8 +5666,16 @@ class $HabitLogsTable extends HabitLogs
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
       'note', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
   @override
-  List<GeneratedColumn> get $columns => [id, habitId, date, value, note];
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('manual'));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, habitId, date, value, note, source];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -5600,6 +5711,10 @@ class $HabitLogsTable extends HabitLogs
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
     }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    }
     return context;
   }
 
@@ -5619,6 +5734,8 @@ class $HabitLogsTable extends HabitLogs
           .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
     );
   }
 
@@ -5634,12 +5751,17 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
   final String date;
   final double value;
   final String? note;
+
+  /// Who wrote it: manual | siri | health. Manual always wins — the
+  /// health sync never touches a log a person created.
+  final String source;
   const HabitLog(
       {required this.id,
       required this.habitId,
       required this.date,
       required this.value,
-      this.note});
+      this.note,
+      required this.source});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5650,6 +5772,7 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    map['source'] = Variable<String>(source);
     return map;
   }
 
@@ -5660,6 +5783,7 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
       date: Value(date),
       value: Value(value),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      source: Value(source),
     );
   }
 
@@ -5672,6 +5796,7 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
       date: serializer.fromJson<String>(json['date']),
       value: serializer.fromJson<double>(json['value']),
       note: serializer.fromJson<String?>(json['note']),
+      source: serializer.fromJson<String>(json['source']),
     );
   }
   @override
@@ -5683,6 +5808,7 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
       'date': serializer.toJson<String>(date),
       'value': serializer.toJson<double>(value),
       'note': serializer.toJson<String?>(note),
+      'source': serializer.toJson<String>(source),
     };
   }
 
@@ -5691,13 +5817,15 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
           String? habitId,
           String? date,
           double? value,
-          Value<String?> note = const Value.absent()}) =>
+          Value<String?> note = const Value.absent(),
+          String? source}) =>
       HabitLog(
         id: id ?? this.id,
         habitId: habitId ?? this.habitId,
         date: date ?? this.date,
         value: value ?? this.value,
         note: note.present ? note.value : this.note,
+        source: source ?? this.source,
       );
   HabitLog copyWithCompanion(HabitLogsCompanion data) {
     return HabitLog(
@@ -5706,6 +5834,7 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
       date: data.date.present ? data.date.value : this.date,
       value: data.value.present ? data.value.value : this.value,
       note: data.note.present ? data.note.value : this.note,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -5716,13 +5845,14 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
           ..write('habitId: $habitId, ')
           ..write('date: $date, ')
           ..write('value: $value, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, habitId, date, value, note);
+  int get hashCode => Object.hash(id, habitId, date, value, note, source);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5731,7 +5861,8 @@ class HabitLog extends DataClass implements Insertable<HabitLog> {
           other.habitId == this.habitId &&
           other.date == this.date &&
           other.value == this.value &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.source == this.source);
 }
 
 class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
@@ -5740,6 +5871,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
   final Value<String> date;
   final Value<double> value;
   final Value<String?> note;
+  final Value<String> source;
   final Value<int> rowid;
   const HabitLogsCompanion({
     this.id = const Value.absent(),
@@ -5747,6 +5879,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
     this.date = const Value.absent(),
     this.value = const Value.absent(),
     this.note = const Value.absent(),
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   HabitLogsCompanion.insert({
@@ -5755,6 +5888,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
     required String date,
     this.value = const Value.absent(),
     this.note = const Value.absent(),
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         habitId = Value(habitId),
@@ -5765,6 +5899,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
     Expression<String>? date,
     Expression<double>? value,
     Expression<String>? note,
+    Expression<String>? source,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5773,6 +5908,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
       if (date != null) 'date': date,
       if (value != null) 'value': value,
       if (note != null) 'note': note,
+      if (source != null) 'source': source,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5783,6 +5919,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
       Value<String>? date,
       Value<double>? value,
       Value<String?>? note,
+      Value<String>? source,
       Value<int>? rowid}) {
     return HabitLogsCompanion(
       id: id ?? this.id,
@@ -5790,6 +5927,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
       date: date ?? this.date,
       value: value ?? this.value,
       note: note ?? this.note,
+      source: source ?? this.source,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5812,6 +5950,9 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5826,6 +5967,7 @@ class HabitLogsCompanion extends UpdateCompanion<HabitLog> {
           ..write('date: $date, ')
           ..write('value: $value, ')
           ..write('note: $note, ')
+          ..write('source: $source, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11601,6 +11743,8 @@ typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
   Value<int> weekdays,
   Value<int?> reminderHour,
   Value<int?> reminderMinute,
+  Value<String?> healthMetric,
+  Value<double?> healthTarget,
   Value<int> sortOrder,
   Value<bool> isArchived,
   required DateTime createdAt,
@@ -11614,6 +11758,8 @@ typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
   Value<int> weekdays,
   Value<int?> reminderHour,
   Value<int?> reminderMinute,
+  Value<String?> healthMetric,
+  Value<double?> healthTarget,
   Value<int> sortOrder,
   Value<bool> isArchived,
   Value<DateTime> createdAt,
@@ -11650,6 +11796,12 @@ class $$HabitsTableFilterComposer
   ColumnFilters<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get healthMetric => $composableBuilder(
+      column: $table.healthMetric, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get healthTarget => $composableBuilder(
+      column: $table.healthTarget, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
       column: $table.sortOrder, builder: (column) => ColumnFilters(column));
@@ -11693,6 +11845,14 @@ class $$HabitsTableOrderingComposer
       column: $table.reminderMinute,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get healthMetric => $composableBuilder(
+      column: $table.healthMetric,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get healthTarget => $composableBuilder(
+      column: $table.healthTarget,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
       column: $table.sortOrder, builder: (column) => ColumnOrderings(column));
 
@@ -11732,6 +11892,12 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute, builder: (column) => column);
+
+  GeneratedColumn<String> get healthMetric => $composableBuilder(
+      column: $table.healthMetric, builder: (column) => column);
+
+  GeneratedColumn<double> get healthTarget => $composableBuilder(
+      column: $table.healthTarget, builder: (column) => column);
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -11773,6 +11939,8 @@ class $$HabitsTableTableManager extends RootTableManager<
             Value<int> weekdays = const Value.absent(),
             Value<int?> reminderHour = const Value.absent(),
             Value<int?> reminderMinute = const Value.absent(),
+            Value<String?> healthMetric = const Value.absent(),
+            Value<double?> healthTarget = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
             Value<bool> isArchived = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -11786,6 +11954,8 @@ class $$HabitsTableTableManager extends RootTableManager<
             weekdays: weekdays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            healthMetric: healthMetric,
+            healthTarget: healthTarget,
             sortOrder: sortOrder,
             isArchived: isArchived,
             createdAt: createdAt,
@@ -11799,6 +11969,8 @@ class $$HabitsTableTableManager extends RootTableManager<
             Value<int> weekdays = const Value.absent(),
             Value<int?> reminderHour = const Value.absent(),
             Value<int?> reminderMinute = const Value.absent(),
+            Value<String?> healthMetric = const Value.absent(),
+            Value<double?> healthTarget = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
             Value<bool> isArchived = const Value.absent(),
             required DateTime createdAt,
@@ -11812,6 +11984,8 @@ class $$HabitsTableTableManager extends RootTableManager<
             weekdays: weekdays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            healthMetric: healthMetric,
+            healthTarget: healthTarget,
             sortOrder: sortOrder,
             isArchived: isArchived,
             createdAt: createdAt,
@@ -11842,6 +12016,7 @@ typedef $$HabitLogsTableCreateCompanionBuilder = HabitLogsCompanion Function({
   required String date,
   Value<double> value,
   Value<String?> note,
+  Value<String> source,
   Value<int> rowid,
 });
 typedef $$HabitLogsTableUpdateCompanionBuilder = HabitLogsCompanion Function({
@@ -11850,6 +12025,7 @@ typedef $$HabitLogsTableUpdateCompanionBuilder = HabitLogsCompanion Function({
   Value<String> date,
   Value<double> value,
   Value<String?> note,
+  Value<String> source,
   Value<int> rowid,
 });
 
@@ -11876,6 +12052,9 @@ class $$HabitLogsTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
 }
 
 class $$HabitLogsTableOrderingComposer
@@ -11901,6 +12080,9 @@ class $$HabitLogsTableOrderingComposer
 
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
 }
 
 class $$HabitLogsTableAnnotationComposer
@@ -11926,6 +12108,9 @@ class $$HabitLogsTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 }
 
 class $$HabitLogsTableTableManager extends RootTableManager<
@@ -11956,6 +12141,7 @@ class $$HabitLogsTableTableManager extends RootTableManager<
             Value<String> date = const Value.absent(),
             Value<double> value = const Value.absent(),
             Value<String?> note = const Value.absent(),
+            Value<String> source = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               HabitLogsCompanion(
@@ -11964,6 +12150,7 @@ class $$HabitLogsTableTableManager extends RootTableManager<
             date: date,
             value: value,
             note: note,
+            source: source,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -11972,6 +12159,7 @@ class $$HabitLogsTableTableManager extends RootTableManager<
             required String date,
             Value<double> value = const Value.absent(),
             Value<String?> note = const Value.absent(),
+            Value<String> source = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               HabitLogsCompanion.insert(
@@ -11980,6 +12168,7 @@ class $$HabitLogsTableTableManager extends RootTableManager<
             date: date,
             value: value,
             note: note,
+            source: source,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

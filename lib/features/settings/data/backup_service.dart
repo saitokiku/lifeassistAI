@@ -239,6 +239,8 @@ class BackupService {
           'reminderMinute': null,
           ...row,
         };
+      case 'habitLogs':
+        return {'source': 'manual', ...row};
       case 'reminders':
         return {
           'weekdays': 127,

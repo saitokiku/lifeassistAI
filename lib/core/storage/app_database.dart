@@ -153,6 +153,12 @@ class Habits extends Table {
   /// Optional per-habit reminder time; both null = no reminder.
   IntColumn get reminderHour => integer().nullable()();
   IntColumn get reminderMinute => integer().nullable()();
+
+  /// Apple Health auto-check mapping: which daily metric feeds this habit
+  /// (steps | sleepHours | mindfulMinutes | workoutMinutes; null = manual
+  /// only) and the threshold that counts a boolean habit as done.
+  TextColumn get healthMetric => text().nullable()();
+  RealColumn get healthTarget => real().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
@@ -170,6 +176,10 @@ class HabitLogs extends Table {
   // boolean habits store 1/0; numeric and duration store the value.
   RealColumn get value => real().withDefault(const Constant(1))();
   TextColumn get note => text().nullable()();
+
+  /// Who wrote it: manual | siri | health. Manual always wins — the
+  /// health sync never touches a log a person created.
+  TextColumn get source => text().withDefault(const Constant('manual'))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -415,7 +425,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -497,6 +507,14 @@ class AppDatabase extends _$AppDatabase {
             for (final index in allSchemaEntities.whereType<Index>()) {
               await m.createIndex(index);
             }
+          }
+          if (from < 5) {
+            // v5: Apple Health auto-habits — the metric mapping on the
+            // habit and a source tag on every log ('manual' backfills,
+            // which is true of everything written before this version).
+            await m.addColumn(habits, habits.healthMetric);
+            await m.addColumn(habits, habits.healthTarget);
+            await m.addColumn(habitLogs, habitLogs.source);
           }
         },
       );

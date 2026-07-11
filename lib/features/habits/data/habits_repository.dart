@@ -41,6 +41,8 @@ class HabitsRepository {
     int weekdays = 127,
     int? reminderHour,
     int? reminderMinute,
+    String? healthMetric,
+    double? healthTarget,
   }) async {
     final existing = await _db.select(_db.habits).get();
     await _db.into(_db.habits).insert(Habit(
@@ -51,6 +53,8 @@ class HabitsRepository {
           weekdays: weekdays,
           reminderHour: reminderHour,
           reminderMinute: reminderMinute,
+          healthMetric: healthMetric,
+          healthTarget: healthTarget,
           sortOrder: existing.length,
           isArchived: false,
           createdAt: DateTime.now(),
@@ -66,12 +70,14 @@ class HabitsRepository {
         await (_db.delete(_db.habits)..where((t) => t.id.equals(id))).go();
       });
 
-  /// Logs (or replaces) a habit's value for a date.
+  /// Logs (or replaces) a habit's value for a date. [source] records who
+  /// wrote it; a manual edit of an automated log takes ownership.
   Future<void> upsertLog({
     required String habitId,
     required DateTime date,
     required double value,
     String? note,
+    String source = 'manual',
   }) async {
     final key = AppDateUtils.dateKey(date);
     final existing = await (_db.select(_db.habitLogs)
@@ -79,7 +85,11 @@ class HabitsRepository {
         .getSingleOrNull();
     if (existing != null) {
       await (_db.update(_db.habitLogs)..where((t) => t.id.equals(existing.id)))
-          .write(HabitLogsCompanion(value: Value(value), note: Value(note)));
+          .write(HabitLogsCompanion(
+        value: Value(value),
+        note: Value(note),
+        source: Value(source),
+      ));
     } else {
       await _db.into(_db.habitLogs).insert(HabitLog(
             id: _uuid.v4(),
@@ -87,6 +97,7 @@ class HabitsRepository {
             date: key,
             value: value,
             note: note,
+            source: source,
           ));
     }
   }
