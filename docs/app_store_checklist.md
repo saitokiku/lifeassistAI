@@ -7,7 +7,7 @@ TestFlight → App Review. Nothing is automated; each item is a manual step.
 
 - [ ] App name: **Life Assist** (check availability in App Store
       Connect; fall back to e.g. "Life Assist — Personal OS" if taken)
-- [ ] Bundle ID: `com.saitokiku.lifeassist` (already set in the Xcode
+- [ ] Bundle ID: `com.kaizen.lifeDashboard` (already set in the Xcode
       project — register it at developer.apple.com → Identifiers; it
       cannot change after the first upload)
 - [ ] SKU: any internal string, e.g. `life-dashboard-001`
