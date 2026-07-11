@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 
 /// Persistence for monthly recurring expenses plus the materializer that
 /// turns them into real TransactionEntries once their day arrives.
@@ -27,7 +28,7 @@ class RecurringRepository {
       _db.into(_db.recurringTransactions).insert(RecurringTransaction(
             id: _uuid.v4(),
             categoryId: categoryId,
-            amount: amount,
+            amountCents: centsFromAmount(amount),
             description: description,
             dayOfMonth: dayOfMonth.clamp(1, 31),
             isIntentional: isIntentional,
@@ -68,7 +69,7 @@ class RecurringRepository {
               sourceRecurringId: row.id,
               date: AppDateUtils.dateKey(
                   DateTime(today.year, today.month, day)),
-              amount: row.amount,
+              amountCents: row.amountCents,
               description: row.description,
               isIntentional: row.isIntentional,
               createdAt: DateTime.now(),

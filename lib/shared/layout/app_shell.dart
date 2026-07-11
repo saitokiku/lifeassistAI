@@ -202,7 +202,7 @@ class _AppShellState extends ConsumerState<AppShell>
           'timerStartedAt': timer?.startedAt.toIso8601String(),
           'monthSpendCentsByCategory': {
             for (final cs in state.money.snapshot.categorySpends)
-              cs.category.id: (cs.spent * 100).round(),
+              cs.category.id: cs.spentCents,
           },
         });
       } catch (_) {

@@ -15,6 +15,7 @@ import '../../../../shared/widgets/loading_view.dart';
 import '../../application/money_controller.dart';
 import '../../application/money_state.dart';
 import '../../domain/transaction_entry.dart';
+import '../../../../core/utils/money.dart';
 import 'money_chips.dart';
 import 'money_snacks.dart';
 import 'transaction_entry_form.dart';
@@ -50,13 +51,13 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
     if (!mounted) return;
     showUndoSnack(
       context,
-      '${Formatters.moneyCents(tx.amount)} removed.',
+      '${Formatters.moneyCents(amountFromCents(tx.amountCents))} removed.',
       onUndo: () {
         unawaited(
           controller
               .addTransaction(
                 date: AppDateUtils.parseDateKey(tx.date),
-                amount: tx.amount,
+                amount: amountFromCents(tx.amountCents),
                 description: tx.description,
                 categoryId: tx.categoryId,
                 isIntentional: tx.isIntentional,
@@ -126,7 +127,8 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
                 ),
                 Text(
                   Formatters.moneyCents(
-                    entry.value.fold<double>(0, (sum, t) => sum + t.amount),
+                    amountFromCents(entry.value
+                        .fold<int>(0, (sum, t) => sum + t.amountCents)),
                   ),
                   style: theme.textTheme.numberBody.copyWith(
                     color: theme.colorScheme.textTertiary,
@@ -235,7 +237,7 @@ class _TransactionRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpace.sm),
             Text(
-              Formatters.moneyCents(tx.amount),
+              Formatters.moneyCents(amountFromCents(tx.amountCents)),
               style: theme.textTheme.numberBody,
             ),
             PopupMenuButton<String>(

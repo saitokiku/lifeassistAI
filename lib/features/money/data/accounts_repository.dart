@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 
 /// Persistence for tracked accounts and their balance history.
 ///
@@ -37,7 +38,7 @@ class AccountsRepository {
       id: _uuid.v4(),
       name: name,
       kind: kind,
-      balance: balance,
+      balanceCents: centsFromAmount(balance),
       includeInNetWorth: includeInNetWorth,
       sortOrder: existing.length,
       createdAt: at,
@@ -45,7 +46,7 @@ class AccountsRepository {
     );
     await _db.transaction(() async {
       await _db.into(_db.accounts).insert(account);
-      await _upsertSnapshot(account.id, balance, at);
+      await _upsertSnapshot(account.id, account.balanceCents, at);
     });
     return account;
   }
@@ -58,7 +59,7 @@ class AccountsRepository {
     await _db.transaction(() async {
       await _db.update(_db.accounts).replace(account.copyWith(updatedAt: at));
       if (balanceChanged) {
-        await _upsertSnapshot(account.id, account.balance, at);
+        await _upsertSnapshot(account.id, account.balanceCents, at);
       }
     });
   }
@@ -67,13 +68,14 @@ class AccountsRepository {
   Future<void> setBalance(String accountId, double balance,
       {DateTime? now}) async {
     final at = now ?? DateTime.now();
+    final cents = centsFromAmount(balance);
     await _db.transaction(() async {
       await (_db.update(_db.accounts)..where((t) => t.id.equals(accountId)))
           .write(AccountsCompanion(
-        balance: Value(balance),
+        balanceCents: Value(cents),
         updatedAt: Value(at),
       ));
-      await _upsertSnapshot(accountId, balance, at);
+      await _upsertSnapshot(accountId, cents, at);
     });
   }
 
@@ -102,7 +104,7 @@ class AccountsRepository {
   }
 
   Future<void> _upsertSnapshot(
-      String accountId, double balance, DateTime at) async {
+      String accountId, int balanceCents, DateTime at) async {
     final dateKey = AppDateUtils.dateKey(at);
     final existing = await (_db.select(_db.balanceSnapshots)
           ..where((t) => t.accountId.equals(accountId) & t.date.equals(dateKey)))
@@ -110,13 +112,13 @@ class AccountsRepository {
     if (existing != null) {
       await (_db.update(_db.balanceSnapshots)
             ..where((t) => t.id.equals(existing.id)))
-          .write(BalanceSnapshotsCompanion(balance: Value(balance)));
+          .write(BalanceSnapshotsCompanion(balanceCents: Value(balanceCents)));
     } else {
       await _db.into(_db.balanceSnapshots).insert(BalanceSnapshot(
             id: _uuid.v4(),
             accountId: accountId,
             date: dateKey,
-            balance: balance,
+            balanceCents: balanceCents,
           ));
     }
   }

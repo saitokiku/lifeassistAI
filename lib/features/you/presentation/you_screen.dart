@@ -14,6 +14,7 @@ import '../../identity/presentation/widgets/philosophy_card.dart';
 import '../../identity/presentation/widgets/statement_editor.dart';
 import '../../identity/presentation/widgets/statement_list.dart';
 import '../../ideas/application/ideas_controller.dart';
+import '../../journal/application/journal_controller.dart';
 import '../../reminders/application/reminders_controller.dart';
 import '../../review/application/review_controller.dart';
 import '../../review/presentation/weekly_review_sheet.dart';
@@ -35,6 +36,7 @@ class YouScreen extends ConsumerWidget {
     final ideas = ref.watch(ideasStateProvider);
     final reminders = ref.watch(remindersStateProvider);
     final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
+    final journalToday = ref.watch(todayJournalProvider).valueOrNull?.length;
 
     final doneToday = habits?.habits.where((h) => h.doneToday).length;
     final habitCount = habits?.habits.length;
@@ -126,6 +128,18 @@ class YouScreen extends ConsumerWidget {
                             ? 'Paused — notifications are off'
                             : '${reminders.enabledCount} on through the day',
                 route: '/reminders',
+              ),
+              const SizedBox(height: AppSpace.cardGap),
+              _HubRow(
+                icon: Icons.edit_note_rounded,
+                title: 'Journal',
+                caption: journalToday == null
+                    ? 'One honest line a day.'
+                    : journalToday == 0
+                        ? "Today isn't written yet."
+                        : 'Today is written · '
+                            '$journalToday line${journalToday == 1 ? '' : 's'}',
+                route: '/journal',
               ),
               const SizedBox(height: AppSpace.cardGap),
               _HubRow(

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_dashboard/core/storage/app_database.dart';
+import 'package:life_dashboard/core/utils/money.dart';
 import 'package:life_dashboard/core/utils/money_math.dart';
 import 'package:life_dashboard/features/money/domain/money_flag.dart';
 import 'package:life_dashboard/features/money/domain/monthly_money_snapshot.dart';
@@ -14,7 +15,7 @@ BudgetCategory category({
   return BudgetCategory(
     id: id,
     name: name,
-    monthlyTarget: target,
+    monthlyTargetCents: centsFromAmount(target),
     flagType: flagType,
     sortOrder: 0,
     createdAt: now,
@@ -32,7 +33,7 @@ TransactionEntry tx({
       id: 'tx-$amount-$categoryId',
       categoryId: categoryId,
       date: date,
-      amount: amount,
+      amountCents: centsFromAmount(amount),
       description: 'test',
       isIntentional: intentional,
       createdAt: DateTime(2026),
@@ -87,7 +88,7 @@ void main() {
       final flag = MoneyFlagRules.evaluateCategory(
         category:
             category(name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
-        spent: 259,
+        spentCents: centsFromAmount(259),
         allIntentional: false,
       );
       expect(flag, isNotNull);
@@ -97,7 +98,7 @@ void main() {
         MoneyFlagRules.evaluateCategory(
           category: category(
               name: 'Shopping', target: 258, flagType: 'warnOverTarget'),
-          spent: 258,
+          spentCents: centsFromAmount(258),
           allIntentional: false,
         ),
         isNull,
@@ -108,7 +109,7 @@ void main() {
       final flag = MoneyFlagRules.evaluateCategory(
         category: category(
             name: 'Impulse buys', target: 0, flagType: 'criticalOverZero'),
-        spent: 0.01,
+        spentCents: centsFromAmount(0.01),
         allIntentional: true,
       );
       expect(flag!.severity, MoneyFlagSeverity.critical);
@@ -117,7 +118,7 @@ void main() {
     test('warnOverZero: travel spend warns', () {
       final flag = MoneyFlagRules.evaluateCategory(
         category: category(name: 'Travel', target: 0, flagType: 'warnOverZero'),
-        spent: 50,
+        spentCents: centsFromAmount(50),
         allIntentional: true,
       );
       expect(flag!.severity, MoneyFlagSeverity.warning);
@@ -130,12 +131,12 @@ void main() {
           flagType: 'warnOverZeroUnlessIntentional');
       expect(
         MoneyFlagRules.evaluateCategory(
-            category: cat, spent: 40, allIntentional: false),
+            category: cat, spentCents: centsFromAmount(40), allIntentional: false),
         isNotNull,
       );
       expect(
         MoneyFlagRules.evaluateCategory(
-            category: cat, spent: 40, allIntentional: true),
+            category: cat, spentCents: centsFromAmount(40), allIntentional: true),
         isNull,
       );
     });
@@ -144,7 +145,7 @@ void main() {
       expect(
         MoneyFlagRules.evaluateCategory(
           category: category(name: 'Housing', target: 0, flagType: 'none'),
-          spent: 99999,
+          spentCents: centsFromAmount(99999),
           allIntentional: false,
         ),
         isNull,

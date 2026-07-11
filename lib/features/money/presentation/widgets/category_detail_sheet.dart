@@ -13,6 +13,7 @@ import '../../application/money_controller.dart';
 import '../../domain/budget_category.dart';
 import '../../domain/monthly_money_snapshot.dart';
 import '../../domain/transaction_entry.dart';
+import '../../../../core/utils/money.dart';
 import 'money_chips.dart';
 import 'money_snacks.dart';
 import 'transaction_entry_form.dart';
@@ -137,8 +138,8 @@ class _CategoryPace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final target = cs.category.monthlyTarget;
-    final over = cs.spent > target;
+    final target = amountFromCents(cs.category.monthlyTargetCents);
+    final over = cs.spentCents > cs.category.monthlyTargetCents;
     final ruleType = BudgetFlagType.parse(cs.category.flagType);
     final ruleLabel = flagRuleChipLabel(ruleType, target);
     final barColor = over
@@ -236,7 +237,7 @@ class _SheetTransactionRow extends ConsumerWidget {
                     ),
                     const SizedBox(width: AppSpace.sm),
                     Text(
-                      Formatters.moneyCents(tx.amount),
+                      Formatters.moneyCents(amountFromCents(tx.amountCents)),
                       style: theme.textTheme.numberBody,
                     ),
                   ],

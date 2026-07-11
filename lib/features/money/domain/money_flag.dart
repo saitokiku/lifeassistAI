@@ -1,5 +1,6 @@
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/money.dart';
 import 'budget_category.dart';
 
 enum MoneyFlagSeverity { warning, critical }
@@ -31,30 +32,33 @@ class MoneyFlagRules {
   MoneyFlagRules._();
 
   /// Evaluates one category's month-to-date spend against its flag rule.
-  /// [allIntentional] applies to warnOverZeroUnlessIntentional: true when
-  /// every transaction in the category this month is marked intentional.
+  /// Comparisons happen in integer cents — an over-target flag can never
+  /// be a float artifact. [allIntentional] applies to
+  /// warnOverZeroUnlessIntentional: true when every transaction in the
+  /// category this month is marked intentional.
   static MoneyFlag? evaluateCategory({
     required BudgetCategory category,
-    required double spent,
+    required int spentCents,
     required bool allIntentional,
   }) {
     final type = BudgetFlagType.parse(category.flagType);
+    final spent = amountFromCents(spentCents);
     switch (type) {
       case BudgetFlagType.none:
         return null;
       case BudgetFlagType.warnOverTarget:
-        if (spent > category.monthlyTarget) {
+        if (spentCents > category.monthlyTargetCents) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
             kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
-                '${category.name} is over target: ${Formatters.money(spent)} of ${Formatters.money(category.monthlyTarget)}.',
+                '${category.name} is over target: ${Formatters.money(spent)} of ${Formatters.money(amountFromCents(category.monthlyTargetCents))}.',
           );
         }
         return null;
       case BudgetFlagType.warnOverZero:
-        if (spent > 0) {
+        if (spentCents > 0) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
             kind: MoneyFlagKind.category,
@@ -65,7 +69,7 @@ class MoneyFlagRules {
         }
         return null;
       case BudgetFlagType.warnOverZeroUnlessIntentional:
-        if (spent > 0 && !allIntentional) {
+        if (spentCents > 0 && !allIntentional) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.warning,
             kind: MoneyFlagKind.category,
@@ -76,7 +80,7 @@ class MoneyFlagRules {
         }
         return null;
       case BudgetFlagType.criticalOverZero:
-        if (spent > 0) {
+        if (spentCents > 0) {
           return MoneyFlag(
             severity: MoneyFlagSeverity.critical,
             kind: MoneyFlagKind.category,

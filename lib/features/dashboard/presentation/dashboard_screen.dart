@@ -14,6 +14,7 @@ import '../../../shared/widgets/section_header.dart';
 import '../../focus/application/focus_controller.dart';
 import '../../focus/presentation/widgets/growth_metric_entry_form.dart';
 import '../../habits/application/habits_controller.dart';
+import '../../journal/presentation/widgets/evening_journal_card.dart';
 import '../../settings/domain/user_settings.dart';
 import '../application/dashboard_controller.dart';
 import '../application/dashboard_state.dart';
@@ -87,6 +88,8 @@ class DashboardScreen extends ConsumerWidget {
                       _Entrance(index: 5, child: LongGameCard(state: state)),
                     ],
                     LooseEndsCard(state: state),
+                    // Evening only: close the day with one journal line.
+                    const EveningJournalCard(),
                   ],
                 ),
               ),

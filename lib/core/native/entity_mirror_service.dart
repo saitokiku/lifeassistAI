@@ -79,8 +79,7 @@ class EntityMirrorService {
           {
             'id': c.id,
             'name': c.name,
-            // Cents by bridge contract (the DB migrates later).
-            'monthlyTargetCents': (c.monthlyTarget * 100).round(),
+            'monthlyTargetCents': c.monthlyTargetCents,
           },
       ],
       'timeBudgets': [

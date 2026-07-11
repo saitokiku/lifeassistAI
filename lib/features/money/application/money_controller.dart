@@ -4,6 +4,7 @@ import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/settings_keys.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/money_repository.dart';
@@ -185,11 +186,12 @@ final monthlySurplusHistoryProvider =
   final txs = ref.watch(_txSinceProvider(firstMonth)).valueOrNull;
   if (settings == null || txs == null || snapshots == null) return null;
 
-  final spendByMonth = <String, double>{};
+  // Sum in cents, convert once per month bucket.
+  final spendCentsByMonth = <String, int>{};
   for (final tx in txs) {
     final d = AppDateUtils.parseDateKey(tx.date);
     final key = SettingsRepository.monthKey(d);
-    spendByMonth[key] = (spendByMonth[key] ?? 0) + tx.amount;
+    spendCentsByMonth[key] = (spendCentsByMonth[key] ?? 0) + tx.amountCents;
   }
 
   return [
@@ -198,14 +200,14 @@ final monthlySurplusHistoryProvider =
         final month = DateTime(firstMonth.year, firstMonth.month + i);
         final key = SettingsRepository.monthKey(month);
         final isPartial = month.year == now.year && month.month == now.month;
-        final hasData = isPartial || spendByMonth.containsKey(key);
+        final hasData = isPartial || spendCentsByMonth.containsKey(key);
         return MonthlySurplusPoint(
           month: month,
           income: hasData
               ? SettingsRepository.incomeForMonth(
                   snapshots, month, settings.monthlyNetIncome)
               : 0,
-          spend: spendByMonth[key] ?? 0,
+          spend: amountFromCents(spendCentsByMonth[key] ?? 0),
           isPartial: isPartial,
           hasData: hasData,
         );
@@ -285,7 +287,7 @@ class MoneyController {
     List<
             ({
               DateTime date,
-              double amount,
+              int amountCents,
               String description,
               String? categoryId,
             })>

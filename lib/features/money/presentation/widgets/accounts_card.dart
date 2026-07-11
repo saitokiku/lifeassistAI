@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/quick_update_sheet.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/account_kind.dart';
+import '../../../../core/utils/money.dart';
 import 'account_editor.dart';
 
 /// Tracked accounts and their net worth. Tap a row to punch in a fresh
@@ -142,7 +143,7 @@ class _AccountRow extends ConsumerWidget {
       title: account.name,
       subtitle: 'Current balance. Each update keeps a dated snapshot.',
       label: 'Balance',
-      initialValue: account.balance,
+      initialValue: amountFromCents(account.balanceCents),
       suffixText: r'$',
       validator: (v) => Validators.number(v, label: 'Balance'),
       onSave: (value) => controller.setBalance(account.id, value),
@@ -197,8 +198,8 @@ class _AccountRow extends ConsumerWidget {
             const SizedBox(width: AppSpace.sm),
             Text(
               kind.countsNegative
-                  ? '−${Formatters.money(account.balance)}'
-                  : Formatters.money(account.balance),
+                  ? '−${Formatters.money(amountFromCents(account.balanceCents))}'
+                  : Formatters.money(amountFromCents(account.balanceCents)),
               style: theme.textTheme.numberBody.copyWith(
                 color: kind.countsNegative
                     ? AppColors.watch

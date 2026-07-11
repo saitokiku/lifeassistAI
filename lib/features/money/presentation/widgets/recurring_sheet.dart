@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_view.dart';
 import '../../application/money_controller.dart';
+import '../../../../core/utils/money.dart';
 import 'money_field.dart';
 
 /// Monthly recurring expenses: rent, subscriptions, insurance. Each one
@@ -28,16 +29,16 @@ class RecurringSheet extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final rows = ref.watch(recurringProvider).valueOrNull ?? const [];
-    final monthlyTotal = rows
+    final monthlyTotalCents = rows
         .where((r) => r.active)
-        .fold<double>(0, (sum, r) => sum + r.amount);
+        .fold<int>(0, (sum, r) => sum + r.amountCents);
 
     return AppSheet(
       title: 'Recurring expenses',
       subtitle: rows.isEmpty
           ? 'Rent, subscriptions, insurance — each lands as a real '
               'transaction on its day of the month.'
-          : '${Formatters.money(monthlyTotal)} a month across '
+          : '${Formatters.money(amountFromCents(monthlyTotalCents))} a month across '
               '${rows.where((r) => r.active).length} active.',
       footer: AppSheetButton(
         label: 'Add recurring expense',
@@ -103,7 +104,7 @@ class _RecurringRow extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpace.sm),
             Text(
-              Formatters.money(row.amount),
+              Formatters.money(amountFromCents(row.amountCents)),
               style: theme.textTheme.numberBody.copyWith(
                 color: row.active ? null : scheme.textTertiary,
               ),
@@ -149,7 +150,9 @@ class _RecurringEditorState extends ConsumerState<RecurringEditor> {
   late final _amount = TextEditingController(
       text: widget.recurring == null
           ? ''
-          : Formatters.number(widget.recurring!.amount, maxDecimals: 2));
+          : Formatters.number(
+              amountFromCents(widget.recurring!.amountCents),
+              maxDecimals: 2));
   late int _dayOfMonth = widget.recurring?.dayOfMonth ?? 1;
   late String? _categoryId = widget.recurring?.categoryId;
   bool _busy = false;
@@ -178,7 +181,7 @@ class _RecurringEditorState extends ConsumerState<RecurringEditor> {
         );
       } else {
         await controller.updateRecurring(widget.recurring!.copyWith(
-          amount: Validators.parseNumber(_amount.text),
+          amountCents: centsFromAmount(Validators.parseNumber(_amount.text)),
           description: _description.text.trim(),
           dayOfMonth: _dayOfMonth,
           categoryId: Value(_categoryId),

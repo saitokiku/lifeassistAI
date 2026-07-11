@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/storage/app_database.dart';
+import '../../../core/utils/money.dart';
 
 /// One search hit, ready to render and navigate.
 class SearchHit {
@@ -41,7 +42,8 @@ class SearchRepository {
       for (final t in transactions)
         SearchHit(
           title: t.description.isEmpty ? 'Transaction' : t.description,
-          subtitle: '${t.date} · \$${t.amount.toStringAsFixed(2)}',
+          subtitle:
+              '${t.date} · \$${amountFromCents(t.amountCents).toStringAsFixed(2)}',
           route: '/money',
           group: 'Transactions',
         ),
@@ -130,6 +132,21 @@ class SearchRepository {
           subtitle: 'Principle',
           route: '/more',
           group: 'Principles',
+        ),
+    ]);
+
+    final journal = await (_db.select(_db.journalEntries)
+          ..where((t) => t.content.like(needle))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)])
+          ..limit(perGroup))
+        .get();
+    hits.addAll([
+      for (final j in journal)
+        SearchHit(
+          title: j.content,
+          subtitle: 'Journal · ${j.date}',
+          route: '/journal',
+          group: 'Journal',
         ),
     ]);
 

@@ -1,26 +1,30 @@
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 import '../../../core/utils/money_math.dart';
 import 'money_flag.dart';
 
-/// Per-category month-to-date rollup.
+/// Per-category month-to-date rollup. Sums are integer cents — exact —
+/// with dollar getters for display.
 class CategorySpend {
   const CategorySpend({
     required this.category,
-    required this.spent,
+    required this.spentCents,
     required this.transactionCount,
     required this.allIntentional,
   });
 
   final BudgetCategory category;
-  final double spent;
+  final int spentCents;
   final int transactionCount;
   final bool allIntentional;
 
-  double get remaining => category.monthlyTarget - spent;
-  double get progress => category.monthlyTarget <= 0
-      ? (spent > 0 ? 1.0 : 0.0)
-      : (spent / category.monthlyTarget).clamp(0.0, 1.0);
+  double get spent => amountFromCents(spentCents);
+  int get remainingCents => category.monthlyTargetCents - spentCents;
+  double get remaining => amountFromCents(remainingCents);
+  double get progress => category.monthlyTargetCents <= 0
+      ? (spentCents > 0 ? 1.0 : 0.0)
+      : (spentCents / category.monthlyTargetCents).clamp(0.0, 1.0);
 }
 
 /// The whole money picture for the current month, computed from real data.
@@ -40,20 +44,22 @@ class MonthlyMoneySnapshot {
     final dayOfMonth = now.day;
     final daysInMonth = AppDateUtils.daysInMonth(now);
 
-    final spendByCategory = <String, double>{};
+    // All summing happens in integer cents; doubles appear only after
+    // the totals are final (projection is estimation anyway).
+    final spendByCategory = <String, int>{};
     final countByCategory = <String, int>{};
     final intentionalByCategory = <String, bool>{};
-    var spendSoFar = 0.0;
+    var spendCentsSoFar = 0;
     var uncategorizedCount = 0;
 
     for (final tx in monthTransactions) {
-      spendSoFar += tx.amount;
+      spendCentsSoFar += tx.amountCents;
       final catId = tx.categoryId;
       if (catId == null) {
         uncategorizedCount++;
         continue;
       }
-      spendByCategory[catId] = (spendByCategory[catId] ?? 0) + tx.amount;
+      spendByCategory[catId] = (spendByCategory[catId] ?? 0) + tx.amountCents;
       countByCategory[catId] = (countByCategory[catId] ?? 0) + 1;
       intentionalByCategory[catId] =
           (intentionalByCategory[catId] ?? true) && tx.isIntentional;
@@ -63,12 +69,13 @@ class MonthlyMoneySnapshot {
       for (final cat in categories)
         CategorySpend(
           category: cat,
-          spent: spendByCategory[cat.id] ?? 0,
+          spentCents: spendByCategory[cat.id] ?? 0,
           transactionCount: countByCategory[cat.id] ?? 0,
           allIntentional: intentionalByCategory[cat.id] ?? true,
         ),
     ];
 
+    final spendSoFar = amountFromCents(spendCentsSoFar);
     final projectedSpend = MoneyMath.projectedSpend(
       spendSoFar: spendSoFar,
       dayOfMonth: dayOfMonth,
@@ -87,7 +94,7 @@ class MonthlyMoneySnapshot {
       for (final cs in categorySpends)
         if (MoneyFlagRules.evaluateCategory(
           category: cs.category,
-          spent: cs.spent,
+          spentCents: cs.spentCents,
           allIntentional: cs.allIntentional,
         )
             case final flag?)
@@ -99,7 +106,7 @@ class MonthlyMoneySnapshot {
       monthlyNetIncome: monthlyNetIncome,
       targetSurplusLow: targetSurplusLow,
       targetSurplusHigh: targetSurplusHigh,
-      spendSoFar: spendSoFar,
+      spendCentsSoFar: spendCentsSoFar,
       projectedSpend: projectedSpend,
       projectedSurplus: projectedSurplus,
       annualSavingsProjection:
@@ -118,7 +125,7 @@ class MonthlyMoneySnapshot {
     required this.monthlyNetIncome,
     required this.targetSurplusLow,
     required this.targetSurplusHigh,
-    required this.spendSoFar,
+    required this.spendCentsSoFar,
     required this.projectedSpend,
     required this.projectedSurplus,
     required this.annualSavingsProjection,
@@ -134,7 +141,10 @@ class MonthlyMoneySnapshot {
   final double monthlyNetIncome;
   final double targetSurplusLow;
   final double targetSurplusHigh;
-  final double spendSoFar;
+
+  /// Month-to-date spend, exact.
+  final int spendCentsSoFar;
+  double get spendSoFar => amountFromCents(spendCentsSoFar);
   final double projectedSpend;
   final double projectedSurplus;
   final double annualSavingsProjection;

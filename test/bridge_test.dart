@@ -38,7 +38,7 @@ void main() {
     await db.into(db.budgetCategories).insert(BudgetCategory(
           id: id,
           name: name,
-          monthlyTarget: 400,
+          monthlyTargetCents: 40000,
           flagType: 'warnOverTarget',
           sortOrder: 0,
           createdAt: at,
@@ -161,7 +161,7 @@ void main() {
       final rows = await db.select(db.transactionEntries).get();
       expect(rows, hasLength(1)); // …but the row is still singular
       expect(rows.single.id, 'aaa');
-      expect(rows.single.amount, 12.50);
+      expect(rows.single.amountCents, 1250);
       expect(rows.single.categoryId, catId);
       expect(paths.pendingDir.listSync(), isEmpty);
     });

@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../application/money_controller.dart';
 import '../../domain/budget_category.dart';
+import '../../../../core/utils/money.dart';
 import 'money_field.dart';
 import 'money_snacks.dart';
 
@@ -35,7 +36,9 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
   late final _target = TextEditingController(
       text: widget.category == null
           ? ''
-          : Formatters.number(widget.category!.monthlyTarget, maxDecimals: 2));
+          : Formatters.number(
+              amountFromCents(widget.category!.monthlyTargetCents),
+              maxDecimals: 2));
   late BudgetFlagType _flagType = widget.category == null
       ? BudgetFlagType.warnOverTarget
       : BudgetFlagType.parse(widget.category!.flagType);
@@ -75,7 +78,8 @@ class _BudgetCategoryEditorState extends ConsumerState<BudgetCategoryEditor> {
       } else {
         await controller.updateCategory(widget.category!.copyWith(
           name: _name.text.trim(),
-          monthlyTarget: Validators.parseNumber(_target.text),
+          monthlyTargetCents:
+              centsFromAmount(Validators.parseNumber(_target.text)),
           flagType: _flagType.storageKey,
         ));
       }

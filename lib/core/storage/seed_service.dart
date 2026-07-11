@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../constants/default_targets.dart';
 import '../constants/reminder_templates.dart';
+import '../utils/money.dart';
 import 'app_database.dart';
 import 'settings_keys.dart';
 
@@ -66,7 +67,7 @@ class SeedService {
       await _db.into(_db.budgetCategories).insert(BudgetCategory(
             id: _uuid.v4(),
             name: name,
-            monthlyTarget: target,
+            monthlyTargetCents: centsFromAmount(target),
             flagType: flag,
             sortOrder: order++,
             createdAt: at,

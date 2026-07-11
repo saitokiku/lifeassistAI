@@ -38,6 +38,7 @@ class BackupService {
     'freedomTargets',
     'reminders',
     'identityStatements',
+    'journalEntries',
   ];
 
   Future<String> exportJson() async {
@@ -111,6 +112,9 @@ class BackupService {
       'identityStatements': [
         for (final r in await _db.select(_db.identityStatements).get())
           r.toJson(),
+      ],
+      'journalEntries': [
+        for (final r in await _db.select(_db.journalEntries).get()) r.toJson(),
       ],
     };
 
@@ -191,6 +195,8 @@ class BackupService {
         await insertAll(_db.reminders, 'reminders', Reminder.fromJson);
         await insertAll(_db.identityStatements, 'identityStatements',
             IdentityStatement.fromJson);
+        await insertAll(
+            _db.journalEntries, 'journalEntries', JournalEntry.fromJson);
       });
 
       // A v1 backup carries Kaizen-era values and no main goal; rewrite it
@@ -204,19 +210,28 @@ class BackupService {
     }
   }
 
-  /// Fills in fields that pre-v2 exports don't have, so their rows satisfy
-  /// today's schema. Value-level rewrites happen in [LegacyMigration].
+  /// Fills in fields that pre-v2 exports don't have and converts pre-v4
+  /// dollar doubles into integer cents, so their rows satisfy today's
+  /// schema. Value-level rewrites happen in [LegacyMigration].
   static Map<String, dynamic> _normalizeLegacyRow(
     String table,
     Map<String, dynamic> row,
   ) {
     switch (table) {
       case 'transactions':
-        return {
+        return _centsify({
           'accountId': null,
           'sourceRecurringId': null,
           ...row,
-        };
+        }, 'amount', 'amountCents');
+      case 'recurringTransactions':
+        return _centsify(row, 'amount', 'amountCents');
+      case 'budgetCategories':
+        return _centsify(row, 'monthlyTarget', 'monthlyTargetCents');
+      case 'accounts':
+        return _centsify(row, 'balance', 'balanceCents');
+      case 'balanceSnapshots':
+        return _centsify(row, 'balance', 'balanceCents');
       case 'habits':
         return {
           'weekdays': 127,
@@ -250,6 +265,21 @@ class BackupService {
       default:
         return row;
     }
+  }
+
+  /// Pre-v4 exports carry dollar doubles under [dollarKey]; rewrite to
+  /// integer cents under [centsKey]. v4 rows pass through untouched.
+  static Map<String, dynamic> _centsify(
+    Map<String, dynamic> row,
+    String dollarKey,
+    String centsKey,
+  ) {
+    if (row.containsKey(centsKey)) return row;
+    final dollars = row[dollarKey];
+    return {
+      ...row,
+      centsKey: dollars is num ? (dollars * 100).round() : 0,
+    }..remove(dollarKey);
   }
 
   /// Sanity check that an export mentions all core tables.

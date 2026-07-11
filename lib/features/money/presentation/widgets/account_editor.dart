@@ -13,6 +13,7 @@ import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../../shared/widgets/loading_view.dart';
 import '../../application/accounts_controller.dart';
 import '../../domain/account_kind.dart';
+import '../../../../core/utils/money.dart';
 import 'money_field.dart';
 
 /// Create or edit a tracked account.
@@ -37,7 +38,9 @@ class _AccountEditorState extends ConsumerState<AccountEditor> {
   late final _balance = TextEditingController(
       text: widget.account == null
           ? ''
-          : Formatters.number(widget.account!.balance, maxDecimals: 2));
+          : Formatters.number(
+              amountFromCents(widget.account!.balanceCents),
+              maxDecimals: 2));
   late AccountKind _kind = widget.account == null
       ? AccountKind.checking
       : AccountKind.parse(widget.account!.kind);
@@ -72,10 +75,11 @@ class _AccountEditorState extends ConsumerState<AccountEditor> {
           widget.account!.copyWith(
             name: _name.text.trim(),
             kind: _kind.name,
-            balance: balance,
+            balanceCents: centsFromAmount(balance),
             includeInNetWorth: _includeInNetWorth,
           ),
-          balanceChanged: balance != widget.account!.balance,
+          balanceChanged:
+              centsFromAmount(balance) != widget.account!.balanceCents,
         );
       }
     } catch (_) {

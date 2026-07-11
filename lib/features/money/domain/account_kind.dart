@@ -35,6 +35,7 @@ enum AccountKind {
   /// Credit balances are owed money: they subtract from net worth.
   bool get countsNegative => this == AccountKind.credit;
 
-  double signedBalance(double balance) =>
-      countsNegative ? -balance : balance;
+  /// Sign-adjusts a balance in cents: credit counts against net worth.
+  int signedBalanceCents(int balanceCents) =>
+      countsNegative ? -balanceCents : balanceCents;
 }

@@ -12,6 +12,7 @@ import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../application/money_controller.dart';
+import '../../../../core/utils/money.dart';
 import 'money_field.dart';
 import 'money_snacks.dart';
 
@@ -62,7 +63,9 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
   final _formKey = GlobalKey<FormState>();
   late final _amount = TextEditingController(
       text: widget.transaction != null
-          ? Formatters.number(widget.transaction!.amount, maxDecimals: 2)
+          ? Formatters.number(
+              amountFromCents(widget.transaction!.amountCents),
+              maxDecimals: 2)
           : widget.initialAmount != null
               ? Formatters.number(widget.initialAmount!, maxDecimals: 2)
               : '');
@@ -151,7 +154,7 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
       } else {
         await controller.updateTransaction(widget.transaction!.copyWith(
           date: AppDateUtils.dateKey(_date),
-          amount: Validators.parseNumber(_amount.text),
+          amountCents: centsFromAmount(Validators.parseNumber(_amount.text)),
           description: _description.text.trim(),
           categoryId: Value(_categoryId),
           isIntentional: _isIntentional,

@@ -165,7 +165,7 @@ class CaptureQueueDrain {
                 accountId: null,
                 sourceRecurringId: null,
                 date: AppDateUtils.dateKey(date),
-                amount: cents / 100.0,
+                amountCents: cents,
                 description: description,
                 isIntentional: false,
                 createdAt: createdAt,

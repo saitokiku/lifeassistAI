@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/money.dart';
 import '../data/accounts_repository.dart';
 import '../domain/account_kind.dart';
 
@@ -15,15 +16,15 @@ final accountsProvider = StreamProvider<List<Account>>(
 );
 
 /// Net worth across accounts marked included: assets positive, credit
-/// balances negative. Null while accounts load.
+/// balances negative. Summed in cents — exact. Null while accounts load.
 final netWorthProvider = Provider<double?>((ref) {
   final accounts = ref.watch(accountsProvider).valueOrNull;
   if (accounts == null) return null;
-  var total = 0.0;
+  var totalCents = 0;
   for (final a in accounts.where((a) => a.includeInNetWorth)) {
-    total += AccountKind.parse(a.kind).signedBalance(a.balance);
+    totalCents += AccountKind.parse(a.kind).signedBalanceCents(a.balanceCents);
   }
-  return total;
+  return amountFromCents(totalCents);
 });
 
 /// One point of the net-worth trend: total across included accounts using
@@ -97,7 +98,7 @@ double _totalAt(
   Map<String, AccountKind> kinds,
 ) {
   final key = AppDateUtils.dateKey(date);
-  var total = 0.0;
+  var totalCents = 0;
   for (final entry in byAccount.entries) {
     BalanceSnapshot? latest;
     for (final s in entry.value) {
@@ -108,10 +109,10 @@ double _totalAt(
       }
     }
     if (latest != null) {
-      total += kinds[entry.key]!.signedBalance(latest.balance);
+      totalCents += kinds[entry.key]!.signedBalanceCents(latest.balanceCents);
     }
   }
-  return total;
+  return amountFromCents(totalCents);
 }
 
 class AccountsController {

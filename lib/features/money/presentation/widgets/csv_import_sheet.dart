@@ -16,6 +16,7 @@ import '../../../../shared/widgets/app_sheet.dart';
 import '../../application/accounts_controller.dart';
 import '../../application/money_controller.dart';
 import '../../data/csv_import.dart';
+import '../../../../core/utils/money.dart';
 
 /// Import a bank-statement CSV as transactions: pick a file, confirm the
 /// column mapping, see what will land, import. Duplicates (same day,
@@ -165,7 +166,7 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
       final seen = <String>{};
       final fresh = <({
         DateTime date,
-        double amount,
+        int amountCents,
         String description,
         String? categoryId,
       })>[];
@@ -173,7 +174,7 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
       for (final (index, row) in extraction.rows.indexed) {
         final key = CsvImport.duplicateKey(
           dateKey: AppDateUtils.dateKey(row.date),
-          amount: row.amount,
+          amountCents: row.amountCents,
           description: row.description,
         );
         if (existing.contains(key) || !seen.add(key)) {
@@ -182,7 +183,7 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
         }
         fresh.add((
           date: row.date,
-          amount: row.amount,
+          amountCents: row.amountCents,
           description: row.description,
           categoryId: categoryIdFor(index),
         ));
@@ -356,7 +357,7 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
                       ),
                       const SizedBox(width: AppSpace.md),
                       Text(
-                        Formatters.money(row.amount),
+                        Formatters.money(amountFromCents(row.amountCents)),
                         style: theme.textTheme.numberBody.copyWith(
                           fontSize: 13,
                         ),

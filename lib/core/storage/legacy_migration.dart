@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../utils/date_utils.dart';
+import '../utils/money.dart';
 import 'app_database.dart';
 import 'settings_keys.dart';
 
@@ -107,7 +108,7 @@ class LegacyMigration {
             id: id,
             name: name,
             kind: kind,
-            balance: balance,
+            balanceCents: centsFromAmount(balance),
             includeInNetWorth: true,
             sortOrder: order++,
             createdAt: at,
@@ -117,7 +118,7 @@ class LegacyMigration {
             id: const Uuid().v4(),
             accountId: id,
             date: AppDateUtils.dateKey(at),
-            balance: balance,
+            balanceCents: centsFromAmount(balance),
           ));
     }
   }

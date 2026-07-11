@@ -109,7 +109,8 @@ void main() {
         descriptionColumn: 1,
       );
       expect(result.rows, hasLength(2));
-      expect(result.rows.first.amount, 4.50); // sign normalized to spend
+      // Sign normalized to spend, and already integer cents.
+      expect(result.rows.first.amountCents, 450);
       expect(result.skippedDeposits, 1);
     });
 
@@ -124,7 +125,7 @@ void main() {
         descriptionColumn: 1,
       );
       expect(result.rows, hasLength(2));
-      expect(result.rows.last.amount, 12.00);
+      expect(result.rows.last.amountCents, 1200);
       expect(result.skippedDeposits, 0);
     });
 
@@ -143,11 +144,11 @@ void main() {
     });
   });
 
-  test('duplicateKey normalizes case and cents', () {
+  test('duplicateKey normalizes case and whitespace', () {
     final a = CsvImport.duplicateKey(
-        dateKey: '2026-07-01', amount: 4.5, description: 'Coffee ');
+        dateKey: '2026-07-01', amountCents: 450, description: 'Coffee ');
     final b = CsvImport.duplicateKey(
-        dateKey: '2026-07-01', amount: 4.50, description: 'coffee');
+        dateKey: '2026-07-01', amountCents: 450, description: 'coffee');
     expect(a, b);
   });
 }

@@ -6,7 +6,9 @@ import 'package:life_dashboard/core/storage/seed_service.dart';
 import 'package:life_dashboard/features/focus/data/focus_repository.dart';
 import 'package:life_dashboard/features/habits/data/habits_repository.dart';
 import 'package:life_dashboard/features/ideas/data/ideas_repository.dart';
+import 'package:life_dashboard/features/journal/data/journal_repository.dart';
 import 'package:life_dashboard/features/money/data/money_repository.dart';
+import 'package:life_dashboard/features/search/data/search_repository.dart';
 import 'package:life_dashboard/features/settings/data/backup_service.dart';
 import 'package:life_dashboard/features/settings/data/settings_repository.dart';
 import 'package:life_dashboard/features/time/data/time_repository.dart';
@@ -32,7 +34,7 @@ void main() {
       expect(categories, hasLength(8));
       expect(categories.map((c) => c.name), contains('Groceries'));
       // Categories start unopinionated: no targets, no flag rules.
-      expect(categories.every((c) => c.monthlyTarget == 0), isTrue);
+      expect(categories.every((c) => c.monthlyTargetCents == 0), isTrue);
 
       final budgets = await db.select(db.timeBudgets).get();
       expect(budgets, hasLength(6));
@@ -283,6 +285,8 @@ void main() {
           name: 'Learners', unit: 'users', weeklyTarget: 10, makeActive: true);
       await focus.upsertEntry(
           metricId: metric.id, date: DateTime(2026, 7, 7), value: 3);
+      await JournalRepository(db)
+          .addEntry('Shipped the export.', now: DateTime(2026, 7, 7));
 
       final backup = BackupService(db);
       final json = await backup.exportJson();
@@ -301,6 +305,10 @@ void main() {
       expect(goal.title, 'Kaizen');
       expect(goal.why, 'compounding');
       expect(await db.select(db.goals).get(), hasLength(1));
+      expect(
+        (await db.select(db.journalEntries).get()).single.content,
+        'Shipped the export.',
+      );
     });
 
     test('rejects malformed JSON without touching data', () async {
@@ -308,6 +316,41 @@ void main() {
       final result = await BackupService(db).importJson('not json at all');
       expect(result.isSuccess, isFalse);
       expect(await db.select(db.budgetCategories).get(), hasLength(8));
+    });
+  });
+
+  group('JournalRepository', () {
+    test('add lands on the given day; edit keeps it there', () async {
+      final repo = JournalRepository(db);
+      await repo.addEntry('  Walked the long way home.  ',
+          now: DateTime(2026, 7, 9, 21));
+      await repo.addEntry('Shipped the pricing page.',
+          now: DateTime(2026, 7, 10, 22));
+
+      final recent = await repo.watchRecent().first;
+      expect(recent, hasLength(2));
+      // Newest day first; whitespace trimmed at the boundary.
+      expect(recent.first.content, 'Shipped the pricing page.');
+      expect(recent.last.content, 'Walked the long way home.');
+      expect(recent.last.date, '2026-07-09');
+
+      final yesterday = recent.last;
+      await repo.updateEntry(yesterday.copyWith(content: 'Long way home.'));
+      final edited = (await repo.watchForDate('2026-07-09').first).single;
+      expect(edited.content, 'Long way home.');
+      expect(edited.date, '2026-07-09'); // editing never moves the day
+
+      await repo.deleteEntry(edited.id);
+      expect(await repo.watchForDate('2026-07-09').first, isEmpty);
+      expect(await repo.watchRecent().first, hasLength(1));
+    });
+
+    test('journal lines show up in search', () async {
+      await JournalRepository(db)
+          .addEntry('Shipped the pricing page.', now: DateTime(2026, 7, 10));
+      final hits = await SearchRepository(db).search('pricing');
+      expect(hits.where((h) => h.group == 'Journal'), hasLength(1));
+      expect(hits.first.route, '/journal');
     });
   });
 }

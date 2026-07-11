@@ -1,3 +1,7 @@
+// TableMigration is drift's documented API for column type changes; the
+// @experimental marker predates years of stable use.
+// ignore_for_file: experimental_member_use
+
 import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
@@ -53,7 +57,10 @@ class DailyExperiments extends Table {
 class BudgetCategories extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
-  RealColumn get monthlyTarget => real().withDefault(const Constant(0))();
+
+  /// Monthly target in integer cents (see lib/core/utils/money.dart).
+  IntColumn get monthlyTargetCents =>
+      integer().withDefault(const Constant(0))();
   // none | warnOverTarget | warnOverZero | warnOverZeroUnlessIntentional |
   // criticalOverZero  (see BudgetFlagType)
   TextColumn get flagType =>
@@ -79,7 +86,9 @@ class TransactionEntries extends Table {
   /// Set when materialized from a recurring expense (idempotence + trace).
   TextColumn get sourceRecurringId => text().nullable()();
   TextColumn get date => text()(); // yyyy-MM-dd
-  RealColumn get amount => real()();
+
+  /// Amount in integer cents — sums stay exact to the cent.
+  IntColumn get amountCents => integer()();
   TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get isIntentional =>
       boolean().withDefault(const Constant(false))();
@@ -289,7 +298,9 @@ class Accounts extends Table {
   TextColumn get name => text()();
   // checking | savings | credit | investment | cash | other (see AccountKind)
   TextColumn get kind => text().withDefault(const Constant('checking'))();
-  RealColumn get balance => real().withDefault(const Constant(0))();
+
+  /// Balance in integer cents.
+  IntColumn get balanceCents => integer().withDefault(const Constant(0))();
 
   /// Credit balances count negative toward net worth when included.
   BoolColumn get includeInNetWorth =>
@@ -308,7 +319,9 @@ class BalanceSnapshots extends Table {
   TextColumn get id => text()();
   TextColumn get accountId => text()();
   TextColumn get date => text()(); // yyyy-MM-dd
-  RealColumn get balance => real()();
+
+  /// Balance in integer cents.
+  IntColumn get balanceCents => integer()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -319,7 +332,9 @@ class BalanceSnapshots extends Table {
 class RecurringTransactions extends Table {
   TextColumn get id => text()();
   TextColumn get categoryId => text().nullable()();
-  RealColumn get amount => real()();
+
+  /// Amount in integer cents.
+  IntColumn get amountCents => integer()();
   TextColumn get description => text().withDefault(const Constant(''))();
 
   /// 1–31; clamped to the month's last day when shorter.
@@ -343,6 +358,20 @@ class WeeklyReviews extends Table {
   TextColumn get reflection => text().withDefault(const Constant(''))();
   TextColumn get emphasis => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Free-form journal lines. One row per entry; several entries per day
+/// are fine — capture should cost seconds, not a blank-page ritual.
+@TableIndex(name: 'idx_journal_entries_date', columns: {#date})
+class JournalEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get date => text()(); // yyyy-MM-dd
+  TextColumn get content => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -379,13 +408,14 @@ class SettingsEntries extends Table {
   FreedomTargets,
   Reminders,
   IdentityStatements,
+  JournalEntries,
   SettingsEntries,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -418,6 +448,55 @@ class AppDatabase extends _$AppDatabase {
             }
             // Turning the legacy manual balances into account rows lives in
             // LegacyMigration (shared with import).
+          }
+          if (from < 4) {
+            // v4: money becomes integer cents so sums are exact, plus the
+            // journal. alterTable recreates each table under the new
+            // schema; the transformer converts the old REAL column
+            // (referenced by its raw SQL name — it no longer exists in
+            // the Dart schema) into cents.
+            await m.alterTable(TableMigration(
+              transactionEntries,
+              columnTransformer: {
+                transactionEntries.amountCents: const CustomExpression<int>(
+                    'CAST(ROUND(amount * 100) AS INTEGER)'),
+              },
+            ));
+            await m.alterTable(TableMigration(
+              recurringTransactions,
+              columnTransformer: {
+                recurringTransactions.amountCents: const CustomExpression<int>(
+                    'CAST(ROUND(amount * 100) AS INTEGER)'),
+              },
+            ));
+            await m.alterTable(TableMigration(
+              budgetCategories,
+              columnTransformer: {
+                budgetCategories.monthlyTargetCents:
+                    const CustomExpression<int>(
+                        'CAST(ROUND(monthly_target * 100) AS INTEGER)'),
+              },
+            ));
+            await m.alterTable(TableMigration(
+              accounts,
+              columnTransformer: {
+                accounts.balanceCents: const CustomExpression<int>(
+                    'CAST(ROUND(balance * 100) AS INTEGER)'),
+              },
+            ));
+            await m.alterTable(TableMigration(
+              balanceSnapshots,
+              columnTransformer: {
+                balanceSnapshots.balanceCents: const CustomExpression<int>(
+                    'CAST(ROUND(balance * 100) AS INTEGER)'),
+              },
+            ));
+            await m.createTable(journalEntries);
+            // Recreated tables lost their indexes; createIndex is
+            // IF NOT EXISTS, so re-running the full set is safe.
+            for (final index in allSchemaEntities.whereType<Index>()) {
+              await m.createIndex(index);
+            }
           }
         },
       );

@@ -1,5 +1,7 @@
 import 'package:csv/csv.dart';
 
+import '../../../core/utils/money.dart';
+
 /// Pure CSV → transaction-row logic for bank statement import.
 ///
 /// No I/O and no database in here — the sheet feeds it file text plus the
@@ -227,7 +229,8 @@ class CsvImport {
               descriptionColumn < row.length
           ? row[descriptionColumn].trim()
           : '';
-      rows.add(CsvRow(date: date, amount: amount.abs(),
+      // Cents from here on out — parsing is the last double in the path.
+      rows.add(CsvRow(date: date, amountCents: centsFromAmount(amount.abs()),
           description: description));
     }
     return CsvExtraction(
@@ -238,23 +241,24 @@ class CsvImport {
   }
 
   /// Duplicate key: same day, same cents, same normalized description.
+  /// Must stay in lockstep with MoneyRepository.recentDuplicateKeys.
   static String duplicateKey(
           {required String dateKey,
-          required double amount,
+          required int amountCents,
           required String description}) =>
-      '$dateKey|${amount.toStringAsFixed(2)}|'
+      '$dateKey|$amountCents|'
       '${description.trim().toLowerCase()}';
 }
 
 class CsvRow {
   const CsvRow({
     required this.date,
-    required this.amount,
+    required this.amountCents,
     required this.description,
   });
 
   final DateTime date;
-  final double amount;
+  final int amountCents;
   final String description;
 }
 

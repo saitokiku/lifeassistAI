@@ -11,6 +11,7 @@ import '../../../../shared/widgets/progress_bar_card.dart';
 import '../../application/money_controller.dart';
 import '../../domain/budget_category.dart';
 import '../../domain/monthly_money_snapshot.dart';
+import '../../../../core/utils/money.dart';
 import 'budget_category_editor.dart';
 import 'category_detail_sheet.dart';
 import 'money_chips.dart';
@@ -78,8 +79,8 @@ class _CategoryRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final target = cs.category.monthlyTarget;
-    final over = cs.spent > target;
+    final target = amountFromCents(cs.category.monthlyTargetCents);
+    final over = cs.spentCents > cs.category.monthlyTargetCents;
     final ruleType = BudgetFlagType.parse(cs.category.flagType);
     final ruleLabel = flagRuleChipLabel(ruleType, target);
     final barColor = over

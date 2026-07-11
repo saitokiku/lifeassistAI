@@ -15,10 +15,9 @@ class AppConstants {
   /// Weeks start on Monday everywhere in the app.
   static const int firstDayOfWeek = DateTime.monday;
 
-  /// '3' adds accounts, recurring expenses, weekly reviews, and weekday
-  /// schedules. Older backups are still importable; see BackupService and
-  /// LegacyMigration.
-  static const String exportSchemaVersion = '3';
+  /// '4' stores money as integer cents and adds the journal. Older
+  /// backups are still importable; see BackupService and LegacyMigration.
+  static const String exportSchemaVersion = '4';
 
   /// Bump when SeedService or LegacyMigration gain new work. Bootstrap
   /// skips both while the stored preference matches; reset and import
