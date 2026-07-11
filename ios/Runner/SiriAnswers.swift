@@ -46,6 +46,11 @@ enum TodayStore {
     static func loadFresh() -> TodayMirror? {
         guard let today = load(), let key = today.dateKey else { return nil }
         let formatter = DateFormatter()
+        // Pin to Gregorian/ASCII: Dart's dateKey is always Gregorian, and
+        // a device set to Buddhist/Japanese calendars or non-Latin digits
+        // must not make every day read as stale.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = .current
         return key == formatter.string(from: Date()) ? today : nil

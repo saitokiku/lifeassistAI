@@ -233,7 +233,9 @@ class _AppShellState extends ConsumerState<AppShell>
             for (final cs in state.money.snapshot.categorySpends)
               cs.category.id: cs.spentCents,
           },
-        }).then((_) => _pokeWidgets());
+        }).then<void>((_) => _pokeWidgets()).catchError((_) {
+          // A failed write just means no fresh numbers to speak/render.
+        });
       } catch (_) {
         // Mirror unavailable (web/tests): nothing to publish.
       }

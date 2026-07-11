@@ -50,7 +50,11 @@ private enum Feed {
     }
 
     static var todayKey: String {
+        // Pinned Gregorian/ASCII to match Dart's dateKey on any device
+        // locale or calendar setting.
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
         f.dateFormat = "yyyy-MM-dd"
         return f.string(from: Date())
     }
@@ -65,6 +69,7 @@ private enum Feed {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: pending, includingPropertiesForKeys: nil) else { return [] }
         var ids = Set<String>()
+        let iso = ISO8601DateFormatter()
         for file in files where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
                   let record = try? JSONSerialization.jsonObject(with: data)
@@ -73,6 +78,13 @@ private enum Feed {
                   let fields = record["fields"] as? [String: Any],
                   let habitId = fields["habitId"] as? String
             else { continue }
+            // Only today's queued checks count — a record from before
+            // midnight belongs to yesterday's habit, not today's.
+            if let createdAt = (record["createdAt"] as? String)
+                .flatMap(iso.date(from:)),
+               !Calendar.current.isDateInToday(createdAt) {
+                continue
+            }
             ids.insert(habitId)
         }
         return ids

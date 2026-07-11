@@ -142,11 +142,14 @@ class CaptureQueueDrain {
     if (id == null || id.isEmpty || type == null) {
       throw const FormatException('missing id or type');
     }
-    final createdAt =
-        DateTime.tryParse(record['createdAt'] as String? ?? '') ??
-            DateTime.now();
-    final date = DateTime.tryParse(fields['dateIso'] as String? ?? '') ??
-        createdAt;
+    // Swift writes ISO-8601 in UTC; convert before deriving a calendar
+    // day or a 9 PM capture would date itself tomorrow.
+    final createdAt = (DateTime.tryParse(record['createdAt'] as String? ?? '')
+                ?? DateTime.now())
+        .toLocal();
+    final date = (DateTime.tryParse(fields['dateIso'] as String? ?? '') ??
+            createdAt)
+        .toLocal();
 
     switch (type) {
       case 'expense':
