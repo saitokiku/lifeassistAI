@@ -51,6 +51,10 @@ widget.add_file_references([shared])
 
 widget.build_configurations.each do |config|
   s = config.build_settings
+  s['PRODUCT_NAME'] = '$(TARGET_NAME)' # without it the product is '.appex'
+  s['CODE_SIGN_STYLE'] = 'Automatic'
+  s['LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]'] =
+    '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks'
   s['PRODUCT_BUNDLE_IDENTIFIER'] = BUNDLE_ID
   s['INFOPLIST_FILE'] = 'LifeAssistWidgets/Info.plist'
   s['GENERATE_INFOPLIST_FILE'] = 'NO'
