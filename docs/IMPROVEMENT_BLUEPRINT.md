@@ -1,5 +1,8 @@
 # Life Assist — Improvement Blueprint
 
+*Superseded as plan of record by [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md)
+(iOS-first horizon: Siri AI, on-device Foundation Models, HealthKit, widgets).*
+
 *Status: **implemented** (v3). Tier 0, Tier 1, and Tier 2 shipped in full; Tier 3 shipped
 the Siri flagship as Phase A (capture bus, done in Dart) + Phase B v1 (App Intents Swift
 sources — see [SIRI_SETUP.md](SIRI_SETUP.md) for the one-time Xcode step) + Phase C

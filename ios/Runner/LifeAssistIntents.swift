@@ -1,20 +1,19 @@
-// Siri / Shortcuts entry points for Life Assist (iOS 16+, App Intents).
+// Siri / Shortcuts entry points for Life Assist (App Intents).
 //
-// Phase B v1 of the voice-capture plan (docs/IMPROVEMENT_BLUEPRINT.md §9):
-// every intent is a lightweight FOREGROUND intent that opens the app on a
-// `lifeassist://capture?...` deep link. The Flutter capture bus parses the
-// URL, opens the matching sheet prefilled, and the user confirms with one
-// tap — Siri never writes to the database directly, so there is nothing to
-// keep consistent between Swift and drift.
+// Phase B v1 of the voice-capture plan (docs/SIRI_AI_BLUEPRINT.md):
+// every intent here is a lightweight FOREGROUND intent that opens the app
+// on a `lifeassist://capture?...` deep link. The Flutter capture bus
+// parses the URL, opens the matching sheet prefilled, and the user
+// confirms with one tap — these intents never write to the database, so
+// there is nothing to keep consistent between Swift and drift.
 //
-// This file ships in the repo but must be added to the Runner target in
-// Xcode before it compiles — see docs/SIRI_SETUP.md for the two-minute
-// setup (and for the Phase B v2 background-intent design).
+// Wired into the Runner target via project.pbxproj (no Xcode step needed).
+// Background intents that DO capture without opening the app arrive in
+// Phase 2 of the blueprint and live in BackgroundIntents.swift.
 
 import AppIntents
 import UIKit
 
-@available(iOS 16.0, *)
 struct LogExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Log an expense"
     static let description = IntentDescription(
@@ -46,7 +45,6 @@ struct LogExpenseIntent: AppIntent {
     }
 }
 
-@available(iOS 16.0, *)
 struct LogTimeIntent: AppIntent {
     static let title: LocalizedStringResource = "Log time"
     static let description = IntentDescription(
@@ -79,7 +77,6 @@ struct LogTimeIntent: AppIntent {
     }
 }
 
-@available(iOS 16.0, *)
 struct LogStepIntent: AppIntent {
     static let title: LocalizedStringResource = "Log today's step"
     static let description = IntentDescription(
@@ -105,7 +102,6 @@ struct LogStepIntent: AppIntent {
     }
 }
 
-@available(iOS 16.0, *)
 struct ParkIdeaIntent: AppIntent {
     static let title: LocalizedStringResource = "Park an idea"
     static let description = IntentDescription(
@@ -131,7 +127,6 @@ struct ParkIdeaIntent: AppIntent {
     }
 }
 
-@available(iOS 16.0, *)
 struct AddReminderIntent: AppIntent {
     static let title: LocalizedStringResource = "Add a reminder"
     static let description = IntentDescription(
@@ -159,7 +154,6 @@ struct AddReminderIntent: AppIntent {
 
 /// The phrases Siri listens for without any user setup ("Hey Siri, log an
 /// expense in Life Assist"). Each also appears in the Shortcuts app.
-@available(iOS 16.0, *)
 struct LifeAssistShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(

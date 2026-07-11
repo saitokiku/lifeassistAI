@@ -1,0 +1,104 @@
+# iOS compile loop + unsigned IPA artifact.
+#
+# This workflow IS the Xcode for a Linux dev environment: every change
+# under ios/ gets typechecked and built here, and the artifact is a
+# sideloadable unsigned IPA (AltStore/SideStore re-sign on install).
+# macOS runners bill 10x on private repos — triggers are path-filtered
+# and concurrency-cancelled to keep the loop bounded.
+name: iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_intent_tests:
+        description: 'Also run xcodebuild App Intents tests on a simulator'
+        type: boolean
+        default: false
+  push:
+    branches: ['**']
+    paths:
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/ios.yml'
+    tags: ['ios-v*']
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast fail: pure-Swift files typecheck in ~2 min without a Flutter build.
+  # AppDelegate/SceneDelegate import Flutter and are excluded — the full
+  # build job covers them.
+  swift-typecheck:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode toolchain
+        run: |
+          xcodebuild -version
+          ls /Applications | grep -i xcode || true
+      - name: Typecheck intent sources
+        run: |
+          cd ios/Runner
+          FILES=$(ls *.swift | grep -v -e AppDelegate.swift -e SceneDelegate.swift)
+          echo "Typechecking: $FILES"
+          xcrun swiftc -typecheck \
+            -sdk "$(xcrun --show-sdk-path --sdk iphoneos)" \
+            -target arm64-apple-ios17.0 \
+            $FILES
+
+  build-ipa:
+    runs-on: macos-latest
+    needs: swift-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter 3.44.6
+        run: |
+          curl -sSL -o /tmp/flutter.zip \
+            https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.44.6-stable.zip
+          unzip -q /tmp/flutter.zip -d "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --version
+      - run: flutter pub get
+      - name: Build (unsigned)
+        run: flutter build ios --release --no-codesign
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          cd build/ipa
+          zip -qry LifeAssist-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LifeAssist-unsigned-ipa
+          path: build/ipa/LifeAssist-unsigned.ipa
+          retention-days: 30
+
+  # Opt-in: exercises the App Intents through real system pathways on a
+  # simulator (App Intents Testing Framework tests live in RunnerTests).
+  intent-tests:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_intent_tests }}
+    runs-on: macos-latest
+    needs: build-ipa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter 3.44.6
+        run: |
+          curl -sSL -o /tmp/flutter.zip \
+            https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.44.6-stable.zip
+          unzip -q /tmp/flutter.zip -d "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter pub get
+      - run: flutter build ios --config-only --no-codesign
+      - name: Run RunnerTests on a simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -o 'iPhone [^(]*' | sed 's/ *$//')
+          echo "Using simulator: $DEVICE"
+          cd ios
+          xcodebuild test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            CODE_SIGNING_ALLOWED=NO

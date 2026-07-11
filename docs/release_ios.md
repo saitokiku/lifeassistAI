@@ -1,9 +1,43 @@
 # iOS release guide
 
-Nothing here is automatic. This walks from a fresh clone to a
-TestFlight-ready build. You need a Mac with Xcode and an Apple Developer
-Program membership ($99/yr) for device installs beyond 7 days and for
-TestFlight/App Store.
+Two paths. The **fast loop needs no Mac**: CI builds a sideloadable
+unsigned IPA on every iOS-touching push. The **release path** (TestFlight
+/ App Store) uses your Mac and paid Apple Developer membership.
+
+## 0. Fast loop — CI-built unsigned IPA (no Mac)
+
+Every push touching `ios/**` (or a manual run of the **iOS** workflow in
+the Actions tab) produces the artifact **`LifeAssist-unsigned-ipa`**:
+`flutter build ios --release --no-codesign` packaged as
+`Payload/Runner.app` → `LifeAssist-unsigned.ipa`.
+
+1. Download the artifact from the workflow run.
+2. Install via **AltStore**, **SideStore**, or **Sideloadly** — they
+   re-sign with your Apple ID on install (free ID: 7-day cert; paid: 1 yr).
+3. App Shortcut phrases ("Log an expense in Life Assist") register on
+   first launch — no setup.
+
+Everything in Phases 0–4 of [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md)
+works on a sideloaded build; entitlements only enter at HealthKit
+(Phase 5) and App Groups/widgets (Phase 6). Cost note: macOS runners
+bill 10× minutes on private repos — the workflow is path-filtered and
+cancels superseded runs; a public repo makes them free.
+
+### On-device test checklist (per blueprint phase)
+
+- **Phase 0**: "Hey Siri, log an expense in Life Assist" from a locked
+  phone → app opens on the prefilled expense sheet.
+- **Phase 2**: same phrase, phone locked → Siri confirms WITHOUT opening
+  the app; open later → the row exists exactly once (also force-kill the
+  app right after Siri confirms, reopen, recheck). Create a reminder by
+  voice, never open the app, and wait for it to fire.
+- **Phase 3** (iOS 27): unphrased "log twelve fifty for groceries…" →
+  the right category entity resolves; the snippet's month-to-date total
+  appears only when fresh; Undo removes the row; Spotlight surfaces
+  budget names.
+- **Phase 4** (Apple-Intelligence device): smart-capture field appears on
+  Today; "coffee 4.50 yesterday and 2h deep work" → two chips; on a
+  non-AI device the field is absent entirely.
 
 ## 1. Flutter setup
 
@@ -31,8 +65,8 @@ In Runner → Targets → Runner:
 - **Signing & Capabilities**: check "Automatically manage signing", pick
   your Team (create one by signing into Xcode → Settings → Accounts with
   your Apple ID). Xcode creates the provisioning profile.
-- Minimum iOS version: Flutter's default (see `ios/Podfile`); raise only if
-  needed.
+- Minimum iOS version: **17.0** (set in project.pbxproj — App Intents +
+  interactive widgets floor; newer APIs are availability-gated).
 
 Notifications: `flutter_local_notifications` needs no special capability
 for local notifications; the app requests permission at runtime from the
@@ -73,8 +107,8 @@ Xcode first — Flutter uses the same settings.
    bundle id, name "Life Assist", primary language, SKU.
 2. Upload the build: Xcode Organizer → Distribute App → App Store Connect,
    or `xcrun altool`/Transporter with the `.ipa`.
-3. Wait for processing, answer the export-compliance question (this app
-   uses only standard encryption → usually "No").
+3. Wait for processing. Export compliance is pre-answered
+   (`ITSAppUsesNonExemptEncryption = NO` in Info.plist).
 4. TestFlight tab → add yourself as an internal tester → install via the
    TestFlight app.
 

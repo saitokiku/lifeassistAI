@@ -15,20 +15,14 @@ prefilled, from cold start or warm. Siri support rides that rail.
   `lifeassist://capture?type=expense&amount=20&text=groceries`, name it
   "Log twenty dollars for groceries", and Siri will run it by name.
 
-## Enabling the native App Intents (iOS 16+)
+## The native App Intents — no setup needed anymore
 
-`ios/Runner/LifeAssistIntents.swift` ships in the repo but isn't part of
-the Xcode target until you add it (a codegen'd Runner project can't be
-edited reliably from CI, so this is a one-time manual step):
-
-1. Open `ios/Runner.xcworkspace` in Xcode.
-2. Drag `Runner/LifeAssistIntents.swift` into the Runner group and check
-   "Runner" as the target.
-3. Set the deployment target to iOS 16.0 or later (the file is
-   `@available`-guarded, so 15.x builds still work — the intents just
-   don't appear there).
-4. Build once on a device. The App Shortcuts register automatically; no
-   entitlement or capability is needed for foreground intents.
+`ios/Runner/LifeAssistIntents.swift` is wired into the Runner target in
+`project.pbxproj` and compiles with every build (deployment target is
+iOS 17). No Xcode step. App Shortcuts register automatically on first
+launch; foreground intents need no entitlement or capability. Grab a
+build from the **iOS** workflow artifact — see
+[release_ios.md](release_ios.md).
 
 Phrases that work immediately after install:
 
@@ -43,9 +37,14 @@ app opens on the right tab with the sheet prefilled, and one tap saves.
 The confirmation tap is deliberate for v1 — see the blueprint's honesty
 principles (voice never invents an outcome or a category).
 
-## Phase B v2 (background intents) — designed, not yet built
+## Background capture and beyond
 
-For "log it without unlocking the phone", the blueprint specifies:
+The advanced integration — logging without opening the app, typed
+entities, iOS 27 Siri AI alignment, on-device Foundation Models — is
+specified as Phases 2–4 of [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md),
+the current plan of record. The original sketch below is kept for
+history; the blueprint supersedes it where they differ (notably: no App
+Group is needed for background intents in the app target):
 
 - An **App Group** shared container with a small pending-capture queue
   (JSON file or SQLite separate from the drift DB — the extension must
