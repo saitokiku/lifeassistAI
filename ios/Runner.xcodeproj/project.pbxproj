@@ -15,6 +15,7 @@
 		1A51B1E52E0000020000C0DE /* LifeAssistIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E0000010000C0DE /* LifeAssistIntents.swift */; };
 		1A51B1E52E0000080000C0DE /* BackgroundIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E0000070000C0DE /* BackgroundIntents.swift */; };
 		1A51B1E52E00000A0000C0DE /* SiriAnswers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E0000090000C0DE /* SiriAnswers.swift */; };
+		1A51B1E52E00000C0000C0DE /* AiBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E00000B0000C0DE /* AiBridge.swift */; };
 		1A51B1E52E0000060000C0DE /* CaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E0000050000C0DE /* CaptureQueue.swift */; };
 		1A51B1E52E0000040000C0DE /* EntityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A51B1E52E0000030000C0DE /* EntityStore.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -58,6 +59,7 @@
 		1A51B1E52E0000010000C0DE /* LifeAssistIntents.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LifeAssistIntents.swift; sourceTree = "<group>"; };
 		1A51B1E52E0000070000C0DE /* BackgroundIntents.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackgroundIntents.swift; sourceTree = "<group>"; };
 		1A51B1E52E0000090000C0DE /* SiriAnswers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SiriAnswers.swift; sourceTree = "<group>"; };
+		1A51B1E52E00000B0000C0DE /* AiBridge.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AiBridge.swift; sourceTree = "<group>"; };
 		1A51B1E52E0000050000C0DE /* CaptureQueue.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaptureQueue.swift; sourceTree = "<group>"; };
 		1A51B1E52E0000030000C0DE /* EntityStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EntityStore.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
@@ -136,6 +138,7 @@
 				1A51B1E52E0000010000C0DE /* LifeAssistIntents.swift */,
 				1A51B1E52E0000070000C0DE /* BackgroundIntents.swift */,
 				1A51B1E52E0000090000C0DE /* SiriAnswers.swift */,
+				1A51B1E52E00000B0000C0DE /* AiBridge.swift */,
 				1A51B1E52E0000050000C0DE /* CaptureQueue.swift */,
 				1A51B1E52E0000030000C0DE /* EntityStore.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
@@ -302,6 +305,7 @@
 				1A51B1E52E0000020000C0DE /* LifeAssistIntents.swift in Sources */,
 				1A51B1E52E0000080000C0DE /* BackgroundIntents.swift in Sources */,
 				1A51B1E52E00000A0000C0DE /* SiriAnswers.swift in Sources */,
+				1A51B1E52E00000C0000C0DE /* AiBridge.swift in Sources */,
 				1A51B1E52E0000060000C0DE /* CaptureQueue.swift in Sources */,
 				1A51B1E52E0000040000C0DE /* EntityStore.swift in Sources */,
 			);

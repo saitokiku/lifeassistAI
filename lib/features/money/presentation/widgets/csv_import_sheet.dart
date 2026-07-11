@@ -10,6 +10,7 @@ import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_utils.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/ai/ai_service.dart';
 import '../../../../shared/haptics.dart';
 import '../../../../shared/widgets/app_sheet.dart';
 import '../../application/accounts_controller.dart';
@@ -38,6 +39,45 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
   String? _accountId;
   String? _error;
   bool _importing = false;
+
+  /// AI category suggestions keyed by row index — applied per-row at
+  /// import, only ever with names that exist.
+  Map<int, String> _suggestions = const {};
+  bool _suggesting = false;
+
+  Future<void> _suggestCategories() async {
+    final extraction = _extraction;
+    if (extraction == null || extraction.rows.isEmpty || _suggesting) return;
+    setState(() => _suggesting = true);
+    try {
+      final categories =
+          ref.read(budgetCategoriesProvider).valueOrNull ?? const [];
+      final suggested =
+          await ref.read(aiServiceProvider).categorizeTransactions(
+        [
+          for (final (i, row) in extraction.rows.indexed)
+            if (row.description.isNotEmpty)
+              (id: '$i', description: row.description),
+        ],
+        categoryNames: [for (final c in categories) c.name],
+      );
+      if (!mounted) return;
+      setState(() {
+        _suggestions = {
+          for (final entry in suggested.entries)
+            if (int.tryParse(entry.key) case final index?)
+              index: entry.value,
+        };
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = "Suggestions didn't come through — "
+            'importing works fine without them.');
+      }
+    } finally {
+      if (mounted) setState(() => _suggesting = false);
+    }
+  }
 
   bool get _ready =>
       _table.isNotEmpty && _dateCol != null && _amountCol != null;
@@ -110,11 +150,27 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
         .bodyMedium
         ?.copyWith(color: AppColors.textPrimaryDark);
     try {
+      final categories =
+          ref.read(budgetCategoriesProvider).valueOrNull ?? const [];
+      String? categoryIdFor(int index) {
+        final name = _suggestions[index];
+        if (name == null) return null;
+        for (final c in categories) {
+          if (c.name == name) return c.id;
+        }
+        return null;
+      }
+
       final existing = await controller.recentDuplicateKeys();
       final seen = <String>{};
-      final fresh = <({DateTime date, double amount, String description})>[];
+      final fresh = <({
+        DateTime date,
+        double amount,
+        String description,
+        String? categoryId,
+      })>[];
       var duplicates = 0;
-      for (final row in extraction.rows) {
+      for (final (index, row) in extraction.rows.indexed) {
         final key = CsvImport.duplicateKey(
           dateKey: AppDateUtils.dateKey(row.date),
           amount: row.amount,
@@ -124,9 +180,12 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
           duplicates++;
           continue;
         }
-        fresh.add(
-          (date: row.date, amount: row.amount, description: row.description),
-        );
+        fresh.add((
+          date: row.date,
+          amount: row.amount,
+          description: row.description,
+          categoryId: categoryIdFor(index),
+        ));
       }
       if (fresh.isNotEmpty) {
         await controller.importTransactions(fresh, accountId: _accountId);
@@ -233,6 +292,28 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
                   DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
               ],
               onChanged: (v) => setState(() => _accountId = v),
+            ),
+          ],
+          if (extraction != null &&
+              extraction.rows.isNotEmpty &&
+              ref.watch(aiAvailabilityProvider).valueOrNull ==
+                  AiAvailability.available) ...[
+            const SizedBox(height: AppSpace.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _suggesting ? null : _suggestCategories,
+                icon: _suggesting
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 16),
+                label: Text(_suggestions.isEmpty
+                    ? 'Suggest categories (on-device)'
+                    : '${_suggestions.length} categorized — tap to redo'),
+              ),
             ),
           ],
           if (extraction != null) ...[

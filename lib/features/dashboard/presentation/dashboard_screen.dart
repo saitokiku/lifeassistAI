@@ -22,6 +22,7 @@ import 'widgets/goal_snapshot_card.dart';
 import 'widgets/long_game_card.dart';
 import 'widgets/loose_ends_card.dart';
 import 'widgets/scoreboard_grid.dart';
+import 'widgets/smart_capture_field.dart';
 import 'widgets/today_header.dart';
 import 'widgets/up_next_card.dart';
 
@@ -64,6 +65,8 @@ class DashboardScreen extends ConsumerWidget {
                     _Entrance(index: 0, child: TodayHeader(state: state)),
                     const SizedBox(height: AppSpace.xl),
                     _Entrance(index: 1, child: UpNextCard(state: state)),
+                    // Renders nothing on devices without Apple Intelligence.
+                    const SmartCaptureField(),
                     if (showCheckIn) ...[
                       const SectionHeader(title: 'Check-in'),
                       _Entrance(index: 2, child: CheckInStrip(state: state)),

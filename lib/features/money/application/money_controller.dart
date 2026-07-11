@@ -282,7 +282,14 @@ class MoneyController {
   // Statement import
 
   Future<void> importTransactions(
-    List<({DateTime date, double amount, String description})> rows, {
+    List<
+            ({
+              DateTime date,
+              double amount,
+              String description,
+              String? categoryId,
+            })>
+        rows, {
     String? accountId,
   }) =>
       _repo.addTransactionsBatch(rows, accountId: accountId);

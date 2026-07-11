@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/ai/ai_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/validation.dart';
@@ -80,6 +81,35 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
 
   String? _emptyToNull(TextEditingController c) =>
       c.text.trim().isEmpty ? null : c.text.trim();
+
+  bool _expanding = false;
+
+  /// On-device AI fills the reflective worksheet from the raw title —
+  /// only ever into EMPTY fields, and everything stays editable.
+  Future<void> _expandWithAi() async {
+    final seed = _title.text.trim();
+    if (seed.isEmpty || _expanding) return;
+    setState(() => _expanding = true);
+    try {
+      final triage = await ref.read(aiServiceProvider).triageIdea(seed);
+      if (!mounted || triage == null) return;
+      setState(() {
+        _showDetail = true;
+        if (_whyTempting.text.trim().isEmpty) {
+          _whyTempting.text = triage.whyTempting;
+        }
+        if (_potentialValue.text.trim().isEmpty) {
+          _potentialValue.text = triage.potentialValue;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = "The expansion didn't come through.");
+      }
+    } finally {
+      if (mounted) setState(() => _expanding = false);
+    }
+  }
 
   Future<void> _save() async {
     if (_saving) return;
@@ -201,16 +231,31 @@ class _IdeaCaptureFormState extends ConsumerState<IdeaCaptureForm> {
                 },
               ),
               if (!_showDetail)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      Haptics.select();
-                      setState(() => _showDetail = true);
-                    },
-                    icon: const Icon(Icons.expand_more_rounded, size: 18),
-                    label: const Text('Add detail'),
-                  ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        Haptics.select();
+                        setState(() => _showDetail = true);
+                      },
+                      icon: const Icon(Icons.expand_more_rounded, size: 18),
+                      label: const Text('Add detail'),
+                    ),
+                    if (ref.watch(aiAvailabilityProvider).valueOrNull ==
+                        AiAvailability.available)
+                      TextButton.icon(
+                        onPressed: _expanding ? null : _expandWithAi,
+                        icon: _expanding
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome, size: 16),
+                        label: const Text('Expand (on-device)'),
+                      ),
+                  ],
                 )
               else ...[
                 const SizedBox(height: AppSpace.xs),

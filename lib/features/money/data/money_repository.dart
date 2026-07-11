@@ -98,11 +98,18 @@ class MoneyRepository {
             createdAt: DateTime.now(),
           ));
 
-  /// Inserts many rows in one transaction (statement import).
+  /// Inserts many rows in one transaction (statement import). Each row
+  /// may carry its own category (AI suggestions are per-row).
   Future<void> addTransactionsBatch(
-    List<({DateTime date, double amount, String description})> rows, {
+    List<
+            ({
+              DateTime date,
+              double amount,
+              String description,
+              String? categoryId,
+            })>
+        rows, {
     String? accountId,
-    String? categoryId,
   }) async {
     final now = DateTime.now();
     await _db.batch((batch) {
@@ -110,7 +117,7 @@ class MoneyRepository {
         for (final row in rows)
           TransactionEntry(
             id: _uuid.v4(),
-            categoryId: categoryId,
+            categoryId: row.categoryId,
             accountId: accountId,
             sourceRecurringId: null,
             date: AppDateUtils.dateKey(row.date),

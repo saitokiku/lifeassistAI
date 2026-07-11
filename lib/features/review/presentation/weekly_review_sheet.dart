@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ai/ai_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
@@ -30,6 +31,30 @@ class _WeeklyReviewSheetState extends ConsumerState<WeeklyReviewSheet> {
   final _emphasis = TextEditingController();
   bool _seeded = false;
   bool _busy = false;
+  bool _drafting = false;
+
+  /// On-device AI drafts INTO the empty field only — an existing
+  /// reflection is the user's words and never gets overwritten.
+  Future<void> _draftReflection(List<(String, String)> facts) async {
+    if (_drafting || _reflection.text.trim().isNotEmpty) return;
+    setState(() => _drafting = true);
+    try {
+      final stats =
+          facts.map((f) => '${f.$1}: ${f.$2}').join('\n');
+      final draft =
+          await ref.read(aiServiceProvider).draftWeeklyReview(stats);
+      if (mounted && draft != null && _reflection.text.trim().isEmpty) {
+        setState(() => _reflection.text = draft.trim());
+      }
+    } catch (_) {
+      if (mounted) {
+        showErrorSnack(context, "The draft didn't come through. Write it "
+            'in your own words.');
+      }
+    } finally {
+      if (mounted) setState(() => _drafting = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -146,6 +171,26 @@ class _WeeklyReviewSheetState extends ConsumerState<WeeklyReviewSheet> {
           controller: _reflection,
           maxLines: 3,
         ),
+        if (ref.watch(aiAvailabilityProvider).valueOrNull ==
+                AiAvailability.available &&
+            facts.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed:
+                  _drafting ? null : () => _draftReflection(facts),
+              icon: _drafting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome, size: 16),
+              label: const Text('Draft from the numbers (on-device)'),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpace.md),
         AppTextField(
           label: 'Next week leans on…',
