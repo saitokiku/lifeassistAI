@@ -44,7 +44,7 @@ struct EntityMirror: Codable {
 enum BridgePaths {
     /// Must match the App Group the user adds in Xcode (Phase 6) and
     /// scripts/ios/add_widget_extension.rb.
-    static let appGroupId = "group.com.kaizen.lifeDashboard"
+    static let appGroupId = "group.com.saitokiku.lifeassist"
 
     static var root: URL {
         if let group = FileManager.default.containerURL(

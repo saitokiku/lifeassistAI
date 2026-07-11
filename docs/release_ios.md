@@ -59,7 +59,7 @@ open ios/Runner.xcworkspace
 Almost everything is pre-set in the repo; on the Mac you only add the
 Team:
 
-- **Bundle Identifier**: already `com.kaizen.lifeDashboard` (in
+- **Bundle Identifier**: already `com.saitokiku.lifeassist` (in
   project.pbxproj). If you prefer a different reverse-DNS id, change it
   BEFORE the first TestFlight upload — it can never change after. The
   App Store Connect app record must use the exact same id.
@@ -92,7 +92,7 @@ Reminders screen or onboarding.
   target is already in the project (score, up-next, interactive habit
   check, an iOS 18 Control Center button, and the focus-timer Live
   Activity). One Mac-side step remains: Signing & Capabilities → add the
-  App Group `group.com.kaizen.lifeDashboard` to BOTH targets. The bridge
+  App Group `group.com.saitokiku.lifeassist` to BOTH targets. The bridge
   (entities.json, today.json, capture queue) relocates to the shared
   container automatically on both the Swift and Dart sides, and old
   pending captures still drain from the previous location. Until the
@@ -134,7 +134,7 @@ Xcode first — Flutter uses the same settings.
 One-time setup:
 
 1. developer.apple.com → Certificates, Identifiers & Profiles →
-   Identifiers → register `com.kaizen.lifeDashboard` (App ID, "App"
+   Identifiers → register `com.saitokiku.lifeassist` (App ID, "App"
    type; no extra capabilities needed for 1.0).
 2. appstoreconnect.apple.com → My Apps → "+" → New App: platform iOS,
    name "Life Assist", primary language, the same bundle id, any SKU

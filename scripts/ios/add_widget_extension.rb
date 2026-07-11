@@ -11,7 +11,7 @@
 #   ruby scripts/ios/add_widget_extension.rb
 #
 # After running on your Mac, add the App Group
-# (group.com.kaizen.lifeDashboard) to BOTH targets in Signing &
+# (group.com.saitokiku.lifeassist) to BOTH targets in Signing &
 # Capabilities so the widgets can read today.json. CI's opt-in
 # widget-experiment job runs this script and builds, without signing.
 
@@ -20,7 +20,7 @@ require 'xcodeproj'
 PROJECT = File.expand_path('../../ios/Runner.xcodeproj', __dir__)
 WIDGET_DIR = File.expand_path('../../ios/LifeAssistWidgets', __dir__)
 TARGET_NAME = 'LifeAssistWidgets'
-BUNDLE_ID = 'com.kaizen.lifeDashboard.widgets'
+BUNDLE_ID = 'com.saitokiku.lifeassist.widgets'
 DEPLOYMENT_TARGET = '17.0'
 
 project = Xcodeproj::Project.open(PROJECT)
@@ -91,4 +91,4 @@ end
 project.save
 puts "Added #{TARGET_NAME} (#{BUNDLE_ID}); embedded in Runner."
 puts 'Remaining Mac-side step: add the App Group ' \
-     'group.com.kaizen.lifeDashboard to Runner AND LifeAssistWidgets.'
+     'group.com.saitokiku.lifeassist to Runner AND LifeAssistWidgets.'
