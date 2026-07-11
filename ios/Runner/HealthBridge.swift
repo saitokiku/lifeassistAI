@@ -129,7 +129,7 @@ private final class Store {
         async let workouts = workoutMinutes(dayPredicate)
 
         return await [
-            "steps": steps.map(Int.init),
+            "steps": steps.map { Int($0) },
             "sleepHours": sleep,
             "mindfulMinutes": mindful.map { $0 * 60 },
             "workoutMinutes": workouts,
