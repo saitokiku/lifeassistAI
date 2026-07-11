@@ -10,6 +10,11 @@ Developer account and a Mac, so TestFlight and entitlement-gated features
 are real targets — but every phase is designed so the code is written and
 compile-verified from this Linux repo via a macOS CI loop first.*
 
+*Execution: Phases 0–4 are implemented and CI-verified (Phase 1 ran
+last, after Phase 4 — the queue/AI contracts already spoke integer
+cents, so nothing froze a float format). Phases 5–7 are the next
+sessions' work.*
+
 ---
 
 ## 1. Where we stand
