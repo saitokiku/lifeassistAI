@@ -1,7 +1,7 @@
 name: life_dashboard
 description: "Life Assist — one quiet place to run your life. The Dart package keeps its original name (life_dashboard) so imports stay stable."
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.5.0
