@@ -77,6 +77,17 @@ embed.dst_subfolder_spec = '13' # PlugIns
 build_file = embed.add_file_reference(widget.product_reference)
 build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
 
+# The embed must run BEFORE Flutter's "Thin Binary" script: a phase that
+# writes into Runner.app after a script that reads the whole bundle is a
+# dependency cycle under Xcode's build system.
+thin = runner.build_phases.find do |ph|
+  ph.respond_to?(:name) && ph.name == 'Thin Binary'
+end
+if thin
+  runner.build_phases.delete(embed)
+  runner.build_phases.insert(runner.build_phases.index(thin), embed)
+end
+
 project.save
 puts "Added #{TARGET_NAME} (#{BUNDLE_ID}); embedded in Runner."
 puts 'Remaining Mac-side step: add the App Group ' \
