@@ -41,6 +41,10 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Unlock Life Assist with Face ID when app lock is on.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Life Assist reads steps, sleep, mindfulness, and workouts to check off the habits you map to them — on this device only.</string>
+	<key>LAHealthKitEnabled</key>
+	<false/>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>

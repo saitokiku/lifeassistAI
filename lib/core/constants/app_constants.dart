@@ -4,10 +4,6 @@ class AppConstants {
 
   static const String appName = 'Life Assist';
 
-  /// Placeholder bundle id. Change in Xcode / android/app/build.gradle when
-  /// wiring real signing. Kept here so docs and code agree on one string.
-  static const String bundleIdPlaceholder = 'com.kaizen.lifedashboard';
-
   /// Parked ideas cool off for this many days before activation is allowed
   /// (unless they directly help the main goal right now).
   static const int ideaCoolingDays = 7;
