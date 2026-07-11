@@ -2,7 +2,7 @@
 // iOS 18 control, and the focus-timer Live Activity UI.
 //
 // Everything reads the same today.json the Siri answers use — from the
-// App Group container (group.com.saitokiku.lifeassist), which exists
+// App Group container (group.com.kaizen.lifeDashboard), which exists
 // once that capability is added to both targets on a Mac. Without it,
 // widgets honestly say to open the app instead of guessing.
 //
@@ -32,7 +32,7 @@ private struct TodayFeed: Codable {
 }
 
 private enum Feed {
-    static let appGroupId = "group.com.saitokiku.lifeassist"
+    static let appGroupId = "group.com.kaizen.lifeDashboard"
 
     static var bridgeRoot: URL? {
         FileManager.default.containerURL(
