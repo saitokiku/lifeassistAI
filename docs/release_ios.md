@@ -151,6 +151,21 @@ Every upload:
 5. Processing takes ~5–15 min. Export compliance is pre-answered
    (`ITSAppUsesNonExemptEncryption = NO`); the privacy manifest rides in
    the bundle, so no missing-API-declaration mail.
+
+   **Purpose strings (ITMS-90683).** Info.plist declares seven
+   `NS*UsageDescription` keys. Five (Face ID, Health-share, Camera,
+   Photo-library, Location) plus Health-update and Photo-library-add
+   cover every privacy-sensitive API symbol the app's own code and the
+   bundled `file_picker` imaging libraries
+   (DKImagePickerController/DKCamera) link. The app itself never uses
+   camera/photos/location/motion/media — those are transitive symbol
+   references, worded honestly as such. **Reserve keys**, held out
+   because the analyzer has never demanded them and the app provably
+   never calls them, but a 30-second add if a future upload ever names
+   one: `NSMotionUsageDescription` (DKCamera links CoreMotion) and
+   `NSAppleMusicUsageDescription` (file_picker's audio path may link
+   MediaPlayer). Use the same "referenced by a bundled file-picker
+   component, never used by the app" wording.
 6. TestFlight tab → Internal Testing → add yourself → install from the
    TestFlight app on the phone. Siri App Shortcut phrases register on
    first launch.
