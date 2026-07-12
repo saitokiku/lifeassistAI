@@ -22,6 +22,10 @@ WIDGET_DIR = File.expand_path('../../ios/LifeAssistWidgets', __dir__)
 TARGET_NAME = 'LifeAssistWidgets'
 BUNDLE_ID = 'com.saitokiku.lifeassist.widgets'
 DEPLOYMENT_TARGET = '17.0'
+# The Apple Developer Team every target signs with. Automatic signing
+# needs this on the extension too, or `flutter build ipa` fails with
+# "Signing for LifeAssistWidgets requires a development team".
+DEVELOPMENT_TEAM = '8JXPU9UQ4Q'
 
 project = Xcodeproj::Project.open(PROJECT)
 
@@ -53,6 +57,7 @@ widget.build_configurations.each do |config|
   s = config.build_settings
   s['PRODUCT_NAME'] = '$(TARGET_NAME)' # without it the product is '.appex'
   s['CODE_SIGN_STYLE'] = 'Automatic'
+  s['DEVELOPMENT_TEAM'] = DEVELOPMENT_TEAM
   s['LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]'] =
     '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks'
   s['PRODUCT_BUNDLE_IDENTIFIER'] = BUNDLE_ID
