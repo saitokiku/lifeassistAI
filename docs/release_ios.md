@@ -69,10 +69,14 @@ Team:
 - **Privacy manifest**: `ios/Runner/PrivacyInfo.xcprivacy` ships in the
   bundle (no tracking, no collected data, UserDefaults + file-timestamp
   required-reason declarations). Export compliance is pre-answered.
-- **Signing & Capabilities**: check "Automatically manage signing", pick
-  your Team (sign into Xcode → Settings → Accounts with your Apple ID).
-  Xcode creates the provisioning profile. No capabilities are required
-  for the 1.0 feature set — Siri App Intents need none.
+- **Signing & Capabilities**: automatic signing with team `8JXPU9UQ4Q`
+  is committed on ALL targets (Runner, RunnerTests, LifeAssistWidgets) —
+  a fresh clone signs and archives with no Xcode signing clicks. Just be
+  signed into that Apple ID in Xcode → Settings → Accounts. (The
+  extension target needs its own team; without it `flutter build ipa`
+  fails with "Signing for LifeAssistWidgets requires a development
+  team".) No capabilities are required for the 1.0 feature set — Siri
+  App Intents need none.
 - Minimum iOS version: **17.0** (set in project.pbxproj). Everything
   newer is availability-gated, so one binary serves 17 → 27: Siri AI
   entity schemas light up on 26/27, on-device AI (Foundation Models) on
