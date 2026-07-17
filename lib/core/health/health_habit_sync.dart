@@ -45,18 +45,31 @@ class HealthHabitSync {
   final HealthService _service;
   final _uuid = const Uuid();
 
+  /// Foreground events arrive in bursts (app switcher, Siri overlay);
+  /// HealthKit reads are not free. One sync per window per instance —
+  /// the provider is app-lifetime, so this throttles the process while
+  /// a cold launch always syncs immediately.
+  static const throttleWindow = Duration(minutes: 5);
+  DateTime? _lastSyncAt;
+
   /// Applies health data to mapped habits. Returns how many logs were
-  /// written or removed. Cheap no-op when nothing is mapped or the
-  /// bridge isn't ready.
-  Future<int> sync({DateTime? now}) async {
+  /// written or removed. Cheap no-op when nothing is mapped, the bridge
+  /// isn't ready, or a sync ran within [throttleWindow] ([force] skips
+  /// the throttle — used right after the user grants Health access).
+  Future<int> sync({DateTime? now, bool force = false}) async {
+    final today = now ?? DateTime.now();
+    final last = _lastSyncAt;
+    if (!force && last != null && today.difference(last) < throttleWindow) {
+      return 0;
+    }
+
     final mapped = await (_db.select(_db.habits)
           ..where((t) => t.healthMetric.isNotNull() &
               t.isArchived.equals(false)))
         .get();
     if (mapped.isEmpty) return 0;
     if (await _service.availability() != HealthAvailability.ready) return 0;
-
-    final today = now ?? DateTime.now();
+    _lastSyncAt = today;
     var changed = 0;
     for (final day in [today, today.subtract(const Duration(days: 1))]) {
       final summary = await _service.dailySummary(day);

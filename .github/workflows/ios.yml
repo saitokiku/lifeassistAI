@@ -77,10 +77,14 @@ jobs:
           path: build/ipa/LifeAssist-unsigned.ipa
           retention-days: 30
 
-  # Opt-in: exercises the App Intents through real system pathways on a
-  # simulator (App Intents Testing Framework tests live in RunnerTests).
+  # Exercises the Siri capture contract on a simulator: RunnerTests
+  # drives the background App Intents' perform() and asserts the queue
+  # records they leave (see ios/RunnerTests/RunnerTests.swift). Runs on
+  # every main merge that touches iOS, or on demand via the checkbox.
   intent-tests:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_intent_tests }}
+    if: >-
+      ${{ (github.event_name == 'workflow_dispatch' && inputs.run_intent_tests)
+          || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: macos-latest
     needs: build-ipa
     steps:

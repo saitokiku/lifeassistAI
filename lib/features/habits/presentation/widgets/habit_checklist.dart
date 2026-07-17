@@ -225,7 +225,11 @@ class _HabitRow extends StatelessWidget {
           // Off-schedule days keep the ring usable but visibly at rest.
           Opacity(
             opacity: view.dueToday ? 1 : 0.45,
-            child: CheckRing(checked: view.doneToday, onTap: onCheck),
+            child: CheckRing(
+              checked: view.doneToday,
+              onTap: onCheck,
+              semanticLabel: 'Check off ${view.habit.name}',
+            ),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(

@@ -15,6 +15,7 @@ class CheckRing extends StatelessWidget {
     this.onTap,
     this.size = 28,
     this.color,
+    this.semanticLabel,
   });
 
   final bool checked;
@@ -22,12 +23,17 @@ class CheckRing extends StatelessWidget {
   final double size;
   final Color? color;
 
+  /// What this ring checks off ("Stretch", "Morning pages") — read by
+  /// screen readers along with the checked state. Decorative rings
+  /// (inside a larger labeled tappable) leave it null and are skipped.
+  final String? semanticLabel;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final fill = color ?? AppColors.primary;
 
-    return GestureDetector(
+    final ring = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap == null
           ? null
@@ -66,6 +72,15 @@ class CheckRing extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (semanticLabel == null) return ring;
+    return Semantics(
+      label: semanticLabel,
+      checked: checked,
+      button: onTap != null,
+      excludeSemantics: true,
+      child: ring,
     );
   }
 }

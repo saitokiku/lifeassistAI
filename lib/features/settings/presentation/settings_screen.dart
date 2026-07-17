@@ -535,7 +535,9 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
     if (lastBackupAt == null) {
       subtitle = 'Everything as one file. Never backed up yet.';
     } else {
-      final days = DateTime.now().difference(lastBackupAt).inDays;
+      // dayProvider, not DateTime.now(): the label rolls over at
+      // midnight while the screen sits open.
+      final days = ref.watch(dayProvider).difference(lastBackupAt).inDays;
       subtitle = switch (days) {
         0 => 'Last backup: today.',
         1 => 'Last backup: yesterday.',
@@ -838,8 +840,9 @@ class _HealthRowState extends ConsumerState<_HealthRow> {
     final service = ref.read(healthServiceProvider);
     await service.requestPermission();
     // HealthKit hides read grants; all we honestly know is that the
-    // sheet ran. Sync now — data appears if access was allowed.
-    await ref.read(healthHabitSyncProvider).sync();
+    // sheet ran. Sync now — data appears if access was allowed. Force
+    // past the foreground throttle: the user is watching this row.
+    await ref.read(healthHabitSyncProvider).sync(force: true);
     if (mounted) setState(() => _requested = true);
   }
 

@@ -11,6 +11,7 @@ import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
 import '../../core/health/health_habit_sync.dart';
 import '../../core/native/capture_queue_drain.dart';
+import '../../core/native/entity_mirror_service.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers.dart';
 import '../../core/utils/date_utils.dart';
@@ -48,6 +49,11 @@ class _AppShellState extends ConsumerState<AppShell>
   /// Captured at init so dispose() can unhook without touching ref.
   NotificationService? _notifications;
 
+  /// The bootstrap-started mirror; the shell owns stopping it so its
+  /// drift subscription is cancelled when the tree unmounts (tests,
+  /// engine teardown) instead of living past the UI.
+  EntityMirrorService? _mirror;
+
   /// The engine's deep-link navigation and the app_links stream can both
   /// deliver the same URI; remember the last one briefly to fire once.
   Uri? _lastUri;
@@ -57,6 +63,11 @@ class _AppShellState extends ConsumerState<AppShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    try {
+      _mirror = ref.read(entityMirrorProvider);
+    } catch (_) {
+      // Web / tests without the bootstrap override: nothing to stop.
+    }
     _wireCaptureSources();
     // The router's /capture redirect may have parked a request before this
     // widget existed (cold-start deep link) — drain it on first frame.
@@ -154,6 +165,7 @@ class _AppShellState extends ConsumerState<AppShell>
     _todayDebounce?.cancel();
     _linkSub?.cancel();
     _notifications?.onTap = null;
+    unawaited(_mirror?.stop());
     super.dispose();
   }
 

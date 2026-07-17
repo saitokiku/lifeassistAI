@@ -196,12 +196,54 @@ void main() {
     await goBack(tester);
     await goBack(tester);
 
+    // Journal: one honest line through the composer.
+    await openHubRow(tester, 'Journal');
+    expect(find.text('One honest line at a time. Nothing is required.'),
+        findsOneWidget);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'What happened today?'),
+        'Shipped the notes feature.');
+    await tester.tap(find.byTooltip('Save entry'));
+    await settle(tester);
+    expect(find.text('Shipped the notes feature.'), findsOneWidget);
+    await goBack(tester);
+
     await openHubRow(tester, 'Settings');
     expect(find.text('Targets, appearance, and your data.'), findsOneWidget);
     await goBack(tester);
 
-    // Back on the hub (its list kept the scrolled position); Today now
-    // reflects the goal set earlier.
+    // Everything-search: the note written above is findable.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 800));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Search everything'));
+    await settle(tester);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'coffee, stretch, rent…'),
+        'Deep Work');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    expect(find.text('NOTES'), findsOneWidget);
+    await tester.tapAt(const Offset(195, 40)); // dismiss via barrier
+    await settle(tester);
+
+    // Weekly review: the ritual sheet opens with its prompts.
+    await tester.scrollUntilVisible(
+      find.text('Weekly review'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Weekly review'));
+    await settle(tester);
+    expect(find.textContaining('Five minutes'), findsWidgets);
+    await tester.tapAt(const Offset(195, 40));
+    await settle(tester);
+
+    // Back on the hub; Today now reflects the goal set earlier.
+    await tester.scrollUntilVisible(
+      find.text('SYSTEMS'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('SYSTEMS'), findsOneWidget);
     await tapTab(tester, 'Today');
     expect(find.text('UP NEXT'), findsOneWidget);

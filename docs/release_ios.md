@@ -86,6 +86,22 @@ Notifications: `flutter_local_notifications` needs no special capability
 for local notifications; the app requests permission at runtime from the
 Reminders screen or onboarding.
 
+**On any `flutter_local_notifications` version bump, re-verify the
+pinned contract** (Swift's `CaptureQueue.armReminder` mimics the
+plugin's request shape so Siri-armed reminders can be cancelled by id):
+
+1. `identifier` is still `String(notificationId)` and `userInfo` still
+   carries `NotificationId`/`payload`/`present*` keys (compare
+   `armReminder` in `ios/Runner/CaptureQueue.swift` against the
+   plugin's iOS source).
+2. `zonedSchedule` signature/`matchDateTimeComponents` semantics are
+   unchanged (`lib/core/notifications/notification_service.dart`).
+3. `flutter test test/reminder_scheduler_test.dart` — the
+   armed-notification shape (ids, times, payloads) stays green.
+4. On device: create a reminder by voice with the app killed, never
+   open the app, and confirm it fires once (not twice) after the next
+   app open re-arms it through the plugin.
+
 ### Optional capabilities (scaffolded, off by default)
 
 - **HealthKit (Phase 5)**: add the HealthKit capability to the Runner
