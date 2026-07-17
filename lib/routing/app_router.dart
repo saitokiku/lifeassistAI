@@ -10,6 +10,8 @@ import '../features/habits/presentation/habits_screen.dart';
 import '../features/ideas/presentation/ideas_screen.dart';
 import '../features/journal/presentation/journal_screen.dart';
 import '../features/money/presentation/money_screen.dart';
+import '../features/notes/presentation/note_detail_screen.dart';
+import '../features/notes/presentation/notes_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/reminders/presentation/reminders_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -107,6 +109,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/journal',
               builder: (context, state) => const JournalScreen(),
+            ),
+            GoRoute(
+              path: '/notes',
+              builder: (context, state) => const NotesScreen(),
+            ),
+            // '/notes/new' must precede '/notes/:id' or 'new' is an id.
+            GoRoute(
+              path: '/notes/new',
+              builder: (context, state) => const NoteDetailScreen(),
+            ),
+            GoRoute(
+              path: '/notes/:id',
+              builder: (context, state) => NoteDetailScreen(
+                noteId: state.pathParameters['id'],
+              ),
             ),
             GoRoute(
               path: '/settings',

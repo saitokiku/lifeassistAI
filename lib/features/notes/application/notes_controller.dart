@@ -1,0 +1,71 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/providers.dart';
+import '../../../core/storage/app_database.dart';
+import '../data/notes_repository.dart';
+
+final notesRepositoryProvider = Provider<NotesRepository>(
+  (ref) => NotesRepository(ref.watch(databaseProvider)),
+);
+
+/// The vault, newest-edited first. Powers the list and the You hub row.
+final notesProvider = StreamProvider<List<Note>>(
+  (ref) => ref.watch(notesRepositoryProvider).watchNotes(),
+);
+
+/// Resolved link count — the hub caption's honest "how connected" line.
+final noteLinkCountProvider = StreamProvider<int>(
+  (ref) => ref.watch(notesRepositoryProvider).watchLinkCount(),
+);
+
+/// One note, live — the detail screen re-renders on outside edits
+/// (imports, a future sync) without holding stale text.
+final noteProvider = StreamProvider.family<Note?, String>(
+  (ref, id) => ref.watch(notesRepositoryProvider).watchNote(id),
+);
+
+/// Who links here, with the words they used.
+final backlinksProvider = StreamProvider.family<List<Backlink>, String>(
+  (ref, id) => ref.watch(notesRepositoryProvider).watchBacklinks(id),
+);
+
+final noteTagsProvider = StreamProvider.family<List<NoteTag>, String>(
+  (ref, id) => ref.watch(notesRepositoryProvider).watchTags(id),
+);
+
+class NotesController {
+  NotesController(this._repo);
+
+  final NotesRepository _repo;
+
+  Future<Note> createNote({String title = '', String content = ''}) =>
+      _repo.createNote(title: title, content: content);
+
+  Future<Note> saveNote(
+    Note note, {
+    required String title,
+    required String content,
+  }) =>
+      _repo.saveNote(note, title: title, content: content);
+
+  Future<void> setArchived(String id, bool archived) =>
+      _repo.setArchived(id, archived);
+
+  Future<void> deleteNote(String id) => _repo.deleteNote(id);
+
+  /// `[[link]]` tap: open the note bearing that title, or create it on
+  /// the spot — a link to nowhere becomes a place.
+  Future<Note> openOrCreateByTitle(String title) async {
+    final existing = await _repo.getByTitle(title);
+    if (existing != null) return existing;
+    return _repo.createNote(title: title);
+  }
+
+  Future<List<String>> titleSuggestions() => _repo.allTitles();
+
+  Future<List<String>> tagSuggestions() => _repo.allTags();
+}
+
+final notesControllerProvider = Provider<NotesController>(
+  (ref) => NotesController(ref.watch(notesRepositoryProvider)),
+);

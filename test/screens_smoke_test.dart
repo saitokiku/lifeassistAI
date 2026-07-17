@@ -169,6 +169,26 @@ void main() {
     expect(find.text('Gentle nudges through the day.'), findsOneWidget);
     await goBack(tester);
 
+    // Notes: write the first note through the editor, render the
+    // preview (wiki link + tag), and see it counted on the list.
+    await openHubRow(tester, 'Notes');
+    expect(find.text('Your vault is empty'), findsOneWidget);
+    await tester.tap(find.text('First note'));
+    await settle(tester);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Title'), 'Deep Work');
+    await tester.enterText(
+        find.byType(TextField).last, 'Read [[Atomic Habits]] daily. #habit');
+    await tester.tap(find.byTooltip('Preview'));
+    await settle(tester);
+    expect(find.text('Deep Work'), findsWidgets);
+    expect(find.text('Atomic Habits'), findsOneWidget); // tappable link
+    // Inline in the markdown AND as a chip in the tags row below.
+    expect(find.text('#habit'), findsNWidgets(2));
+    await goBack(tester);
+    expect(find.text('1 note · 1 link'), findsOneWidget);
+    await goBack(tester);
+
     await openHubRow(tester, 'Settings');
     expect(find.text('Targets, appearance, and your data.'), findsOneWidget);
     await goBack(tester);
