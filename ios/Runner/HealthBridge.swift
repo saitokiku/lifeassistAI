@@ -115,10 +115,14 @@ private final class Store {
 
         let dayPredicate = HKQuery.predicateForSamples(
             withStart: start, end: end, options: .strictStartDate)
-        // Sleep belongs to the night that *ends* this day.
+        // Sleep belongs to the night that *ends* this day: 18:00
+        // yesterday through 18:00 today. Consecutive days' windows are
+        // disjoint and cover the clock, so a night is never counted
+        // twice; sleep after 18:00 today is tomorrow's wake-up.
         let nightPredicate = HKQuery.predicateForSamples(
             withStart: calendar.date(byAdding: .hour, value: -6, to: start),
-            end: end, options: [])
+            end: calendar.date(byAdding: .hour, value: 18, to: start),
+            options: [])
 
         async let steps = sumQuantity(.stepCount, dayPredicate, unit: .count())
         async let sleep = categoryHours(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utils/date_utils.dart';
@@ -103,10 +104,12 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
     );
   }
 
-  String _dayLabel(DateTime day) {
-    final now = DateTime.now();
-    if (AppDateUtils.isSameDay(day, now)) return 'Today';
-    if (AppDateUtils.isSameDay(day, now.subtract(const Duration(days: 1)))) {
+  /// [today] comes from dayProvider so open screens re-label across
+  /// midnight instead of freezing yesterday's "Today".
+  String _dayLabel(DateTime day, DateTime today) {
+    if (AppDateUtils.isSameDay(day, today)) return 'Today';
+    if (AppDateUtils.isSameDay(
+        day, today.subtract(const Duration(days: 1)))) {
       return 'Yesterday';
     }
     return Formatters.shortDate(day);
@@ -115,6 +118,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
   List<Widget> _groupedByDay(
       BuildContext context, List<JournalEntry> entries) {
     final theme = Theme.of(context);
+    final today = ref.watch(dayProvider);
     final widgets = <Widget>[];
     String? lastDate;
     for (final entry in entries) {
@@ -126,7 +130,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
             bottom: AppSpace.xs,
           ),
           child: Text(
-            _dayLabel(AppDateUtils.parseDateKey(entry.date)),
+            _dayLabel(AppDateUtils.parseDateKey(entry.date), today),
             style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

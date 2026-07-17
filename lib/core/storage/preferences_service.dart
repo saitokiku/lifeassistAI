@@ -37,6 +37,12 @@ class PreferencesService {
   Future<void> setNotificationsEnabled(bool value) =>
       _prefs.setBool(SettingsKeys.prefNotificationsEnabled, value);
 
+  bool get launchDiscoveryDismissed =>
+      _prefs.getBool(SettingsKeys.prefLaunchDiscoveryDismissed) ?? false;
+
+  Future<void> setLaunchDiscoveryDismissed() =>
+      _prefs.setBool(SettingsKeys.prefLaunchDiscoveryDismissed, true);
+
   /// Seeds/legacy migration are skipped while this matches the app's
   /// current revision. Cleared by reset and import so both re-run.
   int get dataRevision => _prefs.getInt(SettingsKeys.prefDataRevision) ?? 0;

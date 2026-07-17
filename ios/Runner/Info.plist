@@ -54,7 +54,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Life Assist does not use or track your location. This permission is referenced by a built-in file picker component and is never requested by the app.</string>
 	<key>LAHealthKitEnabled</key>
-	<false/>
+	<true/>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>CFBundleVersion</key>

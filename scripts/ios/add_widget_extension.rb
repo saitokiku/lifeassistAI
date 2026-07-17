@@ -58,6 +58,9 @@ widget.build_configurations.each do |config|
   s['PRODUCT_NAME'] = '$(TARGET_NAME)' # without it the product is '.appex'
   s['CODE_SIGN_STYLE'] = 'Automatic'
   s['DEVELOPMENT_TEAM'] = DEVELOPMENT_TEAM
+  # The App Group entitlement ships in the repo; automatic signing
+  # registers the group on the App ID from this.
+  s['CODE_SIGN_ENTITLEMENTS'] = 'LifeAssistWidgets/LifeAssistWidgets.entitlements'
   s['LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]'] =
     '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks'
   s['PRODUCT_BUNDLE_IDENTIFIER'] = BUNDLE_ID

@@ -86,23 +86,49 @@ Notifications: `flutter_local_notifications` needs no special capability
 for local notifications; the app requests permission at runtime from the
 Reminders screen or onboarding.
 
-### Optional capabilities (scaffolded, off by default)
+**On any `flutter_local_notifications` version bump, re-verify the
+pinned contract** (Swift's `CaptureQueue.armReminder` mimics the
+plugin's request shape so Siri-armed reminders can be cancelled by id):
 
-- **HealthKit (Phase 5)**: add the HealthKit capability to the Runner
-  target, then flip `LAHealthKitEnabled` to `YES` in Info.plist. Until
-  both happen, HealthBridge answers "disabledInBuild" and the app shows
-  nothing. The read-permission usage string is already in Info.plist.
-- **Widgets + App Group (Phase 6)**: the LifeAssistWidgets extension
-  target is already in the project (score, up-next, interactive habit
-  check, an iOS 18 Control Center button, and the focus-timer Live
-  Activity). One Mac-side step remains: Signing & Capabilities → add the
-  App Group `group.com.saitokiku.lifeassist` to BOTH targets. The bridge
-  (entities.json, today.json, capture queue) relocates to the shared
-  container automatically on both the Swift and Dart sides, and old
-  pending captures still drain from the previous location. Until the
-  group exists, widgets say "Open Life Assist for a fresh look" instead
-  of guessing. (`scripts/ios/add_widget_extension.rb` regenerates the
-  target from scratch if it's ever removed; it's a no-op otherwise.)
+1. `identifier` is still `String(notificationId)` and `userInfo` still
+   carries `NotificationId`/`payload`/`present*` keys (compare
+   `armReminder` in `ios/Runner/CaptureQueue.swift` against the
+   plugin's iOS source).
+2. `zonedSchedule` signature/`matchDateTimeComponents` semantics are
+   unchanged (`lib/core/notifications/notification_service.dart`).
+3. `flutter test test/reminder_scheduler_test.dart` — the
+   armed-notification shape (ids, times, payloads) stays green.
+4. On device: create a reminder by voice with the app killed, never
+   open the app, and confirm it fires once (not twice) after the next
+   app open re-arms it through the plugin.
+
+### Capabilities — LIVE at launch (entitlements committed)
+
+Both launch capabilities ship in the repo as entitlements files wired
+into `project.pbxproj` via `CODE_SIGN_ENTITLEMENTS`:
+
+- **HealthKit**: `ios/Runner/Runner.entitlements` declares
+  `com.apple.developer.healthkit`, and Info.plist has
+  `LAHealthKitEnabled = YES` — the Settings "Apple Health" row and
+  habit health-mapping are active in this build. Read-only; both usage
+  strings are in Info.plist.
+- **Widgets + App Group**: the same file (and
+  `ios/LifeAssistWidgets/LifeAssistWidgets.entitlements` for the
+  extension) declares the App Group `group.com.saitokiku.lifeassist`
+  on BOTH targets. The bridge (entities.json, today.json, capture
+  queue) relocates to the shared container automatically on the Swift
+  and Dart sides; old pending captures still drain from the previous
+  location. (`scripts/ios/add_widget_extension.rb` regenerates the
+  widget target with the entitlement if it's ever removed.)
+
+**Mac-side, first archive after pulling this**: with automatic signing,
+Xcode registers HealthKit and the App Group on the App ID by itself
+when you build (signed into the team account). If signing errors
+mention a capability, open Signing & Capabilities once for Runner and
+LifeAssistWidgets — the capabilities are already listed from the
+entitlements files — and let Xcode "register" them, then rebuild.
+CI is unaffected: it builds `--no-codesign`, where entitlements are
+carried but not enforced.
 
 ## 3. Run on your iPhone (development build)
 

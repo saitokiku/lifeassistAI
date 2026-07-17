@@ -27,21 +27,23 @@ These were real defects found by the sweep and corrected immediately.
 | **Low** | `app_shell.dart` `_publishToday` | The async today.json write chained `.then(...)` inside a synchronous try/catch; an async write failure would surface as an unhandled zone error instead of the intended silent "no fresh numbers". Now has `catchError`. |
 | **Low** | `LifeAssistWidgets.swift` | The habit widget counted *any* pending queued check as "done today", including one from before midnight if the app hadn't opened. Pending records are now filtered to today. |
 
-## 2. Open findings (acknowledged, not fixed)
+## 2. Open findings — CLOSED in the production-hardening pass
 
-Ranked by the damage they could do. None blocks TestFlight.
+Every finding below was resolved (or explicitly accepted with its
+guard-rail built) in the Track-2 hardening pass before App Store
+submission. The original table is kept with each row's resolution.
 
-| Sev | Where | Finding | Why it's still open |
+| Sev | Where | Finding | Resolution |
 | --- | --- | --- | --- |
-| **Medium** | `BackgroundIntents.swift` reminder path | A Siri-created reminder arms a notification whose `userInfo`/identifier shape is pinned to flutter_local_notifications **18.0.1**. A plugin upgrade could silently change that contract; the failure mode is a reminder that fires but taps dead. | Pinned by comment at the arming site and in pubspec; needs a checklist item on any plugin bump. The self-healing path (armed:false → Dart re-arms at drain) bounds the damage to "fires late". |
-| **Medium** | `backup_service.dart` import | Row-by-row inserts inside one transaction. Fine at personal scale (thousands of rows); a 100k-row import would take tens of seconds with the UI blocked on the spinner. | Real usage is personal-scale; batching is a mechanical change when it matters. |
-| **Low** | `HealthBridge.swift` sleep query | The "night that ends today" is approximated as `start − 6h → end of day`. A sleep session starting before 6 PM yesterday (shift workers) partially escapes the window. | Good enough for the auto-check use case; HKAnchoredObjectQuery with proper session grouping is the eventual fix. |
-| **Low** | `health_habit_sync.dart` | Sync runs on every app foreground (2 days × mapped habits worth of HealthKit queries). No throttle. | Queries are statistics-level and cheap; add a 5-minute debounce if battery data ever says otherwise. |
-| **Low** | `journal_screen.dart` `_dayLabel` | Uses `DateTime.now()` directly instead of the app's `dayProvider` clock, so a screen left open across midnight labels yesterday "Today" until rebuilt. | Cosmetic; every other surface uses the ticking clock. |
-| **Low** | `EntityMirrorService` | The drift `tableUpdates` subscription is never cancelled — the service lives exactly as long as the app process, which is true on mobile but would leak in a hypothetical multi-engine embedding. | By design for now; documented here so it isn't re-discovered. |
-| **Low** | Widgets ↔ Live Activity | `FocusTimerAttributes` exists as one file compiled into two targets. If someone edits the struct in Xcode's widget context and the file diverges semantically from what Runner expects, activities silently stop rendering. | Single source file (not a copy) makes true divergence impossible; the risk is only conceptual confusion, noted in the file header. |
-| **Info** | `intent-tests` CI job | The opt-in simulator job assumes RunnerTests contains App Intents tests; none are written yet. Dispatching it today builds and runs an empty suite. | Placeholder for the App Intents Testing Framework work; harmless. |
-| **Info** | `AiBridge.swift` | A fresh `LanguageModelSession` per call — correct for guardrails (no context bleed) but pays warm-up per request. Multi-turn sessions are Stage E1 of EDGE_AI_ROADMAP.md. | Deliberate v1 choice. |
+| **Medium** | `BackgroundIntents.swift` reminder path | Siri-armed notification shape pinned to flutter_local_notifications **18.0.1**; a plugin upgrade could silently break the tap contract. | **Guard-rail built:** `test/reminder_scheduler_test.dart` locks the armed-notification shape (ids, times, payloads, full-id-space cancel), and `docs/release_ios.md` carries a 4-step re-verify checklist for any plugin bump. Self-healing drain path unchanged. |
+| **Medium** | `backup_service.dart` import | Row-by-row inserts; a huge restore blocked the UI on thousands of awaits. | **Fixed:** one drift `batch.insertAll` per table inside the same transaction. |
+| **Low** | `HealthBridge.swift` sleep query | Night window `start − 6h → end of day` overlapped consecutive days by 6h — evening sleep could count twice. | **Fixed:** window is now 18:00 yesterday → 18:00 today (wake-day convention) — consecutive windows are disjoint and cover the clock. |
+| **Low** | `health_habit_sync.dart` | Sync ran on every app foreground, unthrottled. | **Fixed:** 5-minute in-process throttle (`throttleWindow`); the Settings connect row passes `force: true`. Cold launches always sync. Test added. |
+| **Low** | `journal_screen.dart` `_dayLabel` | `DateTime.now()` froze "Today" across midnight. | **Fixed:** labels read `dayProvider` (Settings' "Last backup" row too). |
+| **Low** | `EntityMirrorService` | drift `tableUpdates` subscription never cancelled. | **Fixed:** `AppShell` owns the mirror's lifecycle and calls `stop()` on unmount — clean in tests and any multi-engine future. |
+| **Low** | Widgets ↔ Live Activity | `FocusTimerAttributes` single-file-two-targets confusion risk. | **Accepted as designed** — single source file, header comment; no action possible that wouldn't add real duplication. |
+| **Info** | `intent-tests` CI job | Simulator job existed but RunnerTests was an empty stub. | **Fixed:** `ios/RunnerTests/RunnerTests.swift` now drives every background intent's `perform()` and the CaptureQueue contract (cents, envelope, atomic naming, notification block); the job runs on every iOS-touching `main` merge, not just manual dispatch. |
+| **Info** | `AiBridge.swift` | Fresh `LanguageModelSession` per call. | **Deliberate v1 choice, stands.** Multi-turn sessions remain Stage E1 of EDGE_AI_ROADMAP.md. |
 
 ## 3. What was reviewed and held up
 

@@ -1,4 +1,8 @@
-# Privacy policy (draft)
+# Privacy policy (draft) — SUPERSEDED
+
+**The final, hostable policy is [`privacy.md`](privacy.md)** (adds the
+Apple Health and Siri/widgets sections and the contact address). This
+draft is kept for history only.
 
 _Last updated: 2026-07. Draft for review before publication. Host this at a
 public URL before App Store submission._

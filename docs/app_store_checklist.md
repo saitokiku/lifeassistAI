@@ -1,71 +1,111 @@
-# App Store checklist
+# App Store checklist + submission runbook
 
-Work through this top-to-bottom when moving from private build →
-TestFlight → App Review. Nothing is automated; each item is a manual step.
+State as of the production-launch build (v1.1.0). Checked items are
+done in the repo or already true in App Store Connect; unchecked items
+are the manual steps left, in order. The exact click-path runbook is at
+the bottom.
 
-## Identity
+## Identity — DONE
 
-- [ ] App name: **Life Assist** (check availability in App Store
-      Connect; fall back to e.g. "Life Assist — Personal OS" if taken)
-- [ ] Bundle ID: `com.saitokiku.lifeassist` (already set in the Xcode
-      project — register it at developer.apple.com → Identifiers; it
-      cannot change after the first upload)
-- [ ] SKU: any internal string, e.g. `life-dashboard-001`
-- [ ] Primary language: English (U.S.)
+- [x] App Store Connect record exists: Apple ID **6789949638**, bundle
+      `com.saitokiku.lifeassist` (widgets id
+      `com.saitokiku.lifeassist.widgets` also registered)
+- [x] Bundle id set in the Xcode project on all targets
+- [x] Signing: automatic, team `8JXPU9UQ4Q`, committed for all targets
+- [ ] ASC record's **Name** shows the working title "Aurgun-Eyes" — set
+      the public name to **Life Assist** (App Information → Name; see
+      `app_store_listing.md` for fallbacks if taken)
+- [x] Primary language: English (U.S.)
 
-## Assets
+## Build — DONE in repo
 
-- [ ] App icon 1024×1024 (no alpha) + generated icon set
-      (see `assets/app_icon/placeholder_readme.md`)
-- [ ] Screenshots: 6.9" (iPhone 16 Pro Max class) and 6.5" sizes minimum;
-      capture Today, Focus, Money, Time in dark mode
-- [ ] Optional: iPad screenshots if iPad is enabled (rail layout already works)
+- [x] Version `1.1.0+5` in pubspec (flows into both targets via
+      Generated.xcconfig)
+- [x] App icon 1024 + full set generated (day-score ring mark)
+- [x] Privacy manifest `PrivacyInfo.xcprivacy` in the bundle
+- [x] Export compliance pre-answered (`ITSAppUsesNonExemptEncryption = NO`)
+- [x] All seven purpose strings present + reserve keys documented
+      (`release_ios.md`)
+- [x] HealthKit + App Group entitlements committed on Runner + widgets;
+      `LAHealthKitEnabled = true`
+- [x] Widget extension target committed; Live Activity enabled
 
-## Metadata
+## Metadata — WRITTEN, paste from `app_store_listing.md`
 
-- [ ] Subtitle (30 chars), e.g. "Operator life dashboard"
-- [ ] Description (from README/product spec; no competitor names)
-- [ ] Keywords: focus, dashboard, budget, time, habits, founder...
-- [ ] Support URL: placeholder — `https://example.com/life-dashboard/support`
-      (replace with a real page before submission; a GitHub Pages page is fine)
-- [ ] Marketing URL (optional): placeholder — same host
-- [ ] Category: Productivity (secondary: Finance or Lifestyle)
-- [ ] Age rating questionnaire: expect 4+ (the app references budgeting
-      categories like poker/weed as *spend flags*; answer the gambling and
-      drug-reference questions honestly — plain text category names with
-      "keep this at $0" semantics have passed review historically, but be
-      prepared to rename to "Vice A/B" if flagged)
+- [ ] Name, subtitle, promotional text, description, keywords
+- [ ] What's New
+- [ ] Category: Productivity (+ Lifestyle)
+- [ ] App Review notes (Health read-only explanation — paste as-is)
 
-## Privacy
+## Screenshots
 
-- [ ] Privacy policy URL (host docs/privacy_policy_draft.md somewhere public)
-- [ ] App Privacy "nutrition label": **Data Not Collected** (local-first,
-      no analytics, no accounts, no tracking) — only true while v1 stays
-      offline; revisit if cloud sync ships
-- [ ] Export compliance: standard encryption only → "No" to the custom
-      crypto question (set `ITSAppUsesNonExemptEncryption = NO` in
-      Info.plist to skip the per-build prompt)
+- [ ] Run the **screenshots** job (Actions → iOS → Run workflow →
+      check "Capture App Store screenshots") and download the
+      `AppStoreScreenshots` artifact — or capture manually per
+      `app_store_listing.md` §Screenshots
+- [ ] Upload the 6.9" set (reused for 6.5")
 
-## TestFlight
+## Privacy — answers ready
 
-- [ ] Upload build (Xcode Organizer or Transporter)
-- [ ] Internal testing: add your own Apple ID as internal tester (no review
-      needed, 100 device limit)
-- [ ] Beta App Description + feedback email
-- [ ] External testing later (requires Beta App Review)
+- [ ] Host `docs/privacy.md` and `docs/support.md` publicly (GitHub
+      Pages: Settings → Pages → deploy from branch, `/docs` folder —
+      or any static host). Put both URLs in ASC.
+- [ ] App Privacy label: **Data Not Collected.** Click path: App
+      Privacy → Get Started → "Do you or your third-party partners
+      collect data from this app?" → **No, we do not collect data from
+      this app** → Publish. This stays true with HealthKit connected:
+      Apple's definition of "collect" is transmitting off-device, and
+      Health data never leaves the device (read-only, local
+      processing, no network).
+- [ ] Age rating questionnaire: everything **None** → expect **4+**
 
-## App Review submission (public release, later)
+## Runbook — from `git pull` to "Submit for Review"
 
-- [ ] All metadata + screenshots final
-- [ ] Review notes: explain it's a single-user local-first tool; no login,
-      so no demo account needed
-- [ ] Notification usage is user-initiated (permission prompt from the
-      Reminders screen) — no push entitlement used
-- [ ] Pricing: Free initially; revisit paid/subscription at v2.1
-- [ ] Submit; typical review 1–3 days
+On the Mac:
+
+1. `git checkout main && git pull`
+2. `flutter pub get && flutter test` (sanity; 180 tests green)
+3. Open `ios/Runner.xcworkspace` once, signed into the team account —
+   automatic signing registers the HealthKit capability and App Group
+   from the committed entitlements. If a provisioning error names a
+   capability, open Signing & Capabilities for Runner and
+   LifeAssistWidgets and let Xcode fix it, then rebuild.
+4. `flutter build ipa --release` → `build/ios/ipa/*.ipa`
+5. Upload with **Transporter** (drag the .ipa) or Xcode Organizer.
+   Processing takes ~5–15 min; no compliance emails expected.
+6. In App Store Connect, while processing:
+   - App Information → set Name to **Life Assist**
+   - Paste every metadata block from `app_store_listing.md`
+   - Upload screenshots; set the privacy label (**Data Not
+     Collected**) and age rating (4+)
+   - Add the privacy + support URLs
+   - Pricing: Free
+7. Select the processed build on the version page.
+8. TestFlight first (recommended): Internal Testing → add yourself →
+   install → run the on-device acceptance list below.
+9. Add App Review notes from `app_store_listing.md` → **Submit for
+   Review**. Typical review: 1–3 days.
+
+## On-device acceptance (TestFlight build, before submitting)
+
+- [ ] Notes: create two notes, `[[link]]` one to the other → backlink
+      appears; graph shows the pair joined; tap a ghost → note created
+- [ ] Vault: Settings → Export notes to Files → folder visible in
+      Files app; edit a .md there → Re-import from Files picks it up
+- [ ] Health: Settings → Apple Health → allow read → map a habit to
+      steps → walk → habit checks itself (manual check still wins)
+- [ ] Widgets: add the score + habit widgets; habit check from the
+      widget drains exactly once into the app
+- [ ] Live Activity: start the focus timer → Lock Screen shows it;
+      stop → it ends
+- [ ] Siri: "Log an expense in Life Assist" with the app killed →
+      open later → the row exists exactly once
+- [ ] Reminder by voice, never open the app → it fires
+- [ ] Backup: export JSON, reset everything, import → data intact
+      (including notes + rebuilt links)
 
 ## Post-approval
 
 - [ ] Phased release optional
-- [ ] Keep the bundle id, signing certs, and App Store Connect access
-      documented somewhere safe
+- [ ] Keep bundle id, team id, and ASC access documented somewhere safe
+- [ ] Revisit pricing at v2

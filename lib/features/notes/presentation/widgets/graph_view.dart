@@ -85,32 +85,39 @@ class _GraphViewState extends State<GraphView> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      _frame(constraints.biggest);
-      return InteractiveViewer(
-        transformationController: _transform,
-        constrained: false,
-        boundaryMargin: const EdgeInsets.all(400),
-        minScale: 0.1,
-        maxScale: 4,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapUp: _handleTap,
-          child: CustomPaint(
-            size: Size.square(widget.canvasSize),
-            painter: _GraphPainter(
-              graph: widget.graph,
-              positions: widget.positions,
-              focusId: widget.focusId,
-              edgeColor: scheme.outlineVariant,
-              labelColor: scheme.onSurfaceVariant,
-              ghostColor: scheme.textTertiary,
-              labelStyle: theme.textTheme.labelSmall,
+    final nodes = widget.graph.nodes.length;
+    final links = widget.graph.edges.length;
+    return Semantics(
+      label: 'Note graph: $nodes note${nodes == 1 ? '' : 's'}, '
+          '$links link${links == 1 ? '' : 's'}. '
+          'Pinch to zoom, drag to pan, tap a node to open its note.',
+      child: LayoutBuilder(builder: (context, constraints) {
+        _frame(constraints.biggest);
+        return InteractiveViewer(
+          transformationController: _transform,
+          constrained: false,
+          boundaryMargin: const EdgeInsets.all(400),
+          minScale: 0.1,
+          maxScale: 4,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: _handleTap,
+            child: CustomPaint(
+              size: Size.square(widget.canvasSize),
+              painter: _GraphPainter(
+                graph: widget.graph,
+                positions: widget.positions,
+                focusId: widget.focusId,
+                edgeColor: scheme.outlineVariant,
+                labelColor: scheme.onSurfaceVariant,
+                ghostColor: scheme.textTertiary,
+                labelStyle: theme.textTheme.labelSmall,
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      }),
+    );
   }
 }
 

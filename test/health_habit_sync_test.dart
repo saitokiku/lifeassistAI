@@ -153,4 +153,26 @@ void main() {
     expect(await sync().sync(now: at), 0);
     expect(await db.select(db.habitLogs).get(), isEmpty);
   });
+
+  test('same instance throttles repeat syncs; force bypasses', () async {
+    await plantHabit();
+    summary = {'steps': 9200};
+    final instance = sync();
+    expect(await instance.sync(now: at), greaterThan(0));
+
+    // Data changed one minute later, but the window hasn't passed —
+    // the foreground burst is absorbed.
+    summary = {'steps': 100};
+    final oneMinute = at.add(const Duration(minutes: 1));
+    expect(await instance.sync(now: oneMinute), 0);
+    // Force is the user-initiated path (Settings connect): runs now,
+    // and removes the check the lower number no longer supports.
+    expect(await instance.sync(now: oneMinute, force: true), greaterThan(0));
+
+    // Past the window, syncs flow again (fresh check re-written).
+    summary = {'steps': 9200};
+    final later = at.add(HealthHabitSync.throttleWindow +
+        const Duration(minutes: 6));
+    expect(await instance.sync(now: later), greaterThan(0));
+  });
 }

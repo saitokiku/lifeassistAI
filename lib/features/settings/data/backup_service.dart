@@ -159,15 +159,17 @@ class BackupService {
       await _db.transaction(() async {
         await _db.clearAllTables();
 
+        // One drift batch per table: a large restore is a handful of
+        // multi-row statements instead of thousands of awaited inserts.
         Future<void> insertAll<T extends Table, R extends DataClass>(
           TableInfo<T, R> table,
           String key,
           Insertable<R> Function(Map<String, dynamic>) fromJson,
         ) async {
-          for (final row in rows(key)) {
-            await _db.into(table).insert(fromJson(row));
-            count++;
-          }
+          final parsed = [for (final row in rows(key)) fromJson(row)];
+          if (parsed.isEmpty) return;
+          await _db.batch((batch) => batch.insertAll(table, parsed));
+          count += parsed.length;
         }
 
         await insertAll(
