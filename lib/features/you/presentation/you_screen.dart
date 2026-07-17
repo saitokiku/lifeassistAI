@@ -15,6 +15,7 @@ import '../../identity/presentation/widgets/statement_editor.dart';
 import '../../identity/presentation/widgets/statement_list.dart';
 import '../../ideas/application/ideas_controller.dart';
 import '../../journal/application/journal_controller.dart';
+import '../../notes/application/notes_controller.dart';
 import '../../reminders/application/reminders_controller.dart';
 import '../../review/application/review_controller.dart';
 import '../../review/presentation/weekly_review_sheet.dart';
@@ -37,6 +38,8 @@ class YouScreen extends ConsumerWidget {
     final reminders = ref.watch(remindersStateProvider);
     final weeklyReview = ref.watch(currentWeekReviewProvider).valueOrNull;
     final journalToday = ref.watch(todayJournalProvider).valueOrNull?.length;
+    final notes = ref.watch(notesProvider).valueOrNull;
+    final noteLinks = ref.watch(noteLinkCountProvider).valueOrNull ?? 0;
 
     final doneToday = habits?.habits.where((h) => h.doneToday).length;
     final habitCount = habits?.habits.length;
@@ -140,6 +143,18 @@ class YouScreen extends ConsumerWidget {
                         : 'Today is written · '
                             '$journalToday line${journalToday == 1 ? '' : 's'}',
                 route: '/journal',
+              ),
+              const SizedBox(height: AppSpace.cardGap),
+              _HubRow(
+                icon: Icons.hub_outlined,
+                title: 'Notes',
+                caption: notes == null
+                    ? 'Think in links.'
+                    : notes.isEmpty
+                        ? 'Your Zettelkasten awaits its first note.'
+                        : '${notes.length} note${notes.length == 1 ? '' : 's'}'
+                            ' · $noteLinks link${noteLinks == 1 ? '' : 's'}',
+                route: '/notes',
               ),
               const SizedBox(height: AppSpace.cardGap),
               _HubRow(

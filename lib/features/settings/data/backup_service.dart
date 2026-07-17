@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/result.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/legacy_migration.dart';
+import '../../notes/data/notes_repository.dart';
 
 /// JSON export/import of every core table. The user owns their data.
 ///
@@ -39,6 +40,9 @@ class BackupService {
     'reminders',
     'identityStatements',
     'journalEntries',
+    // NoteLinks/NoteTags are a derived index, not exported: the
+    // repository rebuilds both from note text right after import.
+    'notes',
   ];
 
   Future<String> exportJson() async {
@@ -115,6 +119,9 @@ class BackupService {
       ],
       'journalEntries': [
         for (final r in await _db.select(_db.journalEntries).get()) r.toJson(),
+      ],
+      'notes': [
+        for (final r in await _db.select(_db.notes).get()) r.toJson(),
       ],
     };
 
@@ -197,11 +204,15 @@ class BackupService {
             IdentityStatement.fromJson);
         await insertAll(
             _db.journalEntries, 'journalEntries', JournalEntry.fromJson);
+        await insertAll(_db.notes, 'notes', Note.fromJson);
       });
 
       // A v1 backup carries Kaizen-era values and no main goal; rewrite it
       // into the universal shape (no-op for v2 backups).
       await LegacyMigration(_db).run();
+
+      // Rebuild the derived link/tag index from the restored note text.
+      await NotesRepository(_db).reindexAll();
 
       return Result.success(count);
     } catch (e) {

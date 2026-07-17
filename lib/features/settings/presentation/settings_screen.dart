@@ -35,6 +35,8 @@ import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/screen_back_button.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../notes/application/notes_controller.dart';
+import '../../notes/data/vault_service.dart';
 import '../../reminders/application/reminders_controller.dart';
 import '../application/settings_controller.dart';
 import '../data/backup_service.dart';
@@ -168,6 +170,13 @@ class SettingsScreen extends ConsumerWidget {
             _ImportRow(),
             _HealthRow(),
             _FailedCapturesRow(),
+          ]),
+          const SectionHeader(title: 'Notes vault'),
+          const _SettingsGroup(children: [
+            if (!kIsWeb) _VaultFolderExportRow(),
+            _VaultShareRow(),
+            _VaultImportFilesRow(),
+            if (!kIsWeb) _VaultFolderImportRow(),
           ]),
           const SectionHeader(title: 'Danger zone'),
           _SettingsGroup(children: [
@@ -562,6 +571,252 @@ class _ImportRow extends StatelessWidget {
       onTap: () => _ImportSheet.show(context),
     );
   }
+}
+
+// --- notes vault -------------------------------------------------------------
+
+/// Writes every note as an Obsidian-style `.md` into
+/// Documents/LifeAssistVault — browsable in the Files app.
+class _VaultFolderExportRow extends ConsumerStatefulWidget {
+  const _VaultFolderExportRow();
+
+  @override
+  ConsumerState<_VaultFolderExportRow> createState() =>
+      _VaultFolderExportRowState();
+}
+
+class _VaultFolderExportRowState extends ConsumerState<_VaultFolderExportRow> {
+  bool _busy = false;
+
+  Future<void> _export() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref.read(vaultServiceProvider).exportToFolder();
+      if (!mounted) return;
+      showSuccessSnack(
+        context,
+        result.count == 0
+            ? 'No notes to export yet.'
+            : '${result.count} note${result.count == 1 ? '' : 's'} in '
+                'Files › Life Assist › ${VaultService.folderName}.',
+      );
+    } catch (_) {
+      if (mounted) showErrorSnack(context, "That didn't export. Try again.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRow(
+      icon: Icons.folder_open_outlined,
+      title: 'Export notes to Files',
+      subtitle: 'Obsidian-style .md vault in the Files app.',
+      trailing: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _busy ? null : _export,
+    );
+  }
+}
+
+/// Shares the vault as one zip — the portable copy for a computer or
+/// straight into an Obsidian vault.
+class _VaultShareRow extends ConsumerStatefulWidget {
+  const _VaultShareRow();
+
+  @override
+  ConsumerState<_VaultShareRow> createState() => _VaultShareRowState();
+}
+
+class _VaultShareRowState extends ConsumerState<_VaultShareRow> {
+  bool _busy = false;
+
+  Future<void> _share() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    // Anchor the share popover (required by iPad; ignored elsewhere).
+    final box = context.findRenderObject() as RenderBox?;
+    final origin =
+        box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    try {
+      final bytes = await ref.read(vaultServiceProvider).zipBytes();
+      final stamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
+      final fileName = 'LifeAssistVault_$stamp.zip';
+      final XFile xfile;
+      if (kIsWeb) {
+        xfile = XFile.fromData(bytes, name: fileName, mimeType: 'application/zip');
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        xfile = XFile(file.path);
+      }
+      await Share.shareXFiles(
+        [xfile],
+        text: 'Life Assist notes vault',
+        sharePositionOrigin: origin,
+      );
+    } catch (_) {
+      if (mounted) showErrorSnack(context, "That didn't share. Try again.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRow(
+      icon: Icons.folder_zip_outlined,
+      title: 'Share vault (.zip)',
+      subtitle: 'All notes as .md files, zipped.',
+      trailing: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _busy ? null : _share,
+    );
+  }
+}
+
+/// Multi-file `.md` import — from an Obsidian vault or anywhere else.
+class _VaultImportFilesRow extends ConsumerStatefulWidget {
+  const _VaultImportFilesRow();
+
+  @override
+  ConsumerState<_VaultImportFilesRow> createState() =>
+      _VaultImportFilesRowState();
+}
+
+class _VaultImportFilesRowState extends ConsumerState<_VaultImportFilesRow> {
+  bool _busy = false;
+
+  Future<void> _import() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['md', 'markdown', 'txt'],
+        allowMultiple: true,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final payloads = <VaultPayload>[];
+      for (final picked in result.files) {
+        final String content;
+        if (picked.bytes != null) {
+          content = utf8.decode(picked.bytes!, allowMalformed: true);
+        } else if (picked.path != null) {
+          content = await File(picked.path!).readAsString();
+        } else {
+          continue;
+        }
+        payloads.add(VaultPayload(name: picked.name, content: content));
+      }
+      final outcome =
+          await ref.read(vaultServiceProvider).importPayloads(payloads);
+      if (!mounted) return;
+      showSuccessSnack(context, _importSummary(outcome));
+    } catch (_) {
+      if (mounted) {
+        showErrorSnack(context, "Couldn't read those files. Try again.");
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRow(
+      icon: Icons.note_add_outlined,
+      title: 'Import notes (.md)',
+      subtitle: 'Pick markdown files; matching notes update in place.',
+      trailing: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _busy ? null : _import,
+    );
+  }
+}
+
+/// Re-reads the vault folder — the path for edits made in the Files app.
+class _VaultFolderImportRow extends ConsumerStatefulWidget {
+  const _VaultFolderImportRow();
+
+  @override
+  ConsumerState<_VaultFolderImportRow> createState() =>
+      _VaultFolderImportRowState();
+}
+
+class _VaultFolderImportRowState extends ConsumerState<_VaultFolderImportRow> {
+  bool _busy = false;
+
+  Future<void> _import() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final outcome = await ref.read(vaultServiceProvider).importFromFolder();
+      if (!mounted) return;
+      showSuccessSnack(
+        context,
+        outcome.total == 0
+            ? 'No .md files in the vault folder yet.'
+            : _importSummary(outcome),
+      );
+    } catch (_) {
+      if (mounted) {
+        showErrorSnack(context, "Couldn't read the vault folder. Try again.");
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRow(
+      icon: Icons.sync_outlined,
+      title: 'Re-import from Files',
+      subtitle: 'Pull in edits made to the vault folder.',
+      trailing: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _busy ? null : _import,
+    );
+  }
+}
+
+String _importSummary(VaultImportResult outcome) {
+  if (outcome.total == 0) return 'Nothing importable in those files.';
+  final parts = <String>[
+    if (outcome.created > 0)
+      '${outcome.created} new note${outcome.created == 1 ? '' : 's'}',
+    if (outcome.updated > 0) '${outcome.updated} updated',
+  ];
+  return 'Imported ${parts.join(' · ')}.';
 }
 
 /// Siri/widget captures that couldn't be read stay in a capped graveyard

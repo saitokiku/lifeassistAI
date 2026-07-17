@@ -135,6 +135,21 @@ class SearchRepository {
         ),
     ]);
 
+    final notes = await (_db.select(_db.notes)
+          ..where((t) => t.title.like(needle) | t.content.like(needle))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+          ..limit(perGroup))
+        .get();
+    hits.addAll([
+      for (final n in notes)
+        SearchHit(
+          title: n.title.trim().isEmpty ? 'Untitled' : n.title,
+          subtitle: n.isArchived ? 'Note · archived' : 'Note',
+          route: '/notes/${n.id}',
+          group: 'Notes',
+        ),
+    ]);
+
     final journal = await (_db.select(_db.journalEntries)
           ..where((t) => t.content.like(needle))
           ..orderBy([(t) => OrderingTerm.desc(t.date)])

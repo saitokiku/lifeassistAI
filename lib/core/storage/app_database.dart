@@ -387,6 +387,55 @@ class JournalEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Atomic markdown notes — the Zettelkasten. `[[wiki-links]]` in the
+/// content are indexed into [NoteLinks] (for backlinks + the graph) and
+/// `#tags` into [NoteTags], recomputed on every save. `zettelId` is a
+/// timestamp key (yyyyMMddHHmmss) used as a stable link target and the
+/// exported Obsidian filename base; `id` stays the internal UUID.
+@TableIndex(name: 'idx_notes_updated', columns: {#updatedAt})
+@TableIndex(name: 'idx_notes_zettel', columns: {#zettelId})
+class Notes extends Table {
+  TextColumn get id => text()();
+  TextColumn get zettelId => text()();
+  TextColumn get title => text().withDefault(const Constant(''))();
+  TextColumn get content => text().withDefault(const Constant(''))();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// One row per `[[wiki-link]]` in a note's content. `targetId` is the
+/// resolved note (null = an unresolved "ghost" target — a note that
+/// doesn't exist yet; rendered faded in the graph). Backlinks for a note
+/// = rows where `targetId == note.id`.
+@TableIndex(name: 'idx_note_links_source', columns: {#sourceId})
+@TableIndex(name: 'idx_note_links_target', columns: {#targetId})
+@TableIndex(name: 'idx_note_links_title', columns: {#targetTitle})
+class NoteLinks extends Table {
+  TextColumn get id => text()();
+  TextColumn get sourceId => text()(); // → Notes.id
+  TextColumn get targetTitle => text()(); // the raw [[...]] target text
+  TextColumn get targetId => text().nullable()(); // resolved note, or null
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// One row per `#tag` occurrence in a note (deduped per note on save).
+@TableIndex(name: 'idx_note_tags_note', columns: {#noteId})
+@TableIndex(name: 'idx_note_tags_tag', columns: {#tag})
+class NoteTags extends Table {
+  TextColumn get id => text()();
+  TextColumn get noteId => text()();
+  TextColumn get tag => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Key-value settings that must survive export/import (income, surplus
 /// targets, birthday, philosophy text, Roth IRA numbers, balances).
 class SettingsEntries extends Table {
@@ -419,13 +468,16 @@ class SettingsEntries extends Table {
   Reminders,
   IdentityStatements,
   JournalEntries,
+  Notes,
+  NoteLinks,
+  NoteTags,
   SettingsEntries,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -453,9 +505,6 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.reminderMinute);
             await m.addColumn(reminders, reminders.weekdays);
             await m.addColumn(reminders, reminders.oneShotDate);
-            for (final index in allSchemaEntities.whereType<Index>()) {
-              await m.createIndex(index);
-            }
             // Turning the legacy manual balances into account rows lives in
             // LegacyMigration (shared with import).
           }
@@ -502,11 +551,6 @@ class AppDatabase extends _$AppDatabase {
               },
             ));
             await m.createTable(journalEntries);
-            // Recreated tables lost their indexes; createIndex is
-            // IF NOT EXISTS, so re-running the full set is safe.
-            for (final index in allSchemaEntities.whereType<Index>()) {
-              await m.createIndex(index);
-            }
           }
           if (from < 5) {
             // v5: Apple Health auto-habits — the metric mapping on the
@@ -515,6 +559,22 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.healthMetric);
             await m.addColumn(habits, habits.healthTarget);
             await m.addColumn(habitLogs, habitLogs.source);
+          }
+          if (from < 6) {
+            // v6: the Zettelkasten — notes plus their link/tag index
+            // tables (derived data, rebuilt on save and after import).
+            await m.createTable(notes);
+            await m.createTable(noteLinks);
+            await m.createTable(noteTags);
+          }
+          // Catch-up index pass, once, AFTER every versioned block: the
+          // set spans the CURRENT schema, so running it mid-history
+          // would reference tables a later block hasn't created yet
+          // (v3's loop naming v6's notes indexes, say). createIndex is
+          // idempotent, and alterTable-recreated tables (v4) get their
+          // indexes back here too.
+          for (final index in allSchemaEntities.whereType<Index>()) {
+            await m.createIndex(index);
           }
         },
       );
