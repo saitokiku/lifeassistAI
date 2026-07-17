@@ -46,6 +46,11 @@ class NotesScreen extends ConsumerWidget {
                             style: theme.textTheme.headlineSmall,
                           ),
                         ),
+                        IconButton(
+                          tooltip: 'Graph',
+                          onPressed: () => context.push('/notes/graph'),
+                          icon: const Icon(Icons.hub_outlined),
+                        ),
                         IconButton.filled(
                           tooltip: 'New note',
                           onPressed: () => context.push('/notes/new'),

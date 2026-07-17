@@ -187,6 +187,13 @@ void main() {
     expect(find.text('#habit'), findsNWidgets(2));
     await goBack(tester);
     expect(find.text('1 note · 1 link'), findsOneWidget);
+
+    // The graph maps the note plus the ghost it cites, joined by
+    // one edge, and the map is tappable UI (no exceptions painting).
+    await tester.tap(find.byTooltip('Graph'));
+    await settle(tester);
+    expect(find.textContaining('2 nodes · 1 link'), findsOneWidget);
+    await goBack(tester);
     await goBack(tester);
 
     await openHubRow(tester, 'Settings');

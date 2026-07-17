@@ -15,9 +15,11 @@ import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/screen_back_button.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../application/graph_providers.dart';
 import '../application/notes_controller.dart';
 import '../data/notes_repository.dart';
 import '../domain/note.dart';
+import 'widgets/graph_view.dart';
 import 'widgets/note_markdown.dart';
 
 /// One note: a full markdown editor with live `[[link]]` / `#tag`
@@ -484,6 +486,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             ],
           ),
         ],
+        if (note != null) _LocalGraph(noteId: note.id),
         if (backlinks.isNotEmpty) ...[
           const SectionHeader(title: 'Linked mentions'),
           for (final b in backlinks)
@@ -520,6 +523,63 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               ),
             ),
         ],
+      ],
+    );
+  }
+}
+
+/// The note's immediate neighborhood, drawn small — enough to see what
+/// this thought touches; the full map is one tap away.
+class _LocalGraph extends ConsumerWidget {
+  const _LocalGraph({required this.noteId});
+
+  final String noteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final layout = ref.watch(localGraphProvider(noteId));
+    if (layout == null || layout.graph.edges.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: 'Graph',
+          trailing: TextButton(
+            onPressed: () => context.push('/notes/graph'),
+            child: const Text('Full map'),
+          ),
+        ),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: SizedBox(
+            height: 240,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              child: GraphView(
+                graph: layout.graph,
+                positions: layout.positions,
+                canvasSize: layout.canvasSize,
+                focusId: noteId,
+                fit: true,
+                onTapNode: (node) async {
+                  if (node.id == noteId) return;
+                  if (node.isGhost) {
+                    final note = await ref
+                        .read(notesControllerProvider)
+                        .openOrCreateByTitle(node.title);
+                    if (context.mounted) {
+                      unawaited(context.push('/notes/${note.id}'));
+                    }
+                  } else {
+                    unawaited(context.push('/notes/${node.id}'));
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

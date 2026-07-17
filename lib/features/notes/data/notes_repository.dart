@@ -81,6 +81,12 @@ class NotesRepository {
   /// Every link row — the graph's edge list.
   Future<List<NoteLink>> allLinks() => _db.select(_db.noteLinks).get();
 
+  /// Live edge list; the graph redraws as links are written.
+  Stream<List<NoteLink>> watchAllLinks() => _db.select(_db.noteLinks).watch();
+
+  /// Live tag rows; tag colors follow edits.
+  Stream<List<NoteTag>> watchAllTagRows() => _db.select(_db.noteTags).watch();
+
   Stream<int> watchLinkCount() {
     final count = _db.noteLinks.id.count();
     return (_db.selectOnly(_db.noteLinks)..addColumns([count]))
