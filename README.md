@@ -36,8 +36,12 @@ system (bundled Inter + Space Grotesk, dark-first, one component library).
 - **You** — the person behind the data: your personal line, operating
   principles, and the supporting systems — Habits (with optional Apple
   Health auto-checks), Ideas (a 7-day cooling parking lot), Reminders,
-  Journal (one honest line at a time), and Settings — each with a live
-  status line. Search covers everything you've written.
+  Journal (one honest line at a time), **Notes** (a built-in
+  Zettelkasten: markdown, `[[wiki links]]`, `#tags`, backlinks, an
+  auto-drawn graph, and an Obsidian-compatible `.md` vault in the Files
+  app — see [docs/NOTES_ZETTELKASTEN.md](docs/NOTES_ZETTELKASTEN.md)),
+  and Settings — each with a live status line. Search covers everything
+  you've written.
 
 First launch runs a four-step onboarding: what the app is → your main
 goal (skippable) → your name and areas → a light daily rhythm. Every
@@ -102,7 +106,7 @@ bridges live under `lib/core/{native,ai,health}/`. Design tokens in
 
 ### Data schema & migrations
 
-Current schema: **v5**. Every upgrade (and old backup import) is
+Current schema: **v6**. Every upgrade (and old backup import) is
 automatic and tested:
 
 - **v2** — the universal main-goal system; Kaizen-era data becomes the
@@ -113,6 +117,8 @@ automatic and tested:
   planted v3 database file with adversarial floats) + the journal.
 - **v5** — Apple Health habit mappings + a source tag on every habit log
   (`manual | siri | health` — manual always wins).
+- **v6** — the Zettelkasten: notes plus their derived link/tag index
+  (rebuilt from note text on every save and after imports).
 
 Backups are versioned JSON (`schemaVersion: "4"` exports; every older
 version imports with conversion). See `lib/core/storage/` and
@@ -214,9 +220,10 @@ what's solid, what's open, verdict).
 - **Siri/AI floors**: background Siri capture needs iOS 17+; entity
   schemas and Siri AI shine on 26/27; on-device AI needs an
   Apple-Intelligence device on iOS 26+. Everything degrades honestly.
-- **Two Mac-side switches** ship dormant: HealthKit (capability +
-  `LAHealthKitEnabled`) and the widget App Group. Code is complete;
-  see [docs/release_ios.md](docs/release_ios.md).
+- **HealthKit and the widget App Group are LIVE**: entitlements are
+  committed for both targets and `LAHealthKitEnabled` is on. First
+  archive on a new Mac lets automatic signing register the
+  capabilities; see [docs/release_ios.md](docs/release_ios.md).
 - **No cloud sync / calendar overlay** — deferred deliberately: both
   compromise the local-first, no-account stance if rushed.
 - Reminders use inexact Android alarms; on iOS times are exact but

@@ -14,6 +14,10 @@ on:
         description: 'Also run xcodebuild App Intents tests on a simulator'
         type: boolean
         default: false
+      run_screenshots:
+        description: 'Capture App Store screenshots on a simulator'
+        type: boolean
+        default: false
   push:
     branches: ['**']
     paths:
@@ -107,3 +111,46 @@ jobs:
             -scheme Runner \
             -destination "platform=iOS Simulator,name=$DEVICE" \
             CODE_SIGNING_ALLOWED=NO
+
+  # Opt-in: boots a big-screen simulator, seeds demo content, and walks
+  # the app capturing the six App Store listing shots (see
+  # docs/app_store_listing.md). Artifact: AppStoreScreenshots.
+  screenshots:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_screenshots }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter 3.44.6
+        run: |
+          curl -sSL -o /tmp/flutter.zip \
+            https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.44.6-stable.zip
+          unzip -q /tmp/flutter.zip -d "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter pub get
+      - name: Boot the largest available iPhone simulator
+        id: sim
+        run: |
+          # Prefer the Pro Max class for the required 6.9" size.
+          DEVICE=$(xcrun simctl list devices available | grep -o 'iPhone [^(]*Pro Max' | tail -1 | sed 's/ *$//')
+          if [ -z "$DEVICE" ]; then
+            DEVICE=$(xcrun simctl list devices available | grep -m1 -o 'iPhone [^(]*' | sed 's/ *$//')
+          fi
+          echo "Using simulator: $DEVICE"
+          UDID=$(xcrun simctl list devices available | grep "$DEVICE (" | head -1 | grep -o '[0-9A-F-]\{36\}')
+          xcrun simctl boot "$UDID"
+          # A clean 9:41 status bar for store shots.
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiBars 3 || true
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Capture screenshots
+        run: |
+          flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "${{ steps.sim.outputs.udid }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AppStoreScreenshots
+          path: screenshots/
+          retention-days: 30
