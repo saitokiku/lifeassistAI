@@ -3,9 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
 import '../data/notes_repository.dart';
+import '../data/vault_service.dart';
 
 final notesRepositoryProvider = Provider<NotesRepository>(
   (ref) => NotesRepository(ref.watch(databaseProvider)),
+);
+
+final vaultServiceProvider = Provider<VaultService>(
+  (ref) => VaultService(ref.watch(databaseProvider)),
 );
 
 /// The vault, newest-edited first. Powers the list and the You hub row.
