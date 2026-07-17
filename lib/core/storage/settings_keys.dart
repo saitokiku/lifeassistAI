@@ -48,4 +48,8 @@ class SettingsKeys {
   /// A live time-block timer survives restarts via these two.
   static const prefTimerBudgetId = 'timerBudgetId';
   static const prefTimerStartedAt = 'timerStartedAt';
+
+  /// One-time "what's here" card on Today (Notes, Health auto-habits,
+  /// widgets). Set once dismissed; never shown again.
+  static const prefLaunchDiscoveryDismissed = 'launchDiscoveryDismissed';
 }

@@ -19,6 +19,7 @@ import '../../settings/domain/user_settings.dart';
 import '../application/dashboard_controller.dart';
 import '../application/dashboard_state.dart';
 import 'widgets/check_in_strip.dart';
+import 'widgets/discover_card.dart';
 import 'widgets/goal_snapshot_card.dart';
 import 'widgets/long_game_card.dart';
 import 'widgets/loose_ends_card.dart';
@@ -90,6 +91,8 @@ class DashboardScreen extends ConsumerWidget {
                     LooseEndsCard(state: state),
                     // Evening only: close the day with one journal line.
                     const EveningJournalCard(),
+                    // One-time launch tour; disappears once dismissed.
+                    const DiscoverCard(),
                   ],
                 ),
               ),

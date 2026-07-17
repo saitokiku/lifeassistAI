@@ -482,6 +482,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = LifeAssistWidgets/LifeAssistWidgets.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -506,6 +507,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = LifeAssistWidgets/LifeAssistWidgets.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -583,6 +585,7 @@
 				);
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -767,6 +770,7 @@
 				);
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -791,6 +795,7 @@
 				);
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -813,6 +818,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				DEVELOPMENT_TEAM = 8JXPU9UQ4Q;
+				CODE_SIGN_ENTITLEMENTS = LifeAssistWidgets/LifeAssistWidgets.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.saitokiku.lifeassist.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
