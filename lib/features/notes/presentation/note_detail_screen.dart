@@ -426,6 +426,10 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
         ? const <Backlink>[]
         : ref.watch(backlinksProvider(note.id)).valueOrNull ??
             const <Backlink>[];
+    final unlinked = note == null
+        ? const <Note>[]
+        : ref.watch(unlinkedMentionsProvider(note.id)).valueOrNull ??
+            const <Note>[];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -459,7 +463,11 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             ),
           )
         else
-          NoteMarkdown(data: _body.text, onOpenLink: _openLink),
+          NoteMarkdown(
+            data: _body.text,
+            onOpenLink: _openLink,
+            onTapTag: (tag) => _openTag(context, tag),
+          ),
         if (tags.isNotEmpty) ...[
           const SizedBox(height: AppSpace.lg),
           Wrap(
@@ -467,19 +475,23 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             runSpacing: AppSpace.xs,
             children: [
               for (final t in tags)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: scheme.primaryTint,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                  ),
-                  child: Text(
-                    '#${t.tag}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.primary,
+                InkWell(
+                  onTap: () => _openTag(context, t.tag),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.sm,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryTint,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                    ),
+                    child: Text(
+                      '#${t.tag}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 ),
@@ -523,8 +535,59 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               ),
             ),
         ],
+        if (unlinked.isNotEmpty) ...[
+          const SectionHeader(title: 'Unlinked mentions'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: Text(
+              'These say “${note!.displayTitle}” without linking it yet.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          for (final n in unlinked)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.cardGap),
+              child: AppCard(
+                onTap: () => context.push('/notes/${n.id}'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.lg,
+                  vertical: AppSpace.md,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      n.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    if (n.preview.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        n.preview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
       ],
     );
+  }
+
+  void _openTag(BuildContext context, String tag) {
+    unawaited(context.push(
+      Uri(path: '/notes', queryParameters: {'tag': tag}).toString(),
+    ));
   }
 }
 

@@ -161,6 +161,33 @@ void main() {
     });
   });
 
+  group('NotesRepository — unlinked mentions', () {
+    test('plain-text mentions surface; linkers and self are excluded',
+        () async {
+      final target = await repo.createNote(title: 'Deep Work');
+      // Mentions by name, no link → shows up.
+      final mentioner = await repo.createNote(
+        title: 'Reading log',
+        content: 'Finished deep work yesterday.',
+      );
+      // Already links → excluded.
+      await repo.createNote(title: 'Linker', content: 'See [[Deep Work]]');
+      // Self-mention → excluded.
+      await repo.saveNote(
+        target,
+        title: 'Deep Work',
+        content: 'Deep Work is the title of this very note.',
+      );
+
+      final unlinked = await repo.unlinkedMentions(target.id);
+      expect(unlinked.map((n) => n.id), [mentioner.id]);
+
+      // Untitled notes can't be mentioned.
+      final untitled = await repo.createNote(content: 'body');
+      expect(await repo.unlinkedMentions(untitled.id), isEmpty);
+    });
+  });
+
   group('NotesRepository — corpora', () {
     test('allTitles skips archived and untitled; allTags is distinct',
         () async {

@@ -11,12 +11,20 @@ import '../../domain/note_parsing.dart';
 /// the brand tint. One widget so preview, and later graph previews,
 /// render identically.
 class NoteMarkdown extends StatelessWidget {
-  const NoteMarkdown({super.key, required this.data, this.onOpenLink});
+  const NoteMarkdown({
+    super.key,
+    required this.data,
+    this.onOpenLink,
+    this.onTapTag,
+  });
 
   final String data;
 
   /// Called with the raw link target (`[[target|alias]]` → `target`).
   final ValueChanged<String>? onOpenLink;
+
+  /// Called with the bare tag (`#area/health` → `area/health`).
+  final ValueChanged<String>? onTapTag;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +37,7 @@ class NoteMarkdown extends StatelessWidget {
       inlineSyntaxes: [_WikiLinkSyntax(), _NoteTagSyntax()],
       builders: {
         'wikilink': _WikiLinkBuilder(onOpen: onOpenLink),
-        'notetag': _NoteTagBuilder(),
+        'notetag': _NoteTagBuilder(onTap: onTapTag),
       },
       styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
         blockquoteDecoration: BoxDecoration(
@@ -111,6 +119,10 @@ class _NoteTagSyntax extends md.InlineSyntax {
 }
 
 class _NoteTagBuilder extends MarkdownElementBuilder {
+  _NoteTagBuilder({this.onTap});
+
+  final ValueChanged<String>? onTap;
+
   @override
   Widget? visitElementAfterWithContext(
     BuildContext context,
@@ -119,11 +131,17 @@ class _NoteTagBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final style = (parentStyle ?? preferredStyle);
-    return Text(
-      element.textContent,
-      style: (style ?? const TextStyle()).copyWith(
-        color: AppColors.primary,
-        fontWeight: FontWeight.w500,
+    final bare = element.textContent.startsWith('#')
+        ? element.textContent.substring(1)
+        : element.textContent;
+    return GestureDetector(
+      onTap: onTap == null ? null : () => onTap!(bare),
+      child: Text(
+        element.textContent,
+        style: (style ?? const TextStyle()).copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

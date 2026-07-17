@@ -78,6 +78,33 @@ class NotesRepository {
       (_db.select(_db.noteTags)..where((t) => t.noteId.equals(noteId)))
           .watch();
 
+  /// Notes whose text says this note's title without `[[linking]]` it —
+  /// connections waiting to be made. Excludes itself and anyone already
+  /// linking here.
+  Future<List<Note>> unlinkedMentions(String noteId) async {
+    final note = await getNote(noteId);
+    final title = note?.title.trim() ?? '';
+    if (title.isEmpty) return const [];
+    final linkedSources = await (_db.selectOnly(_db.noteLinks)
+          ..addColumns([_db.noteLinks.sourceId])
+          ..where(_db.noteLinks.targetId.equals(noteId)))
+        .get();
+    final excluded = <String>{
+      noteId,
+      for (final row in linkedSources) row.read(_db.noteLinks.sourceId)!,
+    };
+    final needle =
+        '%${title.replaceAll('%', '').replaceAll('_', '').toLowerCase()}%';
+    return (_db.select(_db.notes)
+          ..where((t) =>
+              t.isArchived.equals(false) &
+              t.content.lower().like(needle) &
+              t.id.isNotIn(excluded.toList()))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+          ..limit(20))
+        .get();
+  }
+
   /// Every link row — the graph's edge list.
   Future<List<NoteLink>> allLinks() => _db.select(_db.noteLinks).get();
 

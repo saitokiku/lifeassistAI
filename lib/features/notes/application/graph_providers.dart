@@ -11,16 +11,12 @@ final _allLinksProvider = StreamProvider<List<NoteLink>>(
   (ref) => ref.watch(notesRepositoryProvider).watchAllLinks(),
 );
 
-final _allTagRowsProvider = StreamProvider<List<NoteTag>>(
-  (ref) => ref.watch(notesRepositoryProvider).watchAllTagRows(),
-);
-
 /// The whole vault as a graph, rebuilt live as notes/links/tags change.
 /// Null while any source stream is still warming up.
 final noteGraphProvider = Provider<NoteGraph?>((ref) {
   final notes = ref.watch(notesProvider).valueOrNull;
   final links = ref.watch(_allLinksProvider).valueOrNull;
-  final tags = ref.watch(_allTagRowsProvider).valueOrNull;
+  final tags = ref.watch(allTagRowsProvider).valueOrNull;
   if (notes == null || links == null || tags == null) return null;
   return NoteGraph.build(notes, links, tags);
 });

@@ -38,6 +38,26 @@ final noteTagsProvider = StreamProvider.family<List<NoteTag>, String>(
   (ref, id) => ref.watch(notesRepositoryProvider).watchTags(id),
 );
 
+/// Every tag row in the vault — chip rows and tag filtering.
+final allTagRowsProvider = StreamProvider<List<NoteTag>>(
+  (ref) => ref.watch(notesRepositoryProvider).watchAllTagRows(),
+);
+
+/// Everything including archived — the list's "show archived" mode.
+final allNotesProvider = StreamProvider<List<Note>>(
+  (ref) =>
+      ref.watch(notesRepositoryProvider).watchNotes(includeArchived: true),
+);
+
+/// Plain-text mentions of a note's title that aren't links yet.
+/// Recomputes as the vault or this note's backlinks change.
+final unlinkedMentionsProvider =
+    FutureProvider.family<List<Note>, String>((ref, id) async {
+  ref.watch(notesProvider);
+  ref.watch(backlinksProvider(id));
+  return ref.watch(notesRepositoryProvider).unlinkedMentions(id);
+});
+
 class NotesController {
   NotesController(this._repo);
 

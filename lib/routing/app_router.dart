@@ -113,7 +113,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
             GoRoute(
               path: '/notes',
-              builder: (context, state) => const NotesScreen(),
+              builder: (context, state) => NotesScreen(
+                initialTag: state.uri.queryParameters['tag'],
+              ),
             ),
             // Literal subpaths must precede '/notes/:id' or they're ids.
             GoRoute(
