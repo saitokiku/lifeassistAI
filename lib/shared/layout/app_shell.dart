@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
 import '../../ui/console_tab_bar.dart';
+import '../../ui/timer_dock.dart';
 import '../../core/health/health_habit_sync.dart';
 import '../../core/native/capture_queue_drain.dart';
 import '../../core/native/entity_mirror_service.dart';
@@ -300,6 +301,17 @@ class _AppShellState extends ConsumerState<AppShell>
   }
 
   Widget _buildBottomBar(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // A running timer stays visible and stoppable on every tab.
+        const TimerDock(),
+        _buildConsoleBar(context),
+      ],
+    );
+  }
+
+  Widget _buildConsoleBar(BuildContext context) {
     return ConsoleTabBar(
       currentBranch: widget.shell.currentIndex,
       onSelect: (branch) {
