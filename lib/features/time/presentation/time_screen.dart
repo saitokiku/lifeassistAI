@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../shared/haptics.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -24,6 +25,8 @@ import 'widgets/time_block_log_form.dart';
 import 'widgets/timer_card.dart';
 import 'widgets/weekly_hours_chart.dart';
 import 'widgets/weekly_time_budget_card.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Time — where hours get pointed. Weekly targets, the history chart,
 /// countdowns, and the log everything else runs on.
@@ -43,14 +46,6 @@ class TimeScreen extends ConsumerWidget {
         ref.watch(recentTimeBlocksProvider).hasError;
 
     return Scaffold(
-      floatingActionButton: state == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () =>
-                  TimeBlockLogForm.show(context, budgets: state.budgets),
-              icon: const Icon(Icons.add),
-              label: const Text('Log time'),
-            ),
       body: SafeArea(
         child: state != null
             ? _Content(state: state, recentBlocks: recentBlocks)
@@ -94,18 +89,27 @@ class _Content extends ConsumerWidget {
           96,
         ),
         children: [
-          Text('Time', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: AppSpace.xs),
-          Text(
-            AppCopy.timeTagline,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          TabPageHeader(
+            title: 'Time',
+            subtitle: AppCopy.timeTagline,
+            actions: [
+              HeaderGlyphButton(
+                icon: AppIcons.add,
+                tooltip: 'Log time',
+                onTap: () =>
+                    TimeBlockLogForm.show(context, budgets: state.budgets),
+              ),
+              const SizedBox(width: AppSpace.xs),
+            ],
           ),
           const SizedBox(height: AppSpace.xl),
           AvailableTimeCard(state: state),
           const SizedBox(height: AppSpace.cardGap),
           TimerCard(budgets: state.budgets),
+          // The day before the week: landing here answers "what did I
+          // do TODAY" first, then zooms out.
+          const SectionHeader(title: 'Today'),
+          _TodayCard(state: state),
           SectionHeader(
             title: isCurrentWeek
                 ? 'This week'
@@ -176,6 +180,83 @@ class _Content extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Today's hours at a glance: total plus a per-category line for each
+/// budget touched today. Honest when empty — the day simply hasn't
+/// been logged yet.
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.state});
+
+  final TimeState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final todayKey = AppDateUtils.dateKey(state.now);
+    final byBudget = <String, double>{};
+    for (final block in state.weekBlocks) {
+      if (block.date == todayKey) {
+        byBudget[block.budgetId] =
+            (byBudget[block.budgetId] ?? 0) + block.hours;
+      }
+    }
+    String name(String id) => state.budgets
+        .where((b) => b.id == id)
+        .map((b) => b.name)
+        .firstOrNull ??
+        'Other';
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      child: byBudget.isEmpty
+          ? Text(
+              'Nothing logged yet today. The timer above (or a quick '
+              '"log time") fixes that.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Logged today',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                    Text(
+                      '${state.hoursLoggedToday.toStringAsFixed(state.hoursLoggedToday.truncateToDouble() == state.hoursLoggedToday ? 0 : 1)}h',
+                      style: theme.textTheme.numberMedium,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Wrap(
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.xs,
+                  children: [
+                    for (final entry in byBudget.entries)
+                      Text(
+                        '${name(entry.key)} · '
+                        '${entry.value.toStringAsFixed(entry.value.truncateToDouble() == entry.value ? 0 : 1)}h',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
     );
   }
 }

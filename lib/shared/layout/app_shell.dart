@@ -9,6 +9,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
+import '../../ui/capture_inbox.dart';
+import '../../ui/console_tab_bar.dart';
+import '../../ui/timer_dock.dart';
 import '../../core/health/health_habit_sync.dart';
 import '../../core/native/capture_queue_drain.dart';
 import '../../core/native/entity_mirror_service.dart';
@@ -17,10 +20,10 @@ import '../../core/providers.dart';
 import '../../core/utils/date_utils.dart';
 import '../../features/dashboard/application/dashboard_controller.dart';
 import '../../features/habits/application/habits_controller.dart';
+import '../../features/notes/application/notes_controller.dart';
 import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
-import '../haptics.dart';
 import 'adaptive_navigation.dart';
 import 'responsive_scaffold.dart';
 
@@ -69,6 +72,7 @@ class _AppShellState extends ConsumerState<AppShell>
       // Web / tests without the bootstrap override: nothing to stop.
     }
     _wireCaptureSources();
+    _startLiveVault();
     // The router's /capture redirect may have parked a request before this
     // widget existed (cold-start deep link) — drain it on first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -86,7 +90,38 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Returning to the foreground covers "Siri captured while the app was
     // backgrounded" — including the Siri-overlay-over-the-app case.
-    if (state == AppLifecycleState.resumed) _drainCaptureQueue();
+    if (state == AppLifecycleState.resumed) {
+      _drainCaptureQueue();
+      _foldInVaultEdits();
+    }
+  }
+
+  /// The live Obsidian mirror: on by default, watches the notes table
+  /// for its lifetime. Failures stay silent — a vault is a mirror, not
+  /// a dependency.
+  void _startLiveVault() {
+    if (kIsWeb) return;
+    try {
+      if (!ref.read(preferencesProvider).liveVaultEnabled) return;
+      unawaited(ref.read(liveVaultProvider).start().catchError((_) {}));
+    } catch (_) {
+      // Providers unavailable (tests without overrides): nothing to start.
+    }
+  }
+
+  /// Outside edits (Files app, Obsidian over iCloud) fold in whenever
+  /// the user comes back.
+  void _foldInVaultEdits() {
+    if (kIsWeb) return;
+    try {
+      final vault = ref.read(liveVaultProvider);
+      if (vault.running) {
+        unawaited(
+            vault.syncFromFolder().then<void>((_) {}, onError: (_) {}));
+      }
+    } catch (_) {
+      // Nothing to fold in.
+    }
   }
 
   /// Bootstrap already drained (and re-armed reminders) before runApp;
@@ -166,6 +201,11 @@ class _AppShellState extends ConsumerState<AppShell>
     _linkSub?.cancel();
     _notifications?.onTap = null;
     unawaited(_mirror?.stop());
+    try {
+      unawaited(ref.read(liveVaultProvider).stop());
+    } catch (_) {
+      // Container already gone (tests): the watcher died with it.
+    }
     super.dispose();
   }
 
@@ -288,55 +328,39 @@ class _AppShellState extends ConsumerState<AppShell>
     final location = GoRouterState.of(context).uri.path;
     final selectedIndex = AppDestinations.railIndexForLocation(location);
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.sizeOf(context).height -
-                MediaQuery.paddingOf(context).vertical,
-          ),
-          child: IntrinsicHeight(
-            child: NavigationRail(
-              selectedIndex: selectedIndex,
-              labelType: NavigationRailLabelType.all,
-              onDestinationSelected: (index) {
-                Haptics.select();
-                context.go(AppDestinations.rail[index].route);
-              },
-              destinations: [
-                for (final d in AppDestinations.rail)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.selectedIcon),
-                    label: Text(d.label),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ConsoleRail(
+      destinations: [
+        for (final (i, d) in AppDestinations.rail.indexed)
+          ConsoleDestination(branchIndex: i, label: d.label, icon: d.icon),
+      ],
+      selectedIndex: selectedIndex,
+      onSelect: (index) => context.go(AppDestinations.rail[index].route),
+      onCapture: () => CaptureInbox.show(context),
     );
   }
 
   Widget _buildBottomBar(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: widget.shell.currentIndex,
-      onDestinationSelected: (index) {
-        Haptics.select();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // A running timer stays visible and stoppable on every tab.
+        const TimerDock(),
+        _buildConsoleBar(context),
+      ],
+    );
+  }
+
+  Widget _buildConsoleBar(BuildContext context) {
+    return ConsoleTabBar(
+      currentBranch: widget.shell.currentIndex,
+      onSelect: (branch) {
         // Re-tapping the active tab pops that branch back to its root.
         widget.shell.goBranch(
-          index,
-          initialLocation: index == widget.shell.currentIndex,
+          branch,
+          initialLocation: branch == widget.shell.currentIndex,
         );
       },
-      destinations: [
-        for (final d in AppDestinations.compact)
-          NavigationDestination(
-            icon: Icon(d.icon),
-            selectedIcon: Icon(d.selectedIcon),
-            label: d.label,
-          ),
-      ],
+      onCapture: () => CaptureInbox.show(context),
     );
   }
 }

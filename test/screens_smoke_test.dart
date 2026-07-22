@@ -9,6 +9,7 @@ import 'package:life_dashboard/core/storage/app_database.dart';
 import 'package:life_dashboard/core/storage/legacy_migration.dart';
 import 'package:life_dashboard/core/storage/preferences_service.dart';
 import 'package:life_dashboard/core/storage/seed_service.dart';
+import 'package:life_dashboard/ui/console_tab_bar.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -70,22 +71,34 @@ void main() {
 
   Future<void> tapTab(WidgetTester tester, String label) async {
     await tester.tap(find.descendant(
-      of: find.byType(NavigationBar),
+      of: find.byType(ConsoleTabBar),
       matching: find.text(label),
     ));
     await settle(tester);
   }
 
+  /// You left the tab bar in v2 — it lives behind the header glyph
+  /// present on every tab root.
+  Future<void> goYou(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('You').first);
+    await settle(tester);
+  }
+
   Future<void> openHubRow(WidgetTester tester, String label) async {
-    // Hub rows can sit below the fold (and outside the lazy ListView's
-    // build window) on a phone-sized You screen — scroll with a plain
-    // finder, which tolerates zero matches while off-screen.
+    // Library tiles can sit below the fold (and outside the lazy
+    // ListView's build window) on a phone-sized You screen — scroll
+    // with a plain finder, which tolerates zero matches while
+    // off-screen. scrollUntilVisible stops the moment the tile EXISTS,
+    // which can leave it behind the floating console bar; ensureVisible
+    // pulls it fully clear before the tap.
     await tester.scrollUntilVisible(
       find.text(label),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text(label).first);
+    await tester.ensureVisible(find.text(label).first);
+    await settle(tester);
+    await tester.tap(find.text(label).first, warnIfMissed: false);
     await settle(tester);
   }
 
@@ -120,7 +133,7 @@ void main() {
     expect(find.text('CHECK-IN'), findsOneWidget);
 
     // Quick add opens and offers the captures that exist right now.
-    await tester.tap(find.byType(FloatingActionButton).first);
+    await tester.tap(find.byTooltip('Capture'));
     await settle(tester);
     expect(find.text('Quick add'), findsOneWidget);
     expect(find.text('Log time'), findsOneWidget);
@@ -134,11 +147,18 @@ void main() {
     // Focus: invites the user to set a goal, then shows it.
     await tapTab(tester, 'Focus');
     expect(find.text('What are you working toward?'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Set your main goal'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Set your main goal'));
     await settle(tester);
     await tester.enterText(
         find.widgetWithText(TextFormField, 'Goal'), 'Kaizen');
-    await tester.tap(find.text('Set goal'));
+    // enterText's caret-reveal scroll eats taps for ~250ms; wait it out.
+    await settle(tester);
+    await tester.tap(find.text('Set goal'), warnIfMissed: false);
     await settle(tester);
     expect(find.text('MAIN GOAL'), findsOneWidget);
     expect(find.text('Kaizen'), findsWidgets);
@@ -153,7 +173,7 @@ void main() {
     await tapTab(tester, 'Time');
     expect(find.text('Your week, in hours.'), findsOneWidget);
 
-    await tapTab(tester, 'You');
+    await goYou(tester);
     expect(find.text('Principles, systems, and settings.'), findsOneWidget);
 
     // You hub → each sub-screen and back.
@@ -240,11 +260,11 @@ void main() {
 
     // Back on the hub; Today now reflects the goal set earlier.
     await tester.scrollUntilVisible(
-      find.text('SYSTEMS'),
+      find.text('LIBRARY'),
       150,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('SYSTEMS'), findsOneWidget);
+    expect(find.text('LIBRARY'), findsOneWidget);
     await tapTab(tester, 'Today');
     expect(find.text('UP NEXT'), findsOneWidget);
     expect(find.text('Set your main goal'), findsNothing);

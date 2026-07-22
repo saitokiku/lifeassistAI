@@ -15,6 +15,8 @@ import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/screen_back_button.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/pressable.dart';
 import '../application/graph_providers.dart';
 import '../application/notes_controller.dart';
 import '../data/notes_repository.dart';
@@ -353,6 +355,8 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                 ),
                 if (_editing && _suggestions.isNotEmpty)
                   _SuggestionBar(suggestions: _suggestions),
+                if (_editing)
+                  _EditorToolbar(controller: _body, focus: _bodyFocus),
               ],
             ),
           ),
@@ -555,26 +559,39 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
                   horizontal: AppSpace.lg,
                   vertical: AppSpace.md,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      n.displayTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    if (n.preview.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        n.preview,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            n.displayTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          if (n.preview.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              n.preview,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    // One tap turns the plain mention into a [[link]]
+                    // inside the other note — the graph grows itself.
+                    TextButton(
+                      onPressed: () => _linkMention(n),
+                      child: const Text('Link it'),
+                    ),
                   ],
                 ),
               ),
@@ -588,6 +605,30 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     unawaited(context.push(
       Uri(path: '/notes', queryParameters: {'tag': tag}).toString(),
     ));
+  }
+
+  /// Wraps the first free-standing mention of this note's title inside
+  /// [other] in `[[brackets]]`, preserving the words as written. Skips
+  /// occurrences already inside a link so nothing nests.
+  Future<void> _linkMention(Note other) async {
+    final title = _note?.title.trim() ?? '';
+    if (title.isEmpty) return;
+    final pattern = RegExp(RegExp.escape(title), caseSensitive: false);
+    Match? hit;
+    for (final m in pattern.allMatches(other.content)) {
+      final before = other.content.substring(0, m.start);
+      final open = before.lastIndexOf('[[');
+      if (open >= 0 && open > before.lastIndexOf(']]')) continue;
+      hit = m;
+      break;
+    }
+    if (hit == null) return;
+    final linked = other.content
+        .replaceRange(hit.start, hit.end, '[[${hit[0]}]]');
+    await ref
+        .read(notesControllerProvider)
+        .saveNote(other, title: other.title, content: linked);
+    Haptics.select();
   }
 }
 
@@ -644,6 +685,114 @@ class _LocalGraph extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One row of markdown affordances above the keyboard — wrap or prefix
+/// without hunting the symbol keyboard. `[[` and `#` land as raw text,
+/// so they light up the same autocomplete typing them would.
+class _EditorToolbar extends StatelessWidget {
+  const _EditorToolbar({required this.controller, required this.focus});
+
+  final TextEditingController controller;
+  final FocusNode focus;
+
+  void _wrap(String left, String right) {
+    final value = controller.value;
+    final sel = value.selection;
+    if (!sel.isValid) {
+      final text = value.text + left + right;
+      controller.value = TextEditingValue(
+        text: text,
+        selection:
+            TextSelection.collapsed(offset: text.length - right.length),
+      );
+    } else if (sel.isCollapsed) {
+      final text =
+          value.text.replaceRange(sel.start, sel.start, left + right);
+      controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: sel.start + left.length),
+      );
+    } else {
+      final selected = value.text.substring(sel.start, sel.end);
+      final text = value.text
+          .replaceRange(sel.start, sel.end, '$left$selected$right');
+      controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(
+            offset: sel.end + left.length + right.length),
+      );
+    }
+    focus.requestFocus();
+  }
+
+  /// Toggles [prefix] at the start of the caret's line.
+  void _prefixLine(String prefix) {
+    final value = controller.value;
+    final sel = value.selection;
+    final text = value.text;
+    final offset = (sel.isValid ? sel.start : text.length).clamp(0, text.length);
+    final lineStart =
+        offset == 0 ? 0 : text.lastIndexOf('\n', offset - 1) + 1;
+    final already = text.startsWith(prefix, lineStart);
+    final next = already
+        ? text.replaceRange(lineStart, lineStart + prefix.length, '')
+        : text.replaceRange(lineStart, lineStart, prefix);
+    final delta = already ? -prefix.length : prefix.length;
+    controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(
+          offset: (offset + delta).clamp(0, next.length)),
+    );
+    focus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final actions = <(IconData, String, VoidCallback)>[
+      (AppIcons.wikiLink, 'Link a note', () => _wrap('[[', '')),
+      (AppIcons.tag, 'Tag', () => _wrap('#', '')),
+      (AppIcons.bold, 'Bold', () => _wrap('**', '**')),
+      (AppIcons.italic, 'Italic', () => _wrap('*', '*')),
+      (AppIcons.heading, 'Heading', () => _prefixLine('## ')),
+      (AppIcons.bulletList, 'List', () => _prefixLine('- ')),
+      (AppIcons.checkbox, 'Checklist', () => _prefixLine('- [ ] ')),
+    ];
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: 4,
+        ),
+        itemCount: actions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 2),
+        itemBuilder: (context, i) {
+          final (icon, tooltip, action) = actions[i];
+          return Tooltip(
+            message: tooltip,
+            child: Pressable(
+              onTap: action,
+              haptic: PressHaptic.select,
+              semanticLabel: tooltip,
+              pressedScale: 0.9,
+              dense: true,
+              child: SizedBox(
+                width: 40,
+                height: 38,
+                child: Icon(icon, size: 17, color: scheme.onSurfaceVariant),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

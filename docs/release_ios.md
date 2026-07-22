@@ -182,12 +182,15 @@ Every upload:
    (`ITSAppUsesNonExemptEncryption = NO`); the privacy manifest rides in
    the bundle, so no missing-API-declaration mail.
 
-   **Purpose strings (ITMS-90683).** Info.plist declares seven
+   **Purpose strings (ITMS-90683).** Info.plist declares nine
    `NS*UsageDescription` keys. Five (Face ID, Health-share, Camera,
    Photo-library, Location) plus Health-update and Photo-library-add
    cover every privacy-sensitive API symbol the app's own code and the
    bundled `file_picker` imaging libraries
-   (DKImagePickerController/DKCamera) link. The app itself never uses
+   (DKImagePickerController/DKCamera) link, and two — Microphone and
+   Speech-recognition — are genuinely used by the Capture Inbox mic
+   (on-device transcription via `speech_to_text`; nothing recorded or
+   uploaded). The app itself never uses
    camera/photos/location/motion/media — those are transitive symbol
    references, worded honestly as such. **Reserve keys**, held out
    because the analyzer has never demanded them and the app provably

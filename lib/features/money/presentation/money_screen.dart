@@ -6,7 +6,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/money.dart';
+import '../application/money_state.dart';
 import '../../../shared/haptics.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -30,6 +33,8 @@ import 'widgets/surplus_card.dart';
 import 'widgets/surplus_history_chart.dart';
 import 'widgets/transaction_entry_form.dart';
 import 'widgets/transactions_list.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Money — where the month stands. Projected surplus leads; flags, history,
 /// budgets, the transaction log, and the long game support it.
@@ -75,12 +80,6 @@ class MoneyScreen extends ConsumerWidget {
     final isCurrentMonth = monthOffset == 0;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () =>
-            TransactionEntryForm.show(context, categories: state.categories),
-        icon: const Icon(Icons.add),
-        label: const Text('Add expense'),
-      ),
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
@@ -91,11 +90,18 @@ class MoneyScreen extends ConsumerWidget {
               96,
             ),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('Money', style: theme.textTheme.headlineSmall),
+              TabPageHeader(
+                title: 'Money',
+                actions: [
+                  HeaderGlyphButton(
+                    icon: AppIcons.add,
+                    tooltip: 'Add expense',
+                    onTap: () => TransactionEntryForm.show(
+                      context,
+                      categories: state.categories,
+                    ),
                   ),
+                  const SizedBox(width: 2),
                   _MonthStepper(
                     month: viewedMonth,
                     isCurrent: isCurrentMonth,
@@ -139,6 +145,10 @@ class MoneyScreen extends ConsumerWidget {
                     snapshot: state.snapshot,
                   ),
                 ),
+                if (isCurrentMonth) ...[
+                  const SizedBox(height: AppSpace.cardGap),
+                  _SpendPaceCard(state: state),
+                ],
                 const SizedBox(height: AppSpace.cardGap),
                 MoneyFlagsCard(flags: state.snapshot.flags),
                 if (isCurrentMonth) ...[
@@ -213,6 +223,111 @@ class MoneyScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// This month, at the two scales the month is actually lived at: what
+/// went out today and what went out this week, with the daily pace that
+/// ties them to the monthly surplus above. Current month only — a
+/// finished month has no "today".
+class _SpendPaceCard extends StatelessWidget {
+  const _SpendPaceCard({required this.state});
+
+  final MoneyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final now = state.now;
+    final todayKey = AppDateUtils.dateKey(now);
+
+    var todayCents = 0;
+    var weekCents = 0;
+    for (final tx in state.monthTransactions) {
+      if (tx.date == todayKey) todayCents += tx.amountCents;
+      if (AppDateUtils.isInWeek(tx.date, now)) weekCents += tx.amountCents;
+    }
+    // Average across the days elapsed so far — the honest run-rate.
+    final dailyAvgCents = state.snapshot.spendCentsSoFar ~/ now.day;
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _PaceStat(
+              label: 'Today',
+              value: Formatters.moneyCents(amountFromCents(todayCents)),
+            ),
+          ),
+          _PaceDivider(color: scheme.outlineFaint),
+          Expanded(
+            child: _PaceStat(
+              label: 'This week',
+              value: Formatters.moneyCents(amountFromCents(weekCents)),
+            ),
+          ),
+          _PaceDivider(color: scheme.outlineFaint),
+          Expanded(
+            child: _PaceStat(
+              label: 'Daily avg',
+              value: Formatters.moneyCents(amountFromCents(dailyAvgCents)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaceStat extends StatelessWidget {
+  const _PaceStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.textTertiary,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.numberBody.copyWith(fontSize: 17),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaceDivider extends StatelessWidget {
+  const _PaceDivider({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+      color: color,
     );
   }
 }

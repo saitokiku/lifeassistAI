@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,8 +11,11 @@ import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../shared/widgets/screen_back_button.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 import '../application/notes_controller.dart';
 import '../domain/note.dart';
 
@@ -35,6 +40,18 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   void initState() {
     super.initState();
     _tag = widget.initialTag;
+  }
+
+  /// Today's note — `2026-07-22` — opened, or created with the #daily
+  /// tag that strings the days together on the graph.
+  Future<void> _openDailyNote() async {
+    final key = AppDateUtils.dateKey(DateTime.now());
+    final existing = await ref.read(notesRepositoryProvider).getByTitle(key);
+    final note = existing ??
+        await ref
+            .read(notesControllerProvider)
+            .createNote(title: key, content: '#daily\n\n');
+    if (mounted) unawaited(context.push('/notes/${note.id}'));
   }
 
   @override
@@ -84,15 +101,22 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       style: theme.textTheme.headlineSmall,
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Graph',
-                    onPressed: () => context.push('/notes/graph'),
-                    icon: const Icon(Icons.hub_outlined),
+                  HeaderGlyphButton(
+                    icon: AppIcons.dailyNote,
+                    tooltip: 'Daily note',
+                    onTap: _openDailyNote,
                   ),
-                  IconButton.filled(
+                  const SizedBox(width: 2),
+                  HeaderGlyphButton(
+                    icon: AppIcons.graph,
+                    tooltip: 'Graph',
+                    onTap: () => context.push('/notes/graph'),
+                  ),
+                  const SizedBox(width: 2),
+                  HeaderGlyphButton(
+                    icon: AppIcons.add,
                     tooltip: 'New note',
-                    onPressed: () => context.push('/notes/new'),
-                    icon: const Icon(Icons.add_rounded),
+                    onTap: () => context.push('/notes/new'),
                   ),
                 ],
               ),

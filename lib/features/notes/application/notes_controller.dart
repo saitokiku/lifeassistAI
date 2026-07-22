@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/storage/app_database.dart';
+import '../data/live_vault_service.dart';
 import '../data/notes_repository.dart';
 import '../data/vault_service.dart';
 
@@ -11,6 +12,12 @@ final notesRepositoryProvider = Provider<NotesRepository>(
 
 final vaultServiceProvider = Provider<VaultService>(
   (ref) => VaultService(ref.watch(databaseProvider)),
+);
+
+/// The always-on Obsidian mirror. The shell starts/stops it with the
+/// app lifecycle; the Settings toggle starts/stops it by choice.
+final liveVaultProvider = Provider<LiveVaultService>(
+  (ref) => LiveVaultService(ref.watch(databaseProvider)),
 );
 
 /// The vault, newest-edited first. Powers the list and the You hub row.

@@ -53,6 +53,10 @@
 	<string>Life Assist never saves images to your photo library. This entry is referenced only by a bundled file-picker component and is never used by the app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Life Assist does not use or track your location. This permission is referenced by a built-in file picker component and is never requested by the app.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The microphone is used only while you hold the Capture mic button to speak an entry. Audio is transcribed on this device and never recorded or uploaded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech is transcribed on this device so what you say in Capture can be sorted into expenses, time, reminders, and ideas. Nothing you say leaves your phone.</string>
 	<key>LAHealthKitEnabled</key>
 	<true/>
 	<key>NSSupportsLiveActivities</key>

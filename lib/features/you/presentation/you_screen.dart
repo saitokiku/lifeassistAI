@@ -8,6 +8,9 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/section_header.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/pressable.dart';
+import '../../../ui/tab_page_header.dart';
 import '../../habits/application/habits_controller.dart';
 import '../../identity/application/identity_controller.dart';
 import '../../identity/presentation/widgets/philosophy_card.dart';
@@ -23,14 +26,14 @@ import '../../search/presentation/search_sheet.dart';
 import '../../settings/application/settings_controller.dart';
 
 /// The You tab: who this is for, in their own words — a personal line,
-/// operating principles — then the supporting systems, each with a live
-/// one-line status.
+/// operating principles — then the Library: every supporting system as
+/// a tile with a live one-line status. Notes and Journal sit first;
+/// they're the two the day actually ends in.
 class YouScreen extends ConsumerWidget {
   const YouScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final identity = ref.watch(identityStateProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
     final habits = ref.watch(habitsStateProvider);
@@ -48,6 +51,72 @@ class YouScreen extends ConsumerWidget {
 
     final name = settings?.displayName ?? '';
 
+    final tiles = <_LibraryTileData>[
+      _LibraryTileData(
+        icon: AppIcons.notes,
+        title: 'Notes',
+        caption: notes == null
+            ? 'Think in links.'
+            : notes.isEmpty
+                ? 'Your Zettelkasten awaits its first note.'
+                : '${notes.length} note${notes.length == 1 ? '' : 's'}'
+                    ' · $noteLinks link${noteLinks == 1 ? '' : 's'}',
+        route: '/notes',
+      ),
+      _LibraryTileData(
+        icon: AppIcons.journal,
+        title: 'Journal',
+        caption: journalToday == null
+            ? 'One honest line a day.'
+            : journalToday == 0
+                ? "Today isn't written yet."
+                : 'Today is written · '
+                    '$journalToday line${journalToday == 1 ? '' : 's'}',
+        route: '/journal',
+      ),
+      _LibraryTileData(
+        icon: AppIcons.habits,
+        title: 'Habits',
+        caption: habitCount == null
+            ? 'Small daily supports.'
+            : habitCount == 0
+                ? 'Nothing to check off yet.'
+                : '$doneToday of $habitCount done today',
+        route: '/habits',
+      ),
+      _LibraryTileData(
+        icon: AppIcons.ideas,
+        title: 'Ideas',
+        caption: ideas == null
+            ? 'A parking lot for new ideas.'
+            : dueCount > 0
+                ? '$dueCount waiting on a decision'
+                : coolingCount > 0
+                    ? '$coolingCount cooling — parked for now'
+                    : 'The lot is clear.',
+        route: '/ideas',
+        attention: dueCount > 0,
+      ),
+      _LibraryTileData(
+        icon: AppIcons.reminders,
+        title: 'Reminders',
+        caption: reminders == null
+            ? 'Gentle nudges through the day.'
+            : !reminders.platformSupported
+                ? 'Not available on web.'
+                : !reminders.appNotificationsEnabled
+                    ? 'Paused — notifications are off'
+                    : '${reminders.enabledCount} on through the day',
+        route: '/reminders',
+      ),
+      _LibraryTileData(
+        icon: AppIcons.settings,
+        title: 'Settings',
+        caption: 'Name, targets, backup & data.',
+        route: '/settings',
+      ),
+    ];
+
     return Scaffold(
       body: SafeArea(
         child: ContentWidth(
@@ -56,30 +125,20 @@ class YouScreen extends ConsumerWidget {
               AppSpace.screen,
               AppSpace.lg,
               AppSpace.screen,
-              AppSpace.xxl,
+              96,
             ),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      name.isEmpty ? 'You' : name,
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                  ),
-                  IconButton(
+              TabPageHeader(
+                title: name.isEmpty ? 'You' : name,
+                subtitle: AppCopy.youTagline,
+                showGlobalActions: false,
+                actions: [
+                  HeaderGlyphButton(
+                    icon: AppIcons.search,
                     tooltip: 'Search everything',
-                    onPressed: () => SearchSheet.show(context),
-                    icon: const Icon(Icons.search_rounded),
+                    onTap: () => SearchSheet.show(context),
                   ),
                 ],
-              ),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                AppCopy.youTagline,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
               const SizedBox(height: AppSpace.xl),
               PhilosophyCard(philosophyText: identity?.philosophyText ?? ''),
@@ -94,77 +153,110 @@ class YouScreen extends ConsumerWidget {
               StatementList(statements: identity?.statements ?? const []),
               const SectionHeader(title: 'Rituals'),
               _ReviewRow(done: weeklyReview != null),
-              const SectionHeader(title: 'Systems'),
-              _HubRow(
-                icon: Icons.check_circle_outline,
-                title: 'Habits',
-                caption: habitCount == null
-                    ? 'Small daily supports.'
-                    : habitCount == 0
-                        ? 'Nothing to check off yet.'
-                        : '$doneToday of $habitCount done today',
-                route: '/habits',
-              ),
-              const SizedBox(height: AppSpace.cardGap),
-              _HubRow(
-                icon: Icons.lightbulb_outline,
-                title: 'Ideas',
-                caption: ideas == null
-                    ? 'A parking lot for new ideas.'
-                    : dueCount > 0
-                        ? '$dueCount waiting on a decision · $coolingCount cooling'
-                        : coolingCount > 0
-                            ? '$coolingCount cooling — parked for now'
-                            : 'The lot is clear.',
-                route: '/ideas',
-                attention: dueCount > 0,
-              ),
-              const SizedBox(height: AppSpace.cardGap),
-              _HubRow(
-                icon: Icons.notifications_outlined,
-                title: 'Reminders',
-                caption: reminders == null
-                    ? 'Gentle nudges through the day.'
-                    : !reminders.platformSupported
-                        ? 'Not available on web.'
-                        : !reminders.appNotificationsEnabled
-                            ? 'Paused — notifications are off'
-                            : '${reminders.enabledCount} on through the day',
-                route: '/reminders',
-              ),
-              const SizedBox(height: AppSpace.cardGap),
-              _HubRow(
-                icon: Icons.edit_note_rounded,
-                title: 'Journal',
-                caption: journalToday == null
-                    ? 'One honest line a day.'
-                    : journalToday == 0
-                        ? "Today isn't written yet."
-                        : 'Today is written · '
-                            '$journalToday line${journalToday == 1 ? '' : 's'}',
-                route: '/journal',
-              ),
-              const SizedBox(height: AppSpace.cardGap),
-              _HubRow(
-                icon: Icons.hub_outlined,
-                title: 'Notes',
-                caption: notes == null
-                    ? 'Think in links.'
-                    : notes.isEmpty
-                        ? 'Your Zettelkasten awaits its first note.'
-                        : '${notes.length} note${notes.length == 1 ? '' : 's'}'
-                            ' · $noteLinks link${noteLinks == 1 ? '' : 's'}',
-                route: '/notes',
-              ),
-              const SizedBox(height: AppSpace.cardGap),
-              _HubRow(
-                icon: Icons.settings_outlined,
-                title: 'Settings',
-                caption: 'Name, targets, appearance, backup & data.',
-                route: '/settings',
+              const SectionHeader(title: 'Library'),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.cardGap,
+                crossAxisSpacing: AppSpace.cardGap,
+                childAspectRatio: 1.3,
+                children: [
+                  for (final tile in tiles) _LibraryTile(data: tile),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryTileData {
+  const _LibraryTileData({
+    required this.icon,
+    required this.title,
+    required this.caption,
+    required this.route,
+    this.attention = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String caption;
+  final String route;
+  final bool attention;
+}
+
+/// One Library tile: glyph up top, name, live status line. The status
+/// is the point — the grid reads as a dashboard of the quiet systems.
+class _LibraryTile extends StatelessWidget {
+  const _LibraryTile({required this.data});
+
+  final _LibraryTileData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Pressable(
+      onTap: () => context.push(data.route),
+      haptic: PressHaptic.select,
+      semanticLabel: data.title,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: scheme.outlineFaint),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: data.attention
+                        ? AppColors.watch.withValues(alpha: 0.14)
+                        : scheme.primaryTint,
+                    borderRadius: BorderRadius.circular(AppRadius.chip + 2),
+                  ),
+                  child: Icon(
+                    data.icon,
+                    size: 17,
+                    color:
+                        data.attention ? AppColors.watch : AppColors.primary,
+                  ),
+                ),
+                const Spacer(),
+                if (data.attention)
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.watch,
+                    ),
+                  ),
+              ],
+            ),
+            const Spacer(),
+            Text(data.title, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 2),
+            Text(
+              data.caption,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -198,7 +290,7 @@ class _ReviewRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.chip + 2),
             ),
             child: const Icon(
-              Icons.history_edu_outlined,
+              AppIcons.review,
               size: 20,
               color: AppColors.primary,
             ),
@@ -224,80 +316,8 @@ class _ReviewRow extends StatelessWidget {
             ),
           ),
           Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: scheme.textTertiary,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HubRow extends StatelessWidget {
-  const _HubRow({
-    required this.icon,
-    required this.title,
-    required this.caption,
-    required this.route,
-    this.attention = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String caption;
-  final String route;
-  final bool attention;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return AppCard(
-      onTap: () => context.push(route),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpace.lg,
-        vertical: AppSpace.md,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: attention
-                  ? AppColors.watch.withValues(alpha: 0.14)
-                  : scheme.primaryTint,
-              borderRadius: BorderRadius.circular(AppRadius.chip + 2),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: attention ? AppColors.watch : AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: AppSpace.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
+            AppIcons.forward,
+            size: 16,
             color: scheme.textTertiary,
           ),
         ],

@@ -173,10 +173,9 @@ class SettingsScreen extends ConsumerWidget {
           ]),
           const SectionHeader(title: 'Notes vault'),
           const _SettingsGroup(children: [
-            if (!kIsWeb) _VaultFolderExportRow(),
+            if (!kIsWeb) _LiveVaultRow(),
             _VaultShareRow(),
             _VaultImportFilesRow(),
-            if (!kIsWeb) _VaultFolderImportRow(),
           ]),
           const SectionHeader(title: 'Danger zone'),
           _SettingsGroup(children: [
@@ -577,34 +576,45 @@ class _ImportRow extends StatelessWidget {
 
 // --- notes vault -------------------------------------------------------------
 
-/// Writes every note as an Obsidian-style `.md` into
-/// Documents/LifeAssistVault — browsable in the Files app.
-class _VaultFolderExportRow extends ConsumerStatefulWidget {
-  const _VaultFolderExportRow();
+/// The live Obsidian mirror: on means every note exists as `.md` in
+/// Files › Life Assist › LifeAssistVault the moment it changes, and
+/// edits made there (Files app, Obsidian over iCloud) fold back in on
+/// return. Replaces the old export-then-re-import two-step.
+class _LiveVaultRow extends ConsumerStatefulWidget {
+  const _LiveVaultRow();
 
   @override
-  ConsumerState<_VaultFolderExportRow> createState() =>
-      _VaultFolderExportRowState();
+  ConsumerState<_LiveVaultRow> createState() => _LiveVaultRowState();
 }
 
-class _VaultFolderExportRowState extends ConsumerState<_VaultFolderExportRow> {
+class _LiveVaultRowState extends ConsumerState<_LiveVaultRow> {
   bool _busy = false;
 
-  Future<void> _export() async {
+  Future<void> _toggle(bool value) async {
     if (_busy) return;
+    Haptics.select();
     setState(() => _busy = true);
     try {
-      final result = await ref.read(vaultServiceProvider).exportToFolder();
-      if (!mounted) return;
-      showSuccessSnack(
-        context,
-        result.count == 0
-            ? 'No notes to export yet.'
-            : '${result.count} note${result.count == 1 ? '' : 's'} in '
-                'Files › Life Assist › ${VaultService.folderName}.',
-      );
+      await ref.read(preferencesProvider).setLiveVaultEnabled(value);
+      final vault = ref.read(liveVaultProvider);
+      if (value) {
+        await vault.start();
+        if (mounted) {
+          showSuccessSnack(
+            context,
+            'Live vault on — notes stay mirrored in Files › Life Assist '
+            '› ${VaultService.folderName}.',
+          );
+        }
+      } else {
+        await vault.stop();
+        if (mounted) {
+          showSuccessSnack(
+              context, 'Live vault off. The mirrored files stay put.');
+        }
+      }
     } catch (_) {
-      if (mounted) showErrorSnack(context, "That didn't export. Try again.");
+      if (mounted) showErrorSnack(context, "That didn't stick. Try again.");
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -612,18 +622,21 @@ class _VaultFolderExportRowState extends ConsumerState<_VaultFolderExportRow> {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = ref.read(preferencesProvider).liveVaultEnabled;
     return _SettingsRow(
-      icon: Icons.folder_open_outlined,
-      title: 'Export notes to Files',
-      subtitle: 'Obsidian-style .md vault in the Files app.',
+      icon: Icons.sync_outlined,
+      title: 'Live vault',
+      subtitle: enabled
+          ? 'Notes mirror to Files as .md; outside edits fold back in.'
+          : 'Off. Notes only leave via the .zip below.',
       trailing: _busy
           ? const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : null,
-      onTap: _busy ? null : _export,
+          : Switch(value: enabled, onChanged: _toggle),
+      onTap: _busy ? null : () => _toggle(!enabled),
     );
   }
 }
@@ -748,57 +761,6 @@ class _VaultImportFilesRowState extends ConsumerState<_VaultImportFilesRow> {
       icon: Icons.note_add_outlined,
       title: 'Import notes (.md)',
       subtitle: 'Pick markdown files; matching notes update in place.',
-      trailing: _busy
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : null,
-      onTap: _busy ? null : _import,
-    );
-  }
-}
-
-/// Re-reads the vault folder — the path for edits made in the Files app.
-class _VaultFolderImportRow extends ConsumerStatefulWidget {
-  const _VaultFolderImportRow();
-
-  @override
-  ConsumerState<_VaultFolderImportRow> createState() =>
-      _VaultFolderImportRowState();
-}
-
-class _VaultFolderImportRowState extends ConsumerState<_VaultFolderImportRow> {
-  bool _busy = false;
-
-  Future<void> _import() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final outcome = await ref.read(vaultServiceProvider).importFromFolder();
-      if (!mounted) return;
-      showSuccessSnack(
-        context,
-        outcome.total == 0
-            ? 'No .md files in the vault folder yet.'
-            : _importSummary(outcome),
-      );
-    } catch (_) {
-      if (mounted) {
-        showErrorSnack(context, "Couldn't read the vault folder. Try again.");
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingsRow(
-      icon: Icons.sync_outlined,
-      title: 'Re-import from Files',
-      subtitle: 'Pull in edits made to the vault folder.',
       trailing: _busy
           ? const SizedBox(
               width: 16,

@@ -14,6 +14,8 @@ import 'widgets/habit_checklist.dart';
 import 'widgets/habit_editor.dart';
 import 'widgets/habit_heatmap.dart';
 import 'widgets/habit_streak_card.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Habits — the daily support systems. One unified list: check off, see the
 /// week at a glance, edit or archive from the same row.
@@ -33,13 +35,6 @@ class HabitsScreen extends ConsumerWidget {
         state == null && (habitsAsync.hasError || logsAsync.hasError);
 
     return Scaffold(
-      floatingActionButton: state == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => HabitEditor.show(context),
-              icon: const Icon(Icons.add),
-              label: const Text('New habit'),
-            ),
       body: SafeArea(
         child: failed
             ? ErrorState(
@@ -62,8 +57,15 @@ class HabitsScreen extends ConsumerWidget {
                         Row(
                           children: [
                             const ScreenBackButton(),
-                            Text('Habits',
-                                style: theme.textTheme.headlineSmall),
+                            Expanded(
+                              child: Text('Habits',
+                                  style: theme.textTheme.headlineSmall),
+                            ),
+                            HeaderGlyphButton(
+                              icon: AppIcons.add,
+                              tooltip: 'New habit',
+                              onTap: () => HabitEditor.show(context),
+                            ),
                           ],
                         ),
                         const SizedBox(height: AppSpace.xs),

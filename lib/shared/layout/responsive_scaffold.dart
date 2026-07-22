@@ -33,7 +33,9 @@ class ResponsiveScaffold extends StatelessWidget {
             ),
           );
         }
+        // extendBody lets content scroll behind the floating console bar.
         return Scaffold(
+          extendBody: true,
           body: body,
           bottomNavigationBar: bottomBarBuilder(context),
         );
