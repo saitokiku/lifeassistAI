@@ -30,6 +30,7 @@ import 'widgets/surplus_card.dart';
 import 'widgets/surplus_history_chart.dart';
 import 'widgets/transaction_entry_form.dart';
 import 'widgets/transactions_list.dart';
+import '../../../ui/app_icons.dart';
 import '../../../ui/tab_page_header.dart';
 
 /// Money — where the month stands. Projected surplus leads; flags, history,
@@ -76,12 +77,6 @@ class MoneyScreen extends ConsumerWidget {
     final isCurrentMonth = monthOffset == 0;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () =>
-            TransactionEntryForm.show(context, categories: state.categories),
-        icon: const Icon(Icons.add),
-        label: const Text('Add expense'),
-      ),
       body: SafeArea(
         child: ContentWidth(
           child: ListView(
@@ -95,6 +90,15 @@ class MoneyScreen extends ConsumerWidget {
               TabPageHeader(
                 title: 'Money',
                 actions: [
+                  HeaderGlyphButton(
+                    icon: AppIcons.add,
+                    tooltip: 'Add expense',
+                    onTap: () => TransactionEntryForm.show(
+                      context,
+                      categories: state.categories,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
                   _MonthStepper(
                     month: viewedMonth,
                     isCurrent: isCurrentMonth,

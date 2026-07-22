@@ -32,6 +32,7 @@ import 'widgets/metric_history_chart.dart';
 import 'widgets/milestone_editor.dart';
 import 'widgets/milestone_list.dart';
 import 'widgets/relative_date.dart';
+import '../../../ui/app_icons.dart';
 import '../../../ui/tab_page_header.dart';
 
 /// Focus — the user's main goal: where it stands, the next milestone, the
@@ -59,22 +60,6 @@ class FocusScreen extends ConsumerWidget {
     final ready = !hasError && state != null && metrics != null;
 
     return Scaffold(
-      floatingActionButton: !ready || !state.hasGoal
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => ActionLogForm.show(
-                context,
-                action: state.todayAction,
-              ),
-              icon: Icon(
-                state.todayActionLogged
-                    ? Icons.edit_outlined
-                    : Icons.add_task_rounded,
-              ),
-              label: Text(
-                state.todayActionLogged ? "Edit today's step" : 'Log a step',
-              ),
-            ),
       body: SafeArea(
         child: hasError
             ? ErrorState(
@@ -378,6 +363,15 @@ class _GoalHeader extends ConsumerWidget {
                 ],
               ),
             ),
+            HeaderGlyphButton(
+              icon: AppIcons.add,
+              tooltip: state.todayActionLogged
+                  ? "Edit today's step"
+                  : 'Log a step',
+              onTap: () =>
+                  ActionLogForm.show(context, action: state.todayAction),
+            ),
+            const SizedBox(width: AppSpace.xs),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_horiz, color: scheme.textTertiary),
               tooltip: 'Goal options',

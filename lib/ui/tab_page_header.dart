@@ -45,7 +45,7 @@ class TabPageHeader extends StatelessWidget {
                 tooltip: 'Search',
                 onTap: () => SearchSheet.show(context),
               ),
-              const SizedBox(width: AppSpace.xs),
+              const SizedBox(width: 2),
               HeaderGlyphButton(
                 icon: AppIcons.you,
                 tooltip: 'You',
@@ -91,14 +91,15 @@ class HeaderGlyphButton extends StatelessWidget {
         haptic: PressHaptic.select,
         semanticLabel: tooltip,
         pressedScale: 0.9,
+        dense: true,
         child: Container(
-          width: 36,
-          height: 36,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: scheme.outline),
           ),
-          child: Icon(icon, size: 17, color: scheme.onSurfaceVariant),
+          child: Icon(icon, size: 16, color: scheme.onSurfaceVariant),
         ),
       ),
     );

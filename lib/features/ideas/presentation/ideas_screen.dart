@@ -12,6 +12,8 @@ import '../../../shared/widgets/stat_tile.dart';
 import '../application/ideas_controller.dart';
 import 'widgets/idea_capture_form.dart';
 import 'widgets/idea_parking_lot_list.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Ideas — the anti-diffusion parking lot. Shiny things get parked,
 /// cooled for a week, then given one decision. Focus stays clean.
@@ -49,7 +51,15 @@ class IdeasScreen extends ConsumerWidget {
             Row(
               children: [
                 const ScreenBackButton(),
-                Text('Ideas', style: theme.textTheme.headlineSmall),
+                Expanded(
+                  child:
+                      Text('Ideas', style: theme.textTheme.headlineSmall),
+                ),
+                HeaderGlyphButton(
+                  icon: AppIcons.add,
+                  tooltip: 'Park idea',
+                  onTap: () => IdeaCaptureForm.show(context),
+                ),
               ],
             ),
             const SizedBox(height: AppSpace.xs),
@@ -73,13 +83,6 @@ class IdeasScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      floatingActionButton: state == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => IdeaCaptureForm.show(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Park idea'),
-            ),
       body: SafeArea(child: body),
     );
   }

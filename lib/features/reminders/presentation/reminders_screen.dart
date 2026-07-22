@@ -12,6 +12,8 @@ import '../application/reminders_controller.dart';
 import 'widgets/notification_permission_card.dart';
 import 'widgets/reminder_editor.dart';
 import 'widgets/reminder_list.dart';
+import '../../../ui/app_icons.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Reminders — the daily rhythm. Notification status up top, then the
 /// day's nudges grouped by morning, afternoon, and evening.
@@ -24,18 +26,7 @@ class RemindersScreen extends ConsumerWidget {
     final asyncReminders = ref.watch(remindersProvider);
     final state = ref.watch(remindersStateProvider);
 
-    // The empty state owns the first action; the FAB appears once a list
-    // exists.
-    final showFab = state != null && state.reminders.isNotEmpty;
-
     return Scaffold(
-      floatingActionButton: showFab
-          ? FloatingActionButton.extended(
-              onPressed: () => ReminderEditor.show(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Add reminder'),
-            )
-          : null,
       body: SafeArea(
         child: asyncReminders.hasError && state == null
             ? ErrorState(
@@ -56,8 +47,16 @@ class RemindersScreen extends ConsumerWidget {
                         Row(
                           children: [
                             const ScreenBackButton(),
-                            Text('Reminders',
-                                style: theme.textTheme.headlineSmall),
+                            Expanded(
+                              child: Text('Reminders',
+                                  style: theme.textTheme.headlineSmall),
+                            ),
+                            if (state.platformSupported)
+                              HeaderGlyphButton(
+                                icon: AppIcons.add,
+                                tooltip: 'Add reminder',
+                                onTap: () => ReminderEditor.show(context),
+                              ),
                           ],
                         ),
                         const SizedBox(height: AppSpace.xs),

@@ -24,6 +24,7 @@ import 'widgets/time_block_log_form.dart';
 import 'widgets/timer_card.dart';
 import 'widgets/weekly_hours_chart.dart';
 import 'widgets/weekly_time_budget_card.dart';
+import '../../../ui/app_icons.dart';
 import '../../../ui/tab_page_header.dart';
 
 /// Time — where hours get pointed. Weekly targets, the history chart,
@@ -44,14 +45,6 @@ class TimeScreen extends ConsumerWidget {
         ref.watch(recentTimeBlocksProvider).hasError;
 
     return Scaffold(
-      floatingActionButton: state == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () =>
-                  TimeBlockLogForm.show(context, budgets: state.budgets),
-              icon: const Icon(Icons.add),
-              label: const Text('Log time'),
-            ),
       body: SafeArea(
         child: state != null
             ? _Content(state: state, recentBlocks: recentBlocks)
@@ -95,7 +88,19 @@ class _Content extends ConsumerWidget {
           96,
         ),
         children: [
-          TabPageHeader(title: 'Time', subtitle: AppCopy.timeTagline),
+          TabPageHeader(
+            title: 'Time',
+            subtitle: AppCopy.timeTagline,
+            actions: [
+              HeaderGlyphButton(
+                icon: AppIcons.add,
+                tooltip: 'Log time',
+                onTap: () =>
+                    TimeBlockLogForm.show(context, budgets: state.budgets),
+              ),
+              const SizedBox(width: AppSpace.xs),
+            ],
+          ),
           const SizedBox(height: AppSpace.xl),
           AvailableTimeCard(state: state),
           const SizedBox(height: AppSpace.cardGap),
