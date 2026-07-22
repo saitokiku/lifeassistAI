@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../features/dashboard/application/dashboard_controller.dart';
+import '../../features/settings/domain/user_settings.dart';
 import '../../features/focus/application/focus_controller.dart';
+import '../../features/focus/presentation/widgets/growth_metric_entry_form.dart';
+import '../../shared/widgets/quick_add_sheet.dart';
 import '../../features/focus/presentation/widgets/action_log_form.dart';
 import '../../features/ideas/presentation/widgets/idea_capture_form.dart';
 import '../../features/money/application/money_controller.dart';
@@ -83,4 +88,45 @@ class CaptureLauncher {
     }
   }
 
+  /// The console capture button's dispatch: offer the captures that
+  /// exist right now (mirrors the old Today FAB), then ride the shared
+  /// capture path. This is the seam the Capture Inbox replaces later.
+  static Future<void> quickAdd(BuildContext context, WidgetRef ref) async {
+    final state = ref.read(dashboardStateProvider);
+    final actions = state == null
+        ? QuickAddAction.values
+        : [
+            if (state.goalActive) QuickAddAction.goalStep,
+            if (state.showsArea(DashboardArea.money))
+              QuickAddAction.transaction,
+            if (state.showsArea(DashboardArea.time)) QuickAddAction.timeBlock,
+            if (state.goalActive && state.focus.activeMetric != null)
+              QuickAddAction.metricValue,
+            if (state.showsArea(DashboardArea.ideas)) QuickAddAction.idea,
+          ];
+    final action = await showQuickAddSheet(
+      context,
+      actions: actions.isEmpty ? QuickAddAction.values : actions,
+    );
+    if (action == null || !context.mounted) return;
+
+    switch (action) {
+      case QuickAddAction.timeBlock:
+        await open(context, ref, const CaptureRequest(type: CaptureType.time));
+      case QuickAddAction.transaction:
+        await open(
+            context, ref, const CaptureRequest(type: CaptureType.expense));
+      case QuickAddAction.metricValue:
+        final metric = ref.read(focusStateProvider)?.activeMetric;
+        if (metric == null) {
+          if (context.mounted) GoRouter.of(context).go('/focus');
+          return;
+        }
+        await GrowthMetricEntryForm.show(context, metric: metric);
+      case QuickAddAction.goalStep:
+        await open(context, ref, const CaptureRequest(type: CaptureType.step));
+      case QuickAddAction.idea:
+        await open(context, ref, const CaptureRequest(type: CaptureType.idea));
+    }
+  }
 }

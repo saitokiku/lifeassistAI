@@ -13,6 +13,10 @@ Future<T?> showAppSheet<T>(
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    // Root navigator: sheets must render ABOVE the shell's floating
+    // console bar (the body extends beneath it), not inside the branch
+    // navigator where the bar would cover their footer buttons.
+    useRootNavigator: true,
     isScrollControlled: true,
     isDismissible: isDismissible,
     useSafeArea: true,

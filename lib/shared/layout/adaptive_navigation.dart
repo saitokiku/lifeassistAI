@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
+import '../../ui/app_icons.dart';
 
 /// One navigation destination = one top-level screen.
 class AppDestination {
@@ -29,32 +31,32 @@ class AppDestinations {
     AppDestination(
       route: '/today',
       label: 'Today',
-      icon: Icons.wb_sunny_outlined,
-      selectedIcon: Icons.wb_sunny,
+      icon: AppIcons.today,
+      selectedIcon: AppIcons.today,
     ),
     AppDestination(
       route: '/focus',
       label: 'Focus',
-      icon: Icons.outlined_flag,
-      selectedIcon: Icons.flag,
+      icon: AppIcons.focus,
+      selectedIcon: AppIcons.focus,
     ),
     AppDestination(
       route: '/money',
       label: 'Money',
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
+      icon: AppIcons.money,
+      selectedIcon: AppIcons.money,
     ),
     AppDestination(
       route: '/time',
       label: 'Time',
-      icon: Icons.schedule_outlined,
-      selectedIcon: Icons.schedule,
+      icon: AppIcons.time,
+      selectedIcon: AppIcons.time,
     ),
     AppDestination(
       route: '/more',
       label: 'You',
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
+      icon: AppIcons.you,
+      selectedIcon: AppIcons.you,
     ),
   ];
 
@@ -63,56 +65,56 @@ class AppDestinations {
     AppDestination(
       route: '/today',
       label: 'Today',
-      icon: Icons.wb_sunny_outlined,
-      selectedIcon: Icons.wb_sunny,
+      icon: AppIcons.today,
+      selectedIcon: AppIcons.today,
     ),
     AppDestination(
       route: '/focus',
       label: 'Focus',
-      icon: Icons.outlined_flag,
-      selectedIcon: Icons.flag,
+      icon: AppIcons.focus,
+      selectedIcon: AppIcons.focus,
     ),
     AppDestination(
       route: '/money',
       label: 'Money',
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
+      icon: AppIcons.money,
+      selectedIcon: AppIcons.money,
     ),
     AppDestination(
       route: '/time',
       label: 'Time',
-      icon: Icons.schedule_outlined,
-      selectedIcon: Icons.schedule,
+      icon: AppIcons.time,
+      selectedIcon: AppIcons.time,
     ),
     AppDestination(
       route: '/habits',
       label: 'Habits',
-      icon: Icons.check_circle_outline,
-      selectedIcon: Icons.check_circle,
+      icon: AppIcons.habits,
+      selectedIcon: AppIcons.habits,
     ),
     AppDestination(
       route: '/ideas',
       label: 'Ideas',
-      icon: Icons.lightbulb_outline,
-      selectedIcon: Icons.lightbulb,
+      icon: AppIcons.ideas,
+      selectedIcon: AppIcons.ideas,
     ),
     AppDestination(
       route: '/reminders',
       label: 'Reminders',
-      icon: Icons.notifications_outlined,
-      selectedIcon: Icons.notifications,
+      icon: AppIcons.reminders,
+      selectedIcon: AppIcons.reminders,
     ),
     AppDestination(
       route: '/more',
       label: 'You',
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
+      icon: AppIcons.you,
+      selectedIcon: AppIcons.you,
     ),
     AppDestination(
       route: '/settings',
       label: 'Settings',
-      icon: Icons.settings_outlined,
-      selectedIcon: Icons.settings,
+      icon: AppIcons.settings,
+      selectedIcon: AppIcons.settings,
     ),
   ];
 

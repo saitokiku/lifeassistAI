@@ -30,6 +30,7 @@ import 'widgets/surplus_card.dart';
 import 'widgets/surplus_history_chart.dart';
 import 'widgets/transaction_entry_form.dart';
 import 'widgets/transactions_list.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Money — where the month stands. Projected surplus leads; flags, history,
 /// budgets, the transaction log, and the long game support it.
@@ -91,11 +92,9 @@ class MoneyScreen extends ConsumerWidget {
               96,
             ),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('Money', style: theme.textTheme.headlineSmall),
-                  ),
+              TabPageHeader(
+                title: 'Money',
+                actions: [
                   _MonthStepper(
                     month: viewedMonth,
                     isCurrent: isCurrentMonth,

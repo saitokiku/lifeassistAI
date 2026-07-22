@@ -2,22 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/capture/capture_launcher.dart';
-import '../../../core/capture/capture_request.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../../shared/widgets/quick_add_sheet.dart';
 import '../../../shared/widgets/section_header.dart';
-import '../../focus/application/focus_controller.dart';
-import '../../focus/presentation/widgets/growth_metric_entry_form.dart';
 import '../../habits/application/habits_controller.dart';
 import '../../journal/presentation/widgets/evening_journal_card.dart';
 import '../../settings/domain/user_settings.dart';
 import '../application/dashboard_controller.dart';
-import '../application/dashboard_state.dart';
 import 'widgets/check_in_strip.dart';
 import 'widgets/discover_card.dart';
 import 'widgets/goal_snapshot_card.dart';
@@ -44,14 +37,8 @@ class DashboardScreen extends ConsumerWidget {
     final showScoreboard = state != null && ScoreboardGrid.hasTiles(state);
     final showGoalSnapshot = state?.goal != null;
 
+    // Capture lives in the console bar's center button now — no FAB.
     return Scaffold(
-      floatingActionButton: state == null
-          ? null
-          : FloatingActionButton(
-              tooltip: 'Quick add',
-              onPressed: () => _quickAdd(context, ref, state),
-              child: const Icon(Icons.add),
-            ),
       body: SafeArea(
         child: state == null
             ? const SkeletonList()
@@ -100,50 +87,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _quickAdd(
-    BuildContext context,
-    WidgetRef ref,
-    DashboardState state,
-  ) async {
-    // Only offer captures that exist right now.
-    final actions = [
-      if (state.goalActive) QuickAddAction.goalStep,
-      if (state.showsArea(DashboardArea.money)) QuickAddAction.transaction,
-      if (state.showsArea(DashboardArea.time)) QuickAddAction.timeBlock,
-      if (state.goalActive && state.focus.activeMetric != null)
-        QuickAddAction.metricValue,
-      if (state.showsArea(DashboardArea.ideas)) QuickAddAction.idea,
-    ];
-    final action = await showQuickAddSheet(
-      context,
-      actions: actions.isEmpty ? QuickAddAction.values : actions,
-    );
-    if (action == null || !context.mounted) return;
-
-    // Everything except the metric value rides the shared capture
-    // dispatch — same path as deep links, shortcuts, and Siri.
-    switch (action) {
-      case QuickAddAction.timeBlock:
-        await CaptureLauncher.open(
-            context, ref, const CaptureRequest(type: CaptureType.time));
-      case QuickAddAction.transaction:
-        await CaptureLauncher.open(
-            context, ref, const CaptureRequest(type: CaptureType.expense));
-      case QuickAddAction.metricValue:
-        final metric = ref.read(focusStateProvider)?.activeMetric;
-        if (metric == null) {
-          context.go('/focus');
-          return;
-        }
-        await GrowthMetricEntryForm.show(context, metric: metric);
-      case QuickAddAction.goalStep:
-        await CaptureLauncher.open(
-            context, ref, const CaptureRequest(type: CaptureType.step));
-      case QuickAddAction.idea:
-        await CaptureLauncher.open(
-            context, ref, const CaptureRequest(type: CaptureType.idea));
-    }
-  }
 }
 
 /// Gentle once-per-mount entrance: fade + 12px rise, staggered 40ms.

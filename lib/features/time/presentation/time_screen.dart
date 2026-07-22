@@ -24,6 +24,7 @@ import 'widgets/time_block_log_form.dart';
 import 'widgets/timer_card.dart';
 import 'widgets/weekly_hours_chart.dart';
 import 'widgets/weekly_time_budget_card.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Time — where hours get pointed. Weekly targets, the history chart,
 /// countdowns, and the log everything else runs on.
@@ -94,14 +95,7 @@ class _Content extends ConsumerWidget {
           96,
         ),
         children: [
-          Text('Time', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: AppSpace.xs),
-          Text(
-            AppCopy.timeTagline,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          TabPageHeader(title: 'Time', subtitle: AppCopy.timeTagline),
           const SizedBox(height: AppSpace.xl),
           AvailableTimeCard(state: state),
           const SizedBox(height: AppSpace.cardGap),

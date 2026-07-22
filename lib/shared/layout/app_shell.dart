@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
+import '../../ui/console_tab_bar.dart';
 import '../../core/health/health_habit_sync.dart';
 import '../../core/native/capture_queue_drain.dart';
 import '../../core/native/entity_mirror_service.dart';
@@ -20,7 +21,6 @@ import '../../features/habits/application/habits_controller.dart';
 import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
-import '../haptics.dart';
 import 'adaptive_navigation.dart';
 import 'responsive_scaffold.dart';
 
@@ -288,55 +288,28 @@ class _AppShellState extends ConsumerState<AppShell>
     final location = GoRouterState.of(context).uri.path;
     final selectedIndex = AppDestinations.railIndexForLocation(location);
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.sizeOf(context).height -
-                MediaQuery.paddingOf(context).vertical,
-          ),
-          child: IntrinsicHeight(
-            child: NavigationRail(
-              selectedIndex: selectedIndex,
-              labelType: NavigationRailLabelType.all,
-              onDestinationSelected: (index) {
-                Haptics.select();
-                context.go(AppDestinations.rail[index].route);
-              },
-              destinations: [
-                for (final d in AppDestinations.rail)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.selectedIcon),
-                    label: Text(d.label),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ConsoleRail(
+      destinations: [
+        for (final (i, d) in AppDestinations.rail.indexed)
+          ConsoleDestination(branchIndex: i, label: d.label, icon: d.icon),
+      ],
+      selectedIndex: selectedIndex,
+      onSelect: (index) => context.go(AppDestinations.rail[index].route),
+      onCapture: () => CaptureLauncher.quickAdd(context, ref),
     );
   }
 
   Widget _buildBottomBar(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: widget.shell.currentIndex,
-      onDestinationSelected: (index) {
-        Haptics.select();
+    return ConsoleTabBar(
+      currentBranch: widget.shell.currentIndex,
+      onSelect: (branch) {
         // Re-tapping the active tab pops that branch back to its root.
         widget.shell.goBranch(
-          index,
-          initialLocation: index == widget.shell.currentIndex,
+          branch,
+          initialLocation: branch == widget.shell.currentIndex,
         );
       },
-      destinations: [
-        for (final d in AppDestinations.compact)
-          NavigationDestination(
-            icon: Icon(d.icon),
-            selectedIcon: Icon(d.selectedIcon),
-            label: d.label,
-          ),
-      ],
+      onCapture: () => CaptureLauncher.quickAdd(context, ref),
     );
   }
 }

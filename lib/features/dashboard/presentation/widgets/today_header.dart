@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../ui/app_icons.dart';
+import '../../../../ui/tab_page_header.dart';
+import '../../../search/presentation/search_sheet.dart';
 
 import '../../../../core/providers.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -70,26 +75,52 @@ class TodayHeader extends ConsumerWidget {
             ],
           ),
         ),
-        if (state.showScore) ...[
-          const SizedBox(width: AppSpace.lg),
-          Semantics(
-            label: "Today's score ${score.total} of 100. Tap for breakdown.",
-            button: true,
-            child: GestureDetector(
-              onTap: () => _showBreakdown(context),
-              child: ProgressRing(
-                progress: score.total / 100,
-                color: status.color,
-                size: 52,
-                strokeWidth: 5,
-                center: Text(
-                  '${score.total}',
-                  style: theme.textTheme.numberMedium.copyWith(fontSize: 16),
+        const SizedBox(width: AppSpace.lg),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // The global pair — You left the tab bar for the centered
+            // capture button; it lives up here on every tab root.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HeaderGlyphButton(
+                  icon: AppIcons.search,
+                  tooltip: 'Search',
+                  onTap: () => SearchSheet.show(context),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                HeaderGlyphButton(
+                  icon: AppIcons.you,
+                  tooltip: 'You',
+                  onTap: () => context.go('/more'),
+                ),
+              ],
+            ),
+            if (state.showScore) ...[
+              const SizedBox(height: AppSpace.md),
+              Semantics(
+                label:
+                    "Today's score ${score.total} of 100. Tap for breakdown.",
+                button: true,
+                child: GestureDetector(
+                  onTap: () => _showBreakdown(context),
+                  child: ProgressRing(
+                    progress: score.total / 100,
+                    color: status.color,
+                    size: 52,
+                    strokeWidth: 5,
+                    center: Text(
+                      '${score.total}',
+                      style:
+                          theme.textTheme.numberMedium.copyWith(fontSize: 16),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
       ],
     );
   }

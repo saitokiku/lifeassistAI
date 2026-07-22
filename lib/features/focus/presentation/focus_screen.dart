@@ -32,6 +32,7 @@ import 'widgets/metric_history_chart.dart';
 import 'widgets/milestone_editor.dart';
 import 'widgets/milestone_list.dart';
 import 'widgets/relative_date.dart';
+import '../../../ui/tab_page_header.dart';
 
 /// Focus — the user's main goal: where it stands, the next milestone, the
 /// number that proves movement, and the daily step that keeps it alive.
@@ -124,13 +125,9 @@ class _NoGoalContent extends StatelessWidget {
         AppSpace.xxl,
       ),
       children: [
-        Text('Focus', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpace.xs),
-        Text(
-          'One goal, front and center.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
+        const TabPageHeader(
+          title: 'Focus',
+          subtitle: 'One goal, front and center.',
         ),
         const SizedBox(height: AppSpace.xxl),
         AppCard(

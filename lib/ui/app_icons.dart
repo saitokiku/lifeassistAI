@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// The v2 icon vocabulary: one semantic name per concept, all drawn from
 /// the thin-stroke Lucide set (nothing from the Material font). Screens
