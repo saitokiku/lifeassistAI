@@ -47,7 +47,7 @@ jobs:
         run: |
           cd ios/Runner
           # Files importing Flutter are covered by the full build job.
-          FILES=$(ls *.swift | grep -v -e AppDelegate.swift -e SceneDelegate.swift -e AiBridge.swift -e HealthBridge.swift -e ActivityBridge.swift)
+          FILES=$(ls *.swift | grep -v -e AppDelegate.swift -e SceneDelegate.swift -e AiBridge.swift -e HealthBridge.swift -e ActivityBridge.swift -e VisionBridge.swift)
           echo "Typechecking: $FILES"
           xcrun swiftc -typecheck \
             -sdk "$(xcrun --show-sdk-path --sdk iphoneos)" \

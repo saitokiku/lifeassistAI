@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/capture/capture_launcher.dart';
 import '../../core/capture/capture_request.dart';
+import '../../ui/capture_inbox.dart';
 import '../../ui/console_tab_bar.dart';
 import '../../ui/timer_dock.dart';
 import '../../core/health/health_habit_sync.dart';
@@ -296,7 +297,7 @@ class _AppShellState extends ConsumerState<AppShell>
       ],
       selectedIndex: selectedIndex,
       onSelect: (index) => context.go(AppDestinations.rail[index].route),
-      onCapture: () => CaptureLauncher.quickAdd(context, ref),
+      onCapture: () => CaptureInbox.show(context),
     );
   }
 
@@ -321,7 +322,7 @@ class _AppShellState extends ConsumerState<AppShell>
           initialLocation: branch == widget.shell.currentIndex,
         );
       },
-      onCapture: () => CaptureLauncher.quickAdd(context, ref),
+      onCapture: () => CaptureInbox.show(context),
     );
   }
 }

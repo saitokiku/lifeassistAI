@@ -22,6 +22,9 @@ import WidgetKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ActivityBridge") {
       ActivityBridge.register(with: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "VisionBridge") {
+      VisionBridge.register(with: registrar)
+    }
     // Dart asks where the bridge lives so both sides agree the moment
     // the App Group entitlement appears (Phase 6 widgets); without it
     // this answers with the app container, same as before.
