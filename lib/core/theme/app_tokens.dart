@@ -62,4 +62,11 @@ class AppMotion {
   static const Curve easeOut = Curves.easeOutCubic;
   static const Curve easeInOut = Curves.easeInOutCubic;
   static const Curve spring = Curves.easeOutBack;
+
+  /// Sheets and the tab bar's sliding dot: a settled, physical spring.
+  static const Curve sheetIn = Curves.easeOutQuint;
+
+  /// Tab-switch cross-fade duration (kept quicker than [standard] so
+  /// navigation feels weightless).
+  static const Duration tabSwitch = Duration(milliseconds: 180);
 }

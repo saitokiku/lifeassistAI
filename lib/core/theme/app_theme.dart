@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/transitions.dart';
 import 'app_colors.dart';
 import 'app_tokens.dart';
 import 'app_typography.dart';
@@ -58,7 +59,14 @@ class AppTheme {
       colorScheme: colorScheme,
       fontFamily: AppTypography.ui,
       scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-      splashFactory: InkSparkle.splashFactory,
+      // The v2 instrument look: no ink anywhere. Press feedback is the
+      // Pressable primitive's scale-and-dim; ripples are dead app-wide.
+      splashFactory: NoSplash.splashFactory,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      // One motion signature for every pushed route on every platform.
+      pageTransitionsTheme: InstrumentPageTransitionsBuilder.theme,
     );
 
     final pillShape = RoundedRectangleBorder(
