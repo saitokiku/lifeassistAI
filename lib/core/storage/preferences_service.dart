@@ -59,6 +59,12 @@ class PreferencesService {
   Future<void> setAppLockEnabled(bool value) =>
       _prefs.setBool(SettingsKeys.prefAppLockEnabled, value);
 
+  bool get liveVaultEnabled =>
+      _prefs.getBool(SettingsKeys.prefLiveVaultEnabled) ?? true;
+
+  Future<void> setLiveVaultEnabled(bool value) =>
+      _prefs.setBool(SettingsKeys.prefLiveVaultEnabled, value);
+
   DateTime? get lastAutoBackupAt {
     final raw = _prefs.getString(SettingsKeys.prefLastAutoBackupAt);
     return raw == null ? null : DateTime.tryParse(raw);

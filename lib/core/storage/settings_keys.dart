@@ -52,4 +52,8 @@ class SettingsKeys {
   /// One-time "what's here" card on Today (Notes, Health auto-habits,
   /// widgets). Set once dismissed; never shown again.
   static const prefLaunchDiscoveryDismissed = 'launchDiscoveryDismissed';
+
+  /// Live Obsidian vault: notes mirror to Documents/LifeAssistVault as
+  /// they change, and outside edits fold back in on resume. Default on.
+  static const prefLiveVaultEnabled = 'liveVaultEnabled';
 }

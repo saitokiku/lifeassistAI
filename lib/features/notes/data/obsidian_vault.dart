@@ -7,15 +7,20 @@
 /// ```
 /// ---
 /// id: <uuid>
-/// zettel: 20260717090503
 /// title: "The exact title"
 /// created: 2026-07-17T09:05:03.000
 /// updated: 2026-07-17T09:41:12.000
-/// archived: true            # only when true
+/// tags: [focus, area/health]  # only when the body carries tags
+/// archived: true              # only when true
 /// ---
 ///
 /// body markdown…
 /// ```
+///
+/// `tags:` mirrors the body's `#tags` so Obsidian's Properties panel
+/// and tag pane see them natively. The nonstandard `zettel:` key is no
+/// longer written (the uuid `id:` is the round-trip identity) but is
+/// still READ, so vaults exported by older builds import losslessly.
 ///
 /// On import everything is optional: a plain Obsidian file with no
 /// frontmatter (or with someone else's keys) still lands — the title
@@ -23,6 +28,7 @@
 library;
 
 import '../../../core/storage/app_database.dart';
+import '../domain/note_parsing.dart';
 
 /// One parsed `.md` file, pre-database: whatever identity the
 /// frontmatter offered, plus title and body.
@@ -57,10 +63,11 @@ class ObsidianVault {
     final buffer = StringBuffer()
       ..writeln('---')
       ..writeln('id: ${note.id}')
-      ..writeln('zettel: ${note.zettelId}')
       ..writeln('title: ${_quote(note.title.trim())}')
       ..writeln('created: ${note.createdAt.toIso8601String()}')
       ..writeln('updated: ${note.updatedAt.toIso8601String()}');
+    final tags = NoteParsing.parse(note.content).tags;
+    if (tags.isNotEmpty) buffer.writeln('tags: [${tags.join(', ')}]');
     if (note.isArchived) buffer.writeln('archived: true');
     buffer
       ..writeln('---')

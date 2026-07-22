@@ -64,34 +64,42 @@ the screen shows can't drift.
 Notes also appear in everything-search and in JSON backups (notes
 only; the link/tag index is rebuilt on restore).
 
-## The vault (Obsidian round-trip)
+## The vault (live Obsidian mirror)
 
 `lib/features/notes/data/obsidian_vault.dart` defines the file format;
-`vault_service.dart` moves whole vaults. Settings → **Notes vault**:
+`vault_service.dart` moves whole vaults; `live_vault_service.dart`
+keeps the folder alive. Settings → **Notes vault**:
 
-- **Export notes to Files** — writes every note as
-  `Documents/LifeAssistVault/<Title>.md`. Because the app declares
-  `UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace`, the
-  folder is visible in the Files app (On My iPhone → Life Assist) —
-  point a Mac at it, or copy it into an Obsidian vault as-is.
+- **Live vault** (default on) — every note change (save, delete,
+  archive, retitle, import, restore) mirrors to
+  `Documents/LifeAssistVault/<Title>.md` within a second, atomically
+  (tmp + rename). Because the app declares `UIFileSharingEnabled` +
+  `LSSupportsOpeningDocumentsInPlace`, the folder is visible in the
+  Files app (On My iPhone → Life Assist) — point a Mac at it, or treat
+  it as an Obsidian vault directly. Edits made *there* fold back in on
+  every launch and app resume; only files that actually differ import,
+  so mirror-written files never echo. Deletion is asymmetric on
+  purpose: deleting a note removes its file, but a missing file never
+  deletes a note (a Files-app hiccup can't destroy thoughts — the note
+  rematerializes on the next pass).
 - **Share vault (.zip)** — the same files, zipped, through the share
   sheet.
 - **Import notes (.md)** — multi-file picker; plain Obsidian files
   work (frontmatter optional, title falls back to the filename).
-- **Re-import from Files** — re-reads the vault folder, picking up
-  edits made in the Files app or files dropped there.
 
-Each file carries YAML frontmatter (`id`, `zettel`, `title`,
-`created`, `updated`, `archived`) so **re-importing your own export
-updates in place** — dedupe matches by id, then zettel id, then
-case-insensitive title; only then is a new note created. Foreign
-frontmatter keys are tolerated and ignored. Exports clean up only
-stale files that carry our `id:` and whose note was deleted; anything
-hand-made in the folder is never touched.
+Each file carries YAML frontmatter — `id`, `title`, `created`,
+`updated`, a `tags:` array mirroring the body's `#tags` (so Obsidian's
+Properties panel and tag pane see them natively), and `archived` when
+true — so **a file coming back updates in place**: dedupe matches by
+id, then zettel id (still read for vaults written by older builds,
+no longer written), then case-insensitive title; only then is a new
+note created. Foreign frontmatter keys are tolerated and ignored. The
+mirror cleans up only stale files that carry our `id:` and whose note
+was deleted; anything hand-made in the folder is never touched.
 
 Live two-way sync with an *external* folder (e.g. an existing Obsidian
 vault elsewhere on device) needs iOS security-scoped bookmarks — a
-native follow-up, deliberately out of scope for 1.0.
+native follow-up, deliberately out of scope for now.
 
 ## Extensibility seam
 

@@ -20,6 +20,7 @@ import '../../core/providers.dart';
 import '../../core/utils/date_utils.dart';
 import '../../features/dashboard/application/dashboard_controller.dart';
 import '../../features/habits/application/habits_controller.dart';
+import '../../features/notes/application/notes_controller.dart';
 import '../../features/reminders/application/reminders_controller.dart';
 import '../../features/settings/data/auto_backup_service.dart';
 import '../../features/settings/data/backup_service.dart';
@@ -71,6 +72,7 @@ class _AppShellState extends ConsumerState<AppShell>
       // Web / tests without the bootstrap override: nothing to stop.
     }
     _wireCaptureSources();
+    _startLiveVault();
     // The router's /capture redirect may have parked a request before this
     // widget existed (cold-start deep link) — drain it on first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -88,7 +90,38 @@ class _AppShellState extends ConsumerState<AppShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Returning to the foreground covers "Siri captured while the app was
     // backgrounded" — including the Siri-overlay-over-the-app case.
-    if (state == AppLifecycleState.resumed) _drainCaptureQueue();
+    if (state == AppLifecycleState.resumed) {
+      _drainCaptureQueue();
+      _foldInVaultEdits();
+    }
+  }
+
+  /// The live Obsidian mirror: on by default, watches the notes table
+  /// for its lifetime. Failures stay silent — a vault is a mirror, not
+  /// a dependency.
+  void _startLiveVault() {
+    if (kIsWeb) return;
+    try {
+      if (!ref.read(preferencesProvider).liveVaultEnabled) return;
+      unawaited(ref.read(liveVaultProvider).start().catchError((_) {}));
+    } catch (_) {
+      // Providers unavailable (tests without overrides): nothing to start.
+    }
+  }
+
+  /// Outside edits (Files app, Obsidian over iCloud) fold in whenever
+  /// the user comes back.
+  void _foldInVaultEdits() {
+    if (kIsWeb) return;
+    try {
+      final vault = ref.read(liveVaultProvider);
+      if (vault.running) {
+        unawaited(
+            vault.syncFromFolder().then<void>((_) {}, onError: (_) {}));
+      }
+    } catch (_) {
+      // Nothing to fold in.
+    }
   }
 
   /// Bootstrap already drained (and re-armed reminders) before runApp;
@@ -168,6 +201,11 @@ class _AppShellState extends ConsumerState<AppShell>
     _linkSub?.cancel();
     _notifications?.onTap = null;
     unawaited(_mirror?.stop());
+    try {
+      unawaited(ref.read(liveVaultProvider).stop());
+    } catch (_) {
+      // Container already gone (tests): the watcher died with it.
+    }
     super.dispose();
   }
 

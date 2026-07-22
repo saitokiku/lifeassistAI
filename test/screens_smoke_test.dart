@@ -85,15 +85,20 @@ void main() {
   }
 
   Future<void> openHubRow(WidgetTester tester, String label) async {
-    // Hub rows can sit below the fold (and outside the lazy ListView's
-    // build window) on a phone-sized You screen — scroll with a plain
-    // finder, which tolerates zero matches while off-screen.
+    // Library tiles can sit below the fold (and outside the lazy
+    // ListView's build window) on a phone-sized You screen — scroll
+    // with a plain finder, which tolerates zero matches while
+    // off-screen. scrollUntilVisible stops the moment the tile EXISTS,
+    // which can leave it behind the floating console bar; ensureVisible
+    // pulls it fully clear before the tap.
     await tester.scrollUntilVisible(
       find.text(label),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text(label).first);
+    await tester.ensureVisible(find.text(label).first);
+    await settle(tester);
+    await tester.tap(find.text(label).first, warnIfMissed: false);
     await settle(tester);
   }
 
@@ -255,11 +260,11 @@ void main() {
 
     // Back on the hub; Today now reflects the goal set earlier.
     await tester.scrollUntilVisible(
-      find.text('SYSTEMS'),
+      find.text('LIBRARY'),
       150,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('SYSTEMS'), findsOneWidget);
+    expect(find.text('LIBRARY'), findsOneWidget);
     await tapTab(tester, 'Today');
     expect(find.text('UP NEXT'), findsOneWidget);
     expect(find.text('Set your main goal'), findsNothing);

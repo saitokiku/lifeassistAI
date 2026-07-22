@@ -63,4 +63,14 @@ class AppIcons {
   static const IconData send = LucideIcons.arrowUp;
   static const IconData sparkle = LucideIcons.sparkles;
   static const IconData paste = LucideIcons.clipboard;
+
+  // Notes editor
+  static const IconData bold = LucideIcons.bold;
+  static const IconData italic = LucideIcons.italic;
+  static const IconData heading = LucideIcons.heading2;
+  static const IconData bulletList = LucideIcons.list;
+  static const IconData checkbox = LucideIcons.checkSquare;
+  static const IconData wikiLink = LucideIcons.brackets;
+  static const IconData tag = LucideIcons.hash;
+  static const IconData dailyNote = LucideIcons.calendarDays;
 }

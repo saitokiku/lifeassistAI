@@ -1,7 +1,7 @@
 name: life_dashboard
 description: "Life Assist — one quiet place to run your life. The Dart package keeps its original name (life_dashboard) so imports stay stable."
 publish_to: "none"
-version: 1.1.0+5
+version: 1.2.0+6
 
 environment:
   sdk: ^3.5.0
@@ -44,6 +44,9 @@ dev_dependencies:
   drift_dev: ^2.20.0
   build_runner: ^2.4.13
   flutter_launcher_icons: ^0.14.1
+  # Live-vault tests point path_provider at a temp directory.
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
 
 # The launcher icon: the day-score ring on the console's dark surface.
 # Regenerate with `dart run flutter_launcher_icons` after editing the PNGs.

@@ -31,7 +31,12 @@ void main() {
       final parsed = ObsidianVault.parse(ObsidianVault.fileName(n), raw);
 
       expect(parsed.id, 'n1');
-      expect(parsed.zettelId, '2026n1');
+      // The nonstandard zettel key is no longer written (id is the
+      // round-trip identity); the body's tags surface as an Obsidian
+      // tags property instead.
+      expect(raw, isNot(contains('zettel:')));
+      expect(raw, contains('tags: [focus]'));
+      expect(parsed.zettelId, isNull);
       expect(parsed.title, 'Deep Work');
       expect(parsed.content, 'Read [[Atomic Habits]].\n\n#focus');
       expect(parsed.archived, isFalse);
