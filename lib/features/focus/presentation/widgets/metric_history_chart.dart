@@ -40,7 +40,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = AppDateUtils.dateOnly(widget.today ?? DateTime.now());
-    final start = today.subtract(Duration(days: _days - 1));
+    final start = AppDateUtils.subtractDays(today, _days - 1);
 
     final inRange = widget.entries
         .where((e) => !AppDateUtils.parseDateKey(e.date).isBefore(start))
@@ -99,7 +99,8 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
     final spots = [
       for (final e in inRange)
         FlSpot(
-          AppDateUtils.parseDateKey(e.date).difference(start).inDays.toDouble(),
+          AppDateUtils.daysBetween(start, AppDateUtils.parseDateKey(e.date))
+              .toDouble(),
           e.value,
         ),
     ];
@@ -181,7 +182,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
               // Four date ticks across the range, first and last included.
               interval: math.max(1, (_days - 1) / 3),
               getTitlesWidget: (value, meta) {
-                final date = start.add(Duration(days: value.round()));
+                final date = AppDateUtils.addDays(start, value.round());
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
@@ -200,7 +201,7 @@ class _MetricHistoryChartState extends State<MetricHistoryChart> {
               for (final s in spots)
                 LineTooltipItem(
                   '${Formatters.number(s.y)} ${widget.unit}\n'
-                  '${Formatters.shortDate(start.add(Duration(days: s.x.round())))}',
+                  '${Formatters.shortDate(AppDateUtils.addDays(start, s.x.round()))}',
                   TextStyle(
                     color: scheme.onInverseSurface,
                     fontSize: 12,

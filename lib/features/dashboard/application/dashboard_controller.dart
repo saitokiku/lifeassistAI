@@ -12,6 +12,34 @@ import 'dashboard_state.dart';
 
 /// Aggregates the module states into one dashboard state.
 /// Null while any underlying stream is still loading.
+/// True when a stream feeding Today has errored.
+///
+/// Today aggregates six sources and signalled loading with `null`, so an
+/// errored stream (`isLoading == false`, `valueOrNull == null`) was
+/// indistinguishable from "no data yet" — and the downstream states
+/// substitute empty lists, so the screen rendered a complete-looking day
+/// of zeros with a score. Every other screen has a `hasError` branch;
+/// the one that aggregates everything is the one that needs it most.
+final dashboardHasErrorProvider = Provider<bool>((ref) {
+  return ref.watch(settingsProvider).hasError ||
+      ref.watch(currentWeekReviewProvider).hasError ||
+      ref.watch(dailyActionsProvider).hasError ||
+      ref.watch(budgetCategoriesProvider).hasError ||
+      ref.watch(timeBudgetsProvider).hasError ||
+      ref.watch(habitsProvider).hasError;
+});
+
+/// Re-subscribes every source Today depends on — the retry action for
+/// [dashboardHasErrorProvider].
+void refreshDashboard(WidgetRef ref) {
+  ref.invalidate(settingsProvider);
+  ref.invalidate(currentWeekReviewProvider);
+  ref.invalidate(dailyActionsProvider);
+  ref.invalidate(budgetCategoriesProvider);
+  ref.invalidate(timeBudgetsProvider);
+  ref.invalidate(habitsProvider);
+}
+
 final dashboardStateProvider = Provider<DashboardState?>((ref) {
   final focus = ref.watch(focusStateProvider);
   final money = ref.watch(moneyStateProvider);

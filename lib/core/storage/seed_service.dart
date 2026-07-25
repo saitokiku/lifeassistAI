@@ -20,6 +20,11 @@ class SeedService {
   final AppDatabase _db;
   final _uuid = const Uuid();
 
+  /// Historical id derivation, kept only so old call sites in tests can
+  /// still name it. New rows allocate through
+  /// [AppDatabase.allocateNotificationId]; ids are stored, never
+  /// re-derived. See NotificationIds for why.
+  @Deprecated('Use AppDatabase.allocateNotificationId()')
   static int notificationIdFor(String uuid) => uuid.hashCode & 0x7fffffff;
 
   Future<void> seedIfNeeded({DateTime? now}) async {
@@ -102,6 +107,7 @@ class SeedService {
             type: type,
             unit: unit,
             weekdays: 127,
+            notificationId: await _db.allocateNotificationId(),
             sortOrder: order++,
             isArchived: false,
             createdAt: at,
@@ -123,7 +129,7 @@ class SeedService {
             minute: minute,
             weekdays: 127,
             enabled: true,
-            notificationId: notificationIdFor(id),
+            notificationId: await _db.allocateNotificationId(),
             createdAt: at,
             updatedAt: at,
           ));

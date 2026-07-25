@@ -14,6 +14,18 @@ import ActivityKit
 #endif
 
 enum ActivityBridge {
+    /// Accepts both ISO-8601 shapes Dart and Swift produce: with
+    /// fractional seconds (Dart's toIso8601String) and without
+    /// (Swift's default ISO8601DateFormatter). Tried in that order
+    /// because a fractional-seconds parser rejects a plain timestamp.
+    static func parseIso(_ raw: String) -> Date? {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime,
+                                      .withFractionalSeconds]
+        if let date = withFraction.date(from: raw) { return date }
+        return ISO8601DateFormatter().date(from: raw)
+    }
+
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
             name: "lifeassist/activity",
@@ -34,8 +46,14 @@ enum ActivityBridge {
         case "startFocusTimer":
             let args = call.arguments as? [String: Any]
             let label = args?["label"] as? String ?? "Focus"
+            // Dart's toIso8601String() ALWAYS emits fractional seconds
+            // ("2026-07-25T12:00:00.000Z"), which a default-configured
+            // ISO8601DateFormatter (.withInternetDateTime only) refuses.
+            // Parsing returned nil, the `?? Date()` fired, and every
+            // Live Activity started counting from "now" — so a timer
+            // restored after a relaunch showed the wrong elapsed time.
             let startedAt = (args?["startedAtIso"] as? String)
-                .flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+                .flatMap(Self.parseIso) ?? Date()
             guard ActivityAuthorizationInfo().areActivitiesEnabled else {
                 result(false)
                 return

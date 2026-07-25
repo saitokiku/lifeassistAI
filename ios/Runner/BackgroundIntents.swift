@@ -156,8 +156,16 @@ struct LogExpenseBackgroundIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        // Validate BEFORE converting: Int(_:) traps on NaN, infinity, and
+        // out-of-Int64 values, and `amount` is an unvalidated Double a
+        // Shortcut can wire a computed expression into (1/0, 0.0/0.0).
+        // A trap here crashes the intent process. Comparisons alone are
+        // not enough — NaN fails every comparison, hence isFinite first.
+        guard amount.isFinite, amount > 0, amount < 1_000_000 else {
+            throw CaptureFailure.badInput("That amount didn't make sense.")
+        }
         let cents = Int((amount * 100).rounded())
-        guard cents > 0, cents < 100_000_000 else {
+        guard cents > 0 else {
             throw CaptureFailure.badInput("That amount didn't make sense.")
         }
         var fields: [String: Any] = ["amountCents": cents]
@@ -210,7 +218,9 @@ struct LogTimeBackgroundIntent: AppIntent {
     var note: String?
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard hours > 0, hours <= 24 else {
+        // isFinite first: NaN fails every comparison, so `hours > 0`
+        // alone would let a NaN through to the JSON encoder.
+        guard hours.isFinite, hours > 0, hours <= 24 else {
             throw CaptureFailure.badInput("Hours need to be between 0 and 24.")
         }
         var fields: [String: Any] = [

@@ -246,6 +246,12 @@ class NotesRepository {
   // -------------------------------------------------------------- helpers
 
   /// Replaces one note's link/tag rows from its current text.
+  ///
+  /// Resolves every `[[link]]` in ONE query instead of one per link.
+  /// This used to call `getByTitle` in a loop — and because that
+  /// compares `title.lower()`, no index can serve it, so a note with 20
+  /// links cost 20 full table scans plus 41 statements on the UI
+  /// isolate, on every save.
   Future<void> _reindexNote(Note note) async {
     await (_db.delete(_db.noteLinks)
           ..where((t) => t.sourceId.equals(note.id)))
@@ -253,21 +259,38 @@ class NotesRepository {
     await (_db.delete(_db.noteTags)..where((t) => t.noteId.equals(note.id)))
         .go();
     final parsed = NoteParsing.parse(note.content);
-    for (final target in parsed.links) {
-      final resolved = await getByTitle(target);
-      await _db.into(_db.noteLinks).insert(NoteLink(
+    final resolved = await _resolveTitles(parsed.links);
+    await _db.batch((batch) {
+      batch.insertAll(_db.noteLinks, [
+        for (final target in parsed.links)
+          NoteLink(
             id: _uuid.v4(),
             sourceId: note.id,
             targetTitle: target,
-            targetId: resolved?.id,
-          ));
-    }
-    await _db.batch((batch) {
+            targetId: resolved[target.trim().toLowerCase()],
+          ),
+      ]);
       batch.insertAll(_db.noteTags, [
         for (final tag in parsed.tags)
           NoteTag(id: _uuid.v4(), noteId: note.id, tag: tag),
       ]);
     });
+  }
+
+  /// Lowercased title → note id, for the titles actually referenced.
+  /// One scan for the whole set rather than one per link.
+  Future<Map<String, String>> _resolveTitles(Iterable<String> titles) async {
+    final wanted = {
+      for (final t in titles)
+        if (t.trim().isNotEmpty) t.trim().toLowerCase(),
+    };
+    if (wanted.isEmpty) return const {};
+    final rows = await (_db.select(_db.notes)
+          ..where((t) => t.title.lower().isIn(wanted)))
+        .get();
+    return {
+      for (final n in rows) n.title.trim().toLowerCase(): n.id,
+    };
   }
 
   /// Points every unresolved link written as [note]'s title at it.

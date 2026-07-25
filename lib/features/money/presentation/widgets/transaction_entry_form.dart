@@ -27,6 +27,7 @@ class TransactionEntryForm extends ConsumerStatefulWidget {
     this.initialAmount,
     this.initialDescription,
     this.initialCategoryId,
+    this.initialDate,
   });
 
   final List<BudgetCategory> categories;
@@ -35,6 +36,9 @@ class TransactionEntryForm extends ConsumerStatefulWidget {
   final String? initialDescription;
   final String? initialCategoryId;
 
+  /// The day a capture named ("coffee 4.50 yesterday"). Null = today.
+  final DateTime? initialDate;
+
   static Future<void> show(
     BuildContext context, {
     required List<BudgetCategory> categories,
@@ -42,6 +46,7 @@ class TransactionEntryForm extends ConsumerStatefulWidget {
     double? initialAmount,
     String? initialDescription,
     String? initialCategoryId,
+    DateTime? initialDate,
   }) =>
       showAppSheet<void>(
         context,
@@ -51,6 +56,7 @@ class TransactionEntryForm extends ConsumerStatefulWidget {
           initialAmount: initialAmount,
           initialDescription: initialDescription,
           initialCategoryId: initialCategoryId,
+          initialDate: initialDate,
         ),
       );
 
@@ -75,9 +81,9 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
           '');
   late String? _categoryId = _initialCategoryId();
   late bool _isIntentional = widget.transaction?.isIntentional ?? false;
-  late DateTime _date = widget.transaction == null
-      ? DateTime.now()
-      : AppDateUtils.parseDateKey(widget.transaction!.date);
+  late DateTime _date = widget.transaction != null
+      ? AppDateUtils.parseDateKey(widget.transaction!.date)
+      : widget.initialDate ?? DateTime.now();
 
   /// Editing keeps the transaction's category; a capture prefill wins next;
   /// otherwise creating starts from the most recent transaction's category
@@ -174,7 +180,7 @@ class _TransactionEntryFormState extends ConsumerState<TransactionEntryForm> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
+    final yesterday = AppDateUtils.subtractDays(today, 1);
     final isToday = AppDateUtils.isSameDay(_date, today);
     final isYesterday = AppDateUtils.isSameDay(_date, yesterday);
     final isCustom = !isToday && !isYesterday;

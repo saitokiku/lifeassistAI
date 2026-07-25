@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/errors/error_log.dart';
 import '../../../core/errors/result.dart';
 import '../../../core/health/health_habit_sync.dart';
 import '../../../core/health/health_service.dart';
@@ -23,6 +24,8 @@ import '../../../core/storage/seed_service.dart';
 import '../../../core/storage/settings_keys.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/utils/currency.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/validation.dart';
 import '../../../shared/haptics.dart';
@@ -153,6 +156,7 @@ class SettingsScreen extends ConsumerWidget {
           _AreasCard(settings: settings),
           const SectionHeader(title: 'Appearance'),
           const _ThemeCard(),
+          const _SettingsGroup(children: [_CurrencyRow()]),
           const SectionHeader(title: 'Notifications'),
           _SettingsGroup(children: [
             const _NotificationsRow(),
@@ -172,6 +176,7 @@ class SettingsScreen extends ConsumerWidget {
             _ImportRow(),
             _HealthRow(),
             _FailedCapturesRow(),
+            _DiagnosticsRow(),
           ]),
           const SectionHeader(title: 'Notes vault'),
           const _SettingsGroup(children: [
@@ -538,7 +543,7 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
     } else {
       // dayProvider, not DateTime.now(): the label rolls over at
       // midnight while the screen sits open.
-      final days = ref.watch(dayProvider).difference(lastBackupAt).inDays;
+      final days = AppDateUtils.daysBetween(lastBackupAt, ref.watch(dayProvider));
       subtitle = switch (days) {
         0 => 'Last backup: today.',
         1 => 'Last backup: yesterday.',
@@ -869,6 +874,150 @@ class _FailedCapturesRowState extends ConsumerState<_FailedCapturesRow> {
           : '$count Siri captures couldn\'t be read',
       subtitle: 'Kept for review. Tap to discard.',
       onTap: _clear,
+    );
+  }
+}
+
+/// Which symbol money is shown with.
+///
+/// Display only — amounts are stored as integer cents in one currency
+/// and never converted, so this relabels figures rather than
+/// recalculating them. The row says so, because a money app that
+/// silently "converted" would be worse than one that can't.
+class _CurrencyRow extends ConsumerStatefulWidget {
+  const _CurrencyRow();
+
+  @override
+  ConsumerState<_CurrencyRow> createState() => _CurrencyRowState();
+}
+
+class _CurrencyRowState extends ConsumerState<_CurrencyRow> {
+  Future<void> _pick() async {
+    final prefs = ref.read(preferencesProvider);
+    await showAppSheet<void>(
+      context,
+      builder: (sheetContext) => AppSheet(
+        title: 'Currency symbol',
+        subtitle: 'Changes how amounts are shown. Your numbers stay '
+            'exactly as they are — nothing is converted.',
+        children: [
+          Wrap(
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            children: [
+              for (final symbol in CurrencyOptions.symbols)
+                ChoiceChip(
+                  label: Text(symbol),
+                  selected: Formatters.currencySymbol == symbol,
+                  onSelected: (_) async {
+                    await prefs.setCurrencySymbol(symbol);
+                    Formatters.configureCurrency(
+                      symbol: symbol,
+                      locale: Formatters.numberLocale,
+                    );
+                    if (sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsRow(
+      icon: Icons.attach_money,
+      title: 'Currency',
+      value: Formatters.currencySymbol,
+      onTap: _pick,
+    );
+  }
+}
+
+/// Recent failures, on device only.
+///
+/// The app deliberately has no analytics and no crash reporter, which
+/// also meant a user could say no more than "it didn't work" — and
+/// nobody could find out why. This shows the in-memory error ring and
+/// offers to copy it, so a bug report can carry evidence without any
+/// data leaving the device.
+class _DiagnosticsRow extends ConsumerStatefulWidget {
+  const _DiagnosticsRow();
+
+  @override
+  ConsumerState<_DiagnosticsRow> createState() => _DiagnosticsRowState();
+}
+
+class _DiagnosticsRowState extends ConsumerState<_DiagnosticsRow> {
+  Future<void> _open() async {
+    final log = ref.read(errorLogProvider);
+    final text = log.asText();
+    await showAppSheet<void>(
+      context,
+      builder: (sheetContext) => AppSheet(
+        title: 'Diagnostics',
+        children: [
+          Text(
+            log.isEmpty
+                ? 'Nothing has gone wrong this session.'
+                : 'Recent problems, newest first. This stays on your '
+                    'device — copy it if you want to report something.',
+            style: Theme.of(sheetContext).textTheme.bodySmall,
+          ),
+          if (!log.isEmpty) ...[
+            const SizedBox(height: AppSpace.lg),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.input),
+              ),
+              child: SelectableText(
+                text,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: AppSpace.lg),
+            AppSheetButton(
+              label: 'Copy',
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: text));
+                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+              },
+            ),
+            const SizedBox(height: AppSpace.sm),
+            TextButton(
+              onPressed: () {
+                log.clear();
+                Navigator.of(sheetContext).pop();
+              },
+              child: const Text('Clear'),
+            ),
+          ],
+        ],
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final count = ref.read(errorLogProvider).entries.length;
+    return _SettingsRow(
+      icon: Icons.bug_report_outlined,
+      title: 'Diagnostics',
+      subtitle: count == 0
+          ? 'Nothing has gone wrong this session.'
+          : count == 1
+              ? '1 problem recorded this session.'
+              : '$count problems recorded this session.',
+      onTap: _open,
     );
   }
 }

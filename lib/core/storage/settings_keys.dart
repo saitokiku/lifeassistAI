@@ -56,4 +56,23 @@ class SettingsKeys {
   /// Live Obsidian vault: notes mirror to Documents/LifeAssistVault as
   /// they change, and outside edits fold back in on resume. Default on.
   static const prefLiveVaultEnabled = 'liveVaultEnabled';
+
+  /// Notification-id scheme generation. Schema v7 renumbered every
+  /// reminder and habit onto block-aligned ids (NotificationIds), which
+  /// orphans anything armed under the old hashed ids — bootstrap does
+  /// one `cancelAll()` and a full re-arm when this doesn't match
+  /// [AppConstants.notificationIdScheme].
+  static const prefNotificationIdScheme = 'notificationIdScheme';
+
+  /// Currency symbol shown with every amount (`$`, `€`, `£`, `¥`…).
+  /// Absent = derive from the device locale on first launch. Purely a
+  /// display setting: amounts are stored as integer cents and are never
+  /// converted between currencies.
+  static const prefCurrencySymbol = 'currencySymbol';
+
+  /// Date key (`yyyy-MM-dd`) of the last successful reminder re-arm.
+  /// Schedules are reconciled once per day at launch so a timezone
+  /// change, a DST shift, or an OS-level revoke can't leave the app
+  /// believing in nudges the system has dropped.
+  static const prefRemindersArmedOn = 'remindersArmedOn';
 }

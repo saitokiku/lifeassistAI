@@ -2,15 +2,37 @@
 class MoneyMath {
   MoneyMath._();
 
+  /// Days that must elapse before a straight-line projection means
+  /// anything. Rent and other big monthly charges land on day 1, and
+  /// `spend / 1 * 31` turns a single $1,500 charge into $46,500 of
+  /// "projected" spending — which used to fire a critical money alert
+  /// and hijack the Up Next card for the first days of every month.
+  static const int minDaysForProjection = 4;
+
+  /// Whether a straight-line projection is meaningful yet.
+  static bool projectionIsMeaningful(int dayOfMonth) =>
+      dayOfMonth >= minDaysForProjection;
+
   /// Straight-line projection of monthly spend from month-to-date spend.
-  /// Guards day 0 / invalid inputs by returning the spend so far.
+  ///
+  /// Early in the month the extrapolation is dominated by whichever
+  /// large charges happen to have landed, so until
+  /// [minDaysForProjection] the projection is blended toward a
+  /// full-month baseline: weight the extrapolation by how much of the
+  /// month has actually elapsed. Callers that need to know whether the
+  /// number is trustworthy should ask [projectionIsMeaningful].
   static double projectedSpend({
     required double spendSoFar,
     required int dayOfMonth,
     required int daysInMonth,
   }) {
     if (dayOfMonth <= 0 || daysInMonth <= 0) return spendSoFar;
-    return spendSoFar / dayOfMonth * daysInMonth;
+    final linear = spendSoFar / dayOfMonth * daysInMonth;
+    if (dayOfMonth >= minDaysForProjection) return linear;
+    // Day 1 of 31: weight 1/31 on the wild extrapolation, the rest on
+    // what has actually been spent. By day 4 the blend is gone.
+    final elapsed = dayOfMonth / daysInMonth;
+    return spendSoFar + (linear - spendSoFar) * elapsed;
   }
 
   static double projectedSurplus({

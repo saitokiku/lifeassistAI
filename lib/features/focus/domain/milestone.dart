@@ -29,6 +29,6 @@ extension MilestoneX on Goal {
   int? daysLeft(DateTime today) {
     final target = targetDateTime;
     if (target == null) return null;
-    return target.difference(AppDateUtils.dateOnly(today)).inDays;
+    return AppDateUtils.daysBetween(today, target);
   }
 }

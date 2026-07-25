@@ -81,7 +81,7 @@ final netWorthHistoryProvider = Provider<List<NetWorthPoint>?>((ref) {
       date: cursor,
       total: _totalAt(cursor, byAccount, included),
     ));
-    cursor = cursor.add(const Duration(days: 7));
+    cursor = AppDateUtils.addDays(cursor, 7);
   }
   if (points.isEmpty || points.last.date != end) {
     points.add(NetWorthPoint(

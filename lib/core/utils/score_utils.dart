@@ -14,6 +14,8 @@ class FocusScoreInput {
     required this.targetSurplusLow,
     required this.exerciseOrMeditationToday,
     required this.recoveryHoursThisWeek,
+    this.weekday = DateTime.sunday,
+    this.hasIncome = true,
     this.includeMoney = true,
     this.includeHealth = true,
     this.includeRecovery = true,
@@ -26,6 +28,17 @@ class FocusScoreInput {
   final double targetSurplusLow;
   final bool exerciseOrMeditationToday;
   final double recoveryHoursThisWeek;
+
+  /// Today's weekday (Mon=1..Sun=7). The two weekly components are
+  /// measured against the fraction of the week that has actually
+  /// happened — see [ScoreUtils.focusScore].
+  final int weekday;
+
+  /// Whether the user has entered an income. Without one there is no
+  /// money signal to score, so the money component is dropped rather
+  /// than awarded for free.
+  final bool hasIncome;
+
   final bool includeMoney;
   final bool includeHealth;
   final bool includeRecovery;
@@ -77,16 +90,39 @@ class ScoreUtils {
   /// Fallback weekly target when none is configured.
   static const double _fallbackWeeklyTarget = 10;
 
+  /// Recovery hours that count as fully protected across a whole week.
+  static const double _recoveryWeeklyTarget = 5;
+
+  /// How much of the week has happened, as a fraction (Monday = 1/7).
+  /// The score is shown as "today's score", so its weekly components
+  /// must be judged against the week SO FAR — otherwise identical
+  /// behaviour reads 50/100 on Monday morning and 100/100 on Sunday
+  /// night purely because more week has elapsed.
+  static double weekFraction(int weekday) =>
+      (weekday.clamp(DateTime.monday, DateTime.sunday)) / 7;
+
   static FocusScoreBreakdown focusScore(FocusScoreInput input) {
-    final target = input.goalWeeklyTarget > 0
+    final elapsed = weekFraction(input.weekday);
+
+    final weeklyTarget = input.goalWeeklyTarget > 0
         ? input.goalWeeklyTarget
         : _fallbackWeeklyTarget;
-    final goalScore = math.min(input.goalHoursThisWeek / target, 1.0) * 35;
+    // Pace, not total: hours-to-date against the share of the target
+    // due by today.
+    final goalDue = weeklyTarget * elapsed;
+    final goalScore =
+        (goalDue <= 0 ? 1.0 : math.min(input.goalHoursThisWeek / goalDue, 1.0)) *
+            35;
 
     final actionScore = input.todayActionLogged ? 20.0 : 0.0;
 
     final double? moneyScore;
-    if (!input.includeMoney) {
+    if (!input.includeMoney || !input.hasIncome) {
+      // No income entered = no money signal. Awarding the full 15
+      // anyway (the old `targetSurplusLow <= 0` branch) handed every
+      // new user free points the rest of the app didn't believe in —
+      // `moneyCritical` gates on hasIncome, so score and alert
+      // disagreed about whether money data existed at all.
       moneyScore = null;
     } else if (input.targetSurplusLow <= 0) {
       moneyScore = input.projectedSurplus >= 0 ? 15.0 : 0.0;
@@ -103,15 +139,15 @@ class ScoreUtils {
             ? 15.0
             : 0.0;
 
+    // Recovery is also weekly, so it is also paced.
     final double? recoveryScore;
     if (!input.includeRecovery) {
       recoveryScore = null;
-    } else if (input.recoveryHoursThisWeek >= 5) {
-      recoveryScore = 15.0;
-    } else if (input.recoveryHoursThisWeek > 0) {
-      recoveryScore = 7.0;
     } else {
-      recoveryScore = 0.0;
+      final due = _recoveryWeeklyTarget * elapsed;
+      recoveryScore = due <= 0
+          ? 15.0
+          : math.min(input.recoveryHoursThisWeek / due, 1.0) * 15;
     }
 
     return FocusScoreBreakdown(

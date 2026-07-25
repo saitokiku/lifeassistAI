@@ -32,7 +32,7 @@ class HabitStats {
     for (var i = 0; i < 3660; i++) {
       final scheduled = WeekdayMask.isDueOn(weekdays, day);
       if (!scheduled) {
-        day = day.subtract(const Duration(days: 1));
+        day = AppDateUtils.subtractDays(day, 1);
         isToday = false;
         continue;
       }
@@ -50,7 +50,7 @@ class HabitStats {
       } else {
         break;
       }
-      day = day.subtract(const Duration(days: 1));
+      day = AppDateUtils.subtractDays(day, 1);
       isToday = false;
     }
     return streak;

@@ -57,6 +57,7 @@ void main() {
       type: type,
       unit: null,
       weekdays: 127,
+      notificationId: 8,
       reminderHour: null,
       reminderMinute: null,
       healthMetric: metric,

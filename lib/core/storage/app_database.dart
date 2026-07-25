@@ -4,6 +4,8 @@
 
 import 'package:drift/drift.dart';
 
+import '../notifications/notification_ids.dart';
+
 part 'app_database.g.dart';
 
 // ---------------------------------------------------------------------------
@@ -27,6 +29,12 @@ class GrowthMetrics extends Table {
 
 @TableIndex(name: 'idx_metric_entries_metric', columns: {#metricId})
 @TableIndex(name: 'idx_metric_entries_date', columns: {#date})
+// One entry per metric per day. Enforced here, not only in Dart:
+// getSingleOrNull() throws StateError on a second row, so a duplicate
+// (from a race or a hand-edited backup) made the metric permanently
+// unwritable. The constraint turns that into a loud insert failure.
+@TableIndex(
+    name: 'idx_metric_entries_unique', columns: {#metricId, #date}, unique: true)
 class GrowthMetricEntries extends Table {
   TextColumn get id => text()();
   TextColumn get metricId => text()();
@@ -154,6 +162,13 @@ class Habits extends Table {
   IntColumn get reminderHour => integer().nullable()();
   IntColumn get reminderMinute => integer().nullable()();
 
+  /// Stable OS notification id, stored rather than derived. It used to
+  /// be `'habit:$id'.hashCode`, which Dart does not guarantee across
+  /// platforms or SDK versions — a shifted hash would orphan every
+  /// pending notification beyond cancellation. Reminders already store
+  /// theirs; habits now do too. 0 = unassigned (backfilled on write).
+  IntColumn get notificationId => integer().withDefault(const Constant(0))();
+
   /// Apple Health auto-check mapping: which daily metric feeds this habit
   /// (steps | sleepHours | mindfulMinutes | workoutMinutes; null = manual
   /// only) and the threshold that counts a boolean habit as done.
@@ -169,6 +184,11 @@ class Habits extends Table {
 
 @TableIndex(name: 'idx_habit_logs_habit', columns: {#habitId})
 @TableIndex(name: 'idx_habit_logs_date', columns: {#date})
+// One log per habit per day — see the note on GrowthMetricEntries. The
+// health sync and the Siri drain both write here, unawaited and
+// unsynchronized, so this was reachable in normal use.
+@TableIndex(
+    name: 'idx_habit_logs_unique', columns: {#habitId, #date}, unique: true)
 class HabitLogs extends Table {
   TextColumn get id => text()();
   TextColumn get habitId => text()();
@@ -325,6 +345,10 @@ class Accounts extends Table {
 
 /// Dated balance history per account (one snapshot per account per day).
 @TableIndex(name: 'idx_balance_snapshots_account', columns: {#accountId})
+@TableIndex(
+    name: 'idx_balance_snapshots_unique',
+    columns: {#accountId, #date},
+    unique: true)
 class BalanceSnapshots extends Table {
   TextColumn get id => text()();
   TextColumn get accountId => text()();
@@ -477,7 +501,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -567,6 +591,21 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(noteLinks);
             await m.createTable(noteTags);
           }
+          if (from < 7) {
+            // v7: real UNIQUE constraints behind the three "one row per
+            // day" invariants that were previously enforced only by
+            // read-then-write in Dart. Any existing duplicate must go
+            // first or the index cannot be created — keep the newest
+            // row per key (last write wins, which is what the upsert
+            // paths intended) and drop the rest.
+            await _dedupeForUniqueIndexes();
+            // Per-habit reminder ids stop being a String.hashCode
+            // derivation (unstable across platforms/SDKs, so pending
+            // notifications could become uncancellable) and become
+            // stored data.
+            await m.addColumn(habits, habits.notificationId);
+            await _assignNotificationIdBlocks();
+          }
           // Catch-up index pass, once, AFTER every versioned block: the
           // set spans the CURRENT schema, so running it mid-history
           // would reference tables a later block hasn't created yet
@@ -587,6 +626,89 @@ class AppDatabase extends _$AppDatabase {
           }
         },
       );
+
+  /// Collapses pre-v7 duplicates so the new UNIQUE indexes can be built.
+  /// `rowid` is monotonic per table, so MAX(rowid) is the most recently
+  /// inserted row for each key.
+  Future<void> _dedupeForUniqueIndexes() async {
+    const statements = {
+      'habit_logs': 'DELETE FROM habit_logs WHERE rowid NOT IN '
+          '(SELECT MAX(rowid) FROM habit_logs GROUP BY habit_id, date)',
+      'balance_snapshots':
+          'DELETE FROM balance_snapshots WHERE rowid NOT IN '
+              '(SELECT MAX(rowid) FROM balance_snapshots '
+              'GROUP BY account_id, date)',
+      'growth_metric_entries':
+          'DELETE FROM growth_metric_entries WHERE rowid NOT IN '
+              '(SELECT MAX(rowid) FROM growth_metric_entries '
+              'GROUP BY metric_id, date)',
+    };
+    for (final entry in statements.entries) {
+      if (!await _tableExists(entry.key)) continue;
+      await customStatement(entry.value);
+    }
+  }
+
+  /// Whether [name] exists in this database — migrations run against
+  /// real user files, which may predate a table or (in fixtures) omit
+  /// one entirely. Never let a missing table abort an upgrade.
+  Future<bool> _tableExists(String name) async {
+    final rows = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: [Variable<String>(name)],
+    ).get();
+    return rows.isNotEmpty;
+  }
+
+  /// Moves every reminder and habit onto the block-aligned notification
+  /// id layout (see [NotificationIds]). Old ids were hashes sharing one
+  /// flat range, where a habit's weekday variant could collide with a
+  /// reminder's. Ids armed under the old scheme are orphaned by this;
+  /// bootstrap clears them with a one-time `cancelAll()` (guarded by
+  /// [SettingsKeys.prefNotificationIdScheme]) and re-arms from the rows.
+  Future<void> _assignNotificationIdBlocks() async {
+    // Tolerate a missing table rather than aborting the whole upgrade.
+    // A migration that throws leaves the database unopenable, which is
+    // a far worse outcome than un-renumbered notification ids.
+    final reminders = await _tableExists('reminders')
+        ? await customSelect('SELECT id FROM reminders').get()
+        : const <QueryRow>[];
+    final habits = await _tableExists('habits')
+        ? await customSelect('SELECT id FROM habits').get()
+        : const <QueryRow>[];
+    if (reminders.isEmpty && habits.isEmpty) return;
+    final bases = NotificationIds.allocateMany(
+      const [],
+      reminders.length + habits.length,
+    );
+    var next = 0;
+    for (final row in reminders) {
+      await customStatement(
+        'UPDATE reminders SET notification_id = ? WHERE id = ?',
+        [bases[next++], row.read<String>('id')],
+      );
+    }
+    for (final row in habits) {
+      await customStatement(
+        'UPDATE habits SET notification_id = ? WHERE id = ?',
+        [bases[next++], row.read<String>('id')],
+      );
+    }
+  }
+
+  /// Notification bases already handed out — the allocator's exclusion
+  /// set. Reminders and habits share one space by design.
+  Future<Set<int>> takenNotificationIds() async {
+    final rows = await customSelect(
+      'SELECT notification_id AS n FROM reminders '
+      'UNION SELECT notification_id AS n FROM habits',
+    ).get();
+    return {for (final r in rows) r.read<int>('n')};
+  }
+
+  /// One unused notification base, ready to store on a new row.
+  Future<int> allocateNotificationId() async =>
+      NotificationIds.allocate(await takenNotificationIds());
 
   /// Wipes every table. Used by "Reset all data" and JSON import.
   Future<void> clearAllTables() async {

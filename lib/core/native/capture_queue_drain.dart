@@ -52,6 +52,18 @@ class CaptureQueueDrain {
   static const int recordVersion = 1;
   static const int failedCap = 20;
 
+  /// A capture record is a handful of small fields; anything larger is
+  /// corrupt or hostile. Read the size before the bytes — an unbounded
+  /// readAsString on a huge file OOMs before any catch can run, and
+  /// because the drain used to sit in bootstrap's fatal path that
+  /// bricked the app permanently.
+  static const int maxRecordBytes = 64 * 1024;
+
+  /// Ceiling on how many pending files one pass will read. Siri writes
+  /// one per capture; thousands means something is wrong, and reading
+  /// them all would stall launch. Excess is left for the next pass.
+  static const int maxPendingPerDrain = 200;
+
   /// The most recent pass in this process — lets the shell show one
   /// "Added from Siri" toast for a drain that ran during bootstrap.
   static DrainResult? lastResult;
@@ -120,12 +132,25 @@ class CaptureQueueDrain {
     var remindersChanged = false;
     final cancelIds = <int>[];
 
-    for (final file in files) {
+    // Bounded pass: the rest drain next time rather than stalling launch.
+    final batch = files.length > maxPendingPerDrain
+        ? files.sublist(0, maxPendingPerDrain)
+        : files;
+
+    for (final file in batch) {
       try {
+        // Size gate before reading — an oversized file must never reach
+        // readAsString.
+        final length = await file.length();
+        if (length > maxRecordBytes) {
+          throw const FormatException('record too large');
+        }
         final record =
             jsonDecode(await file.readAsString()) as Map<String, dynamic>;
         final v = record['v'];
-        if (v is! int || v > recordVersion) {
+        // Reject unknown versions in BOTH directions: a v0 or negative
+        // record is as unreadable as a future one.
+        if (v is! int || v < 1 || v > recordVersion) {
           throw const FormatException('unknown record version');
         }
         final outcome = await _apply(record);
@@ -245,8 +270,8 @@ class CaptureQueueDrain {
                 whyTempting: null,
                 potentialValue: null,
                 dateCaptured: AppDateUtils.dateKey(createdAt),
-                reviewDate: AppDateUtils.dateKey(createdAt
-                    .add(const Duration(days: AppConstants.ideaCoolingDays))),
+                reviewDate: AppDateUtils.dateKey(AppDateUtils.addDays(
+                    createdAt, AppConstants.ideaCoolingDays)),
                 decision: 'undecided',
                 helpsMainGoal: false,
                 createdAt: createdAt,

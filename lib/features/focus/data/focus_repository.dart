@@ -214,25 +214,27 @@ class FocusRepository {
   }) async {
     final key = AppDateUtils.dateKey(date);
     await _db.transaction(() async {
-      final existing = await (_db.select(_db.growthMetricEntries)
-            ..where((t) => t.metricId.equals(metricId) & t.date.equals(key)))
-          .getSingleOrNull();
-      if (existing != null) {
-        await (_db.update(_db.growthMetricEntries)
-              ..where((t) => t.id.equals(existing.id)))
-            .write(GrowthMetricEntriesCompanion(
-          value: Value(value),
-          note: Value(note),
-        ));
-      } else {
-        await _db.into(_db.growthMetricEntries).insert(GrowthMetricEntry(
+      // Atomic against the (metricId, date) unique index — see the note
+      // in HabitsRepository.upsertLog.
+      await _db.into(_db.growthMetricEntries).insert(
+            GrowthMetricEntry(
               id: _uuid.v4(),
               metricId: metricId,
               date: key,
               value: value,
               note: note,
-            ));
-      }
+            ),
+            onConflict: DoUpdate(
+              (_) => GrowthMetricEntriesCompanion(
+                value: Value(value),
+                note: Value(note),
+              ),
+              target: [
+                _db.growthMetricEntries.metricId,
+                _db.growthMetricEntries.date,
+              ],
+            ),
+          );
       await _refreshCurrentValue(metricId);
     });
   }
@@ -273,7 +275,8 @@ class FocusRepository {
     final query = _db.select(_db.dailyExperiments)
       ..orderBy([(t) => OrderingTerm.desc(t.date)]);
     if (sinceDays != null) {
-      final from = (today ?? DateTime.now()).subtract(Duration(days: sinceDays));
+      final from =
+          AppDateUtils.subtractDays(today ?? DateTime.now(), sinceDays);
       query.where(
           (t) => t.date.isBiggerOrEqualValue(AppDateUtils.dateKey(from)));
     }

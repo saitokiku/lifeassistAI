@@ -38,6 +38,16 @@ class LiveActivityService {
       await _channel.invokeMethod('stopFocusTimer');
     } catch (_) {}
   }
+
+  /// Ends any Live Activity left over from a previous process when no
+  /// timer is actually running. iOS keeps activities alive for hours
+  /// after the app is killed, so without this a force-quit (or "Reset
+  /// all data") left a lock-screen timer counting with no way to
+  /// dismiss it from the app.
+  Future<void> reconcile({required bool timerRunning}) async {
+    if (!_supported || timerRunning) return;
+    await stopFocusTimer();
+  }
 }
 
 final liveActivityServiceProvider = Provider<LiveActivityService>(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:csv/csv.dart';
 
 import '../../../core/utils/money.dart';
@@ -12,6 +14,32 @@ import '../../../core/utils/money.dart';
 /// separators.
 class CsvImport {
   CsvImport._();
+
+  /// Decodes statement bytes to text, tolerating the encodings banks
+  /// actually emit.
+  ///
+  /// UTF-8 with `allowMalformed` silently turned every accented
+  /// character in a Windows-1252 / ISO-8859-1 export — the norm across
+  /// Europe — into U+FFFD, and those replacement characters then became
+  /// part of the stored description AND the duplicate-detection key. A
+  /// BOM is also stripped so the first header cell matches.
+  static String decodeBytes(List<int> bytes) {
+    var data = bytes;
+    // UTF-8 BOM.
+    if (data.length >= 3 &&
+        data[0] == 0xEF &&
+        data[1] == 0xBB &&
+        data[2] == 0xBF) {
+      data = data.sublist(3);
+    }
+    try {
+      return const Utf8Decoder(allowMalformed: false).convert(data);
+    } catch (_) {
+      // Not valid UTF-8 → treat as Latin-1/Windows-1252. Every byte maps
+      // to a character, so this never fails and never loses information.
+      return latin1.decode(data, allowInvalid: true);
+    }
+  }
 
   /// Parses raw CSV text into a rectangular table. Returns empty on junk.
   static List<List<String>> parse(String raw) {

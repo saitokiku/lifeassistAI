@@ -39,11 +39,16 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     super.dispose();
   }
 
+  /// Monotonic id so a slow query for "co" can't overwrite the newer
+  /// results for "coffee" when it finally resolves.
+  int _requestId = 0;
+
   void _onChanged(String text) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 250), () async {
+      final request = ++_requestId;
       final hits = await ref.read(searchRepositoryProvider).search(text);
-      if (!mounted) return;
+      if (!mounted || request != _requestId) return;
       setState(() {
         _hits = hits;
         _searched = text.trim().length >= 2;

@@ -109,7 +109,7 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
   String _dayLabel(DateTime day, DateTime today) {
     if (AppDateUtils.isSameDay(day, today)) return 'Today';
     if (AppDateUtils.isSameDay(
-        day, today.subtract(const Duration(days: 1)))) {
+        day, AppDateUtils.subtractDays(today, 1))) {
       return 'Yesterday';
     }
     return Formatters.shortDate(day);

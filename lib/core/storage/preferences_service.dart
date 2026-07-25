@@ -65,6 +65,31 @@ class PreferencesService {
   Future<void> setLiveVaultEnabled(bool value) =>
       _prefs.setBool(SettingsKeys.prefLiveVaultEnabled, value);
 
+  /// The symbol shown with money, or null to follow the device locale.
+  String? get currencySymbol =>
+      _prefs.getString(SettingsKeys.prefCurrencySymbol);
+
+  Future<void> setCurrencySymbol(String value) =>
+      _prefs.setString(SettingsKeys.prefCurrencySymbol, value);
+
+  /// Notification-id scheme this install's pending notifications were
+  /// armed under. 0 = pre-block-layout (or never armed).
+  int get notificationIdScheme =>
+      _prefs.getInt(SettingsKeys.prefNotificationIdScheme) ?? 0;
+
+  Future<void> setNotificationIdScheme(int value) =>
+      _prefs.setInt(SettingsKeys.prefNotificationIdScheme, value);
+
+  /// Date key of the last successful reminder re-arm, or null.
+  String? get remindersArmedOn =>
+      _prefs.getString(SettingsKeys.prefRemindersArmedOn);
+
+  Future<void> setRemindersArmedOn(String dateKey) =>
+      _prefs.setString(SettingsKeys.prefRemindersArmedOn, dateKey);
+
+  Future<void> clearRemindersArmedOn() =>
+      _prefs.remove(SettingsKeys.prefRemindersArmedOn);
+
   DateTime? get lastAutoBackupAt {
     final raw = _prefs.getString(SettingsKeys.prefLastAutoBackupAt);
     return raw == null ? null : DateTime.tryParse(raw);

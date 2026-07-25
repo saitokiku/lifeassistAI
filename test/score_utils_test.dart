@@ -72,10 +72,15 @@ void main() {
           0);
     });
 
-    test('recovery gives 15 at 5h, 7 when above zero, 0 at zero', () {
+    test('recovery scales with the hours due so far, capped at 15', () {
+      // Paced like the goal hours: by Sunday the whole 5h is due, so 5h
+      // is full marks and 2h is 2/5 of them. The old shape was a cliff
+      // (15 / 7 / 0) whose middle tier was an unexplained magic number.
       expect(ScoreUtils.focusScore(input(recovery: 5)).recoveryScore, 15);
-      expect(ScoreUtils.focusScore(input(recovery: 2)).recoveryScore, 7);
+      expect(ScoreUtils.focusScore(input(recovery: 2)).recoveryScore, 6);
       expect(ScoreUtils.focusScore(input(recovery: 0)).recoveryScore, 0);
+      // Over-delivering doesn't earn more than the part is worth.
+      expect(ScoreUtils.focusScore(input(recovery: 40)).recoveryScore, 15);
     });
 
     test('labels match spec bands', () {

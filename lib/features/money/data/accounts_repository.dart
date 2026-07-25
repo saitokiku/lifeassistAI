@@ -96,7 +96,7 @@ class AccountsRepository {
   Stream<List<BalanceSnapshot>> watchRecentSnapshots(
       {required DateTime today, int sinceDays = 190}) {
     final from =
-        AppDateUtils.dateKey(today.subtract(Duration(days: sinceDays)));
+        AppDateUtils.dateKey(AppDateUtils.subtractDays(today, sinceDays));
     return (_db.select(_db.balanceSnapshots)
           ..where((t) => t.date.isBiggerOrEqualValue(from))
           ..orderBy([(t) => OrderingTerm.asc(t.date)]))
@@ -106,20 +106,23 @@ class AccountsRepository {
   Future<void> _upsertSnapshot(
       String accountId, int balanceCents, DateTime at) async {
     final dateKey = AppDateUtils.dateKey(at);
-    final existing = await (_db.select(_db.balanceSnapshots)
-          ..where((t) => t.accountId.equals(accountId) & t.date.equals(dateKey)))
-        .getSingleOrNull();
-    if (existing != null) {
-      await (_db.update(_db.balanceSnapshots)
-            ..where((t) => t.id.equals(existing.id)))
-          .write(BalanceSnapshotsCompanion(balanceCents: Value(balanceCents)));
-    } else {
-      await _db.into(_db.balanceSnapshots).insert(BalanceSnapshot(
+    // Atomic against the (accountId, date) unique index — see the note
+    // in HabitsRepository.upsertLog.
+    await _db.into(_db.balanceSnapshots).insert(
+          BalanceSnapshot(
             id: _uuid.v4(),
             accountId: accountId,
             date: dateKey,
             balanceCents: balanceCents,
-          ));
-    }
+          ),
+          onConflict: DoUpdate(
+            (_) => BalanceSnapshotsCompanion(
+                balanceCents: Value(balanceCents)),
+            target: [
+              _db.balanceSnapshots.accountId,
+              _db.balanceSnapshots.date,
+            ],
+          ),
+        );
   }
 }

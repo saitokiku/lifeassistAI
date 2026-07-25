@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/errors/error_log.dart';
 import '../../../core/storage/app_database.dart';
 import 'obsidian_vault.dart';
 import 'vault_service.dart';
@@ -130,8 +131,9 @@ class LiveVaultService {
         await tmp.rename('${dir.path}/${f.name}');
         _fileById[entry.key] = f.name;
         _contentById[entry.key] = f.content;
-      } catch (_) {
+      } catch (e) {
         // Skip this file; the next pass retries.
+        logError('vault.mirrorWrite', e);
       }
     }
   }
@@ -248,8 +250,9 @@ class LiveVaultService {
               .isAfter(fileModified.add(const Duration(seconds: 2)))) {
         try {
           await _parkConflictCopy(dir, name, raw);
-        } catch (_) {
+        } catch (e) {
           // Preservation is best-effort; the note itself is safe.
+          logError('vault.conflictCopy', e);
         }
         continue;
       }

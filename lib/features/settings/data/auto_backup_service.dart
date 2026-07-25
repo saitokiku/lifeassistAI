@@ -6,18 +6,58 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/storage/preferences_service.dart';
 import '../../../core/utils/date_utils.dart';
 import 'backup_service.dart';
+import '../../../core/errors/error_log.dart';
 
-/// Weekly rolling safety copies in the app's documents folder.
+/// Weekly rolling safety copies, plus on-demand copies taken before a
+/// destructive operation.
 ///
 /// Not a substitute for a real off-device export — it protects against
 /// accidental resets and bad edits, not a lost phone. Keeps the newest
 /// [keepCount] files and never blocks launch (fire-and-forget from the
 /// shell; every failure is swallowed after a debug print).
+///
+/// **Stored in app support, not Documents.** These files are complete
+/// unencrypted JSON dumps of the whole database. The app sets
+/// `UIFileSharingEnabled` so the Obsidian vault is reachable in the
+/// Files app, and iOS cannot scope that to one subfolder — so anything
+/// under Documents is browsable and copyable by anyone who can unlock
+/// the device. The vault is meant to be shared; a full financial and
+/// journal dump is not. Users still get their own copies through
+/// Settings → Export, which they place deliberately.
 class AutoBackupService {
   AutoBackupService(this._backup, this._prefs);
 
   final BackupService _backup;
   final PreferencesService _prefs;
+
+  /// Safety copies live beside the database, out of the Files-visible
+  /// Documents tree.
+  static Future<Directory> backupsDirectory() async {
+    final root = await getApplicationSupportDirectory();
+    return Directory('${root.path}/backups');
+  }
+
+  /// Moves a pre-existing `Documents/backups` folder into app support
+  /// once, so old installs stop exposing full database dumps in Files.
+  static Future<void> migrateOutOfDocuments() async {
+    if (kIsWeb) return;
+    try {
+      final documents = await getApplicationDocumentsDirectory();
+      final legacy = Directory('${documents.path}/backups');
+      if (!legacy.existsSync()) return;
+      final target = await backupsDirectory();
+      await target.create(recursive: true);
+      for (final file in legacy.listSync().whereType<File>()) {
+        final name = file.uri.pathSegments.last;
+        final moved = File('${target.path}/$name');
+        if (!moved.existsSync()) await file.copy(moved.path);
+        await file.delete();
+      }
+      if (legacy.listSync().isEmpty) await legacy.delete();
+    } catch (e) {
+      logError('backup.relocate', e);
+    }
+  }
 
   static const int keepCount = 4;
   static const Duration interval = Duration(days: 7);
@@ -32,8 +72,7 @@ class AutoBackupService {
       final last = _prefs.lastAutoBackupAt;
       if (last != null && at.difference(last) < interval) return;
 
-      final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory('${dir.path}/backups');
+      final folder = await backupsDirectory();
       await folder.create(recursive: true);
 
       final json = await _backup.exportJson();
@@ -53,7 +92,7 @@ class AutoBackupService {
 
       await _prefs.setLastAutoBackupAt(at);
     } catch (e) {
-      debugPrint('Auto-backup skipped: $e');
+      logError('backup.auto', e);
     }
   }
 
@@ -67,8 +106,7 @@ class AutoBackupService {
     if (kIsWeb) return;
     final at = now ?? DateTime.now();
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final folder = Directory('${dir.path}/backups');
+      final folder = await backupsDirectory();
       await folder.create(recursive: true);
 
       final json = await _backup.exportJson();
@@ -87,7 +125,7 @@ class AutoBackupService {
         await stale.delete();
       }
     } catch (e) {
-      debugPrint('Safety copy ($tag) skipped: $e');
+      logError('backup.safetyCopy.$tag', e);
     }
   }
 }

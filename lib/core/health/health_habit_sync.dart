@@ -71,7 +71,7 @@ class HealthHabitSync {
     if (await _service.availability() != HealthAvailability.ready) return 0;
     _lastSyncAt = today;
     var changed = 0;
-    for (final day in [today, today.subtract(const Duration(days: 1))]) {
+    for (final day in [today, AppDateUtils.subtractDays(today, 1)]) {
       final summary = await _service.dailySummary(day);
       if (summary == null) continue;
       for (final habit in mapped) {
@@ -109,14 +109,21 @@ class HealthHabitSync {
       final met = target > 0 && value >= target;
       if (met) {
         if (existing != null) return 0; // already checked by us
-        await _db.into(_db.habitLogs).insert(HabitLog(
-              id: _uuid.v4(),
-              habitId: habit.id,
-              date: key,
-              value: 1,
-              note: null,
-              source: 'health',
-            ));
+        // insertOrIgnore, not insert: the (habitId, date) unique index
+        // means a manual or Siri log written between the read above and
+        // this write would otherwise throw. Ignoring is the correct
+        // outcome — a person's own log always outranks the sensor.
+        await _db.into(_db.habitLogs).insert(
+              HabitLog(
+                id: _uuid.v4(),
+                habitId: habit.id,
+                date: key,
+                value: 1,
+                note: null,
+                source: 'health',
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
         return 1;
       }
       if (existing != null) {
@@ -139,14 +146,18 @@ class HealthHabitSync {
           .write(HabitLogsCompanion(value: Value(rounded)));
       return 1;
     }
-    await _db.into(_db.habitLogs).insert(HabitLog(
-          id: _uuid.v4(),
-          habitId: habit.id,
-          date: key,
-          value: rounded,
-          note: null,
-          source: 'health',
-        ));
+    // insertOrIgnore for the same reason as the boolean path above.
+    await _db.into(_db.habitLogs).insert(
+          HabitLog(
+            id: _uuid.v4(),
+            habitId: habit.id,
+            date: key,
+            value: rounded,
+            note: null,
+            source: 'health',
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
     return 1;
   }
 }

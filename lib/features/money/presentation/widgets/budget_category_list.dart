@@ -129,12 +129,12 @@ class _CategoryRow extends ConsumerWidget {
                   progress: cs.progress,
                   color: barColor,
                   trailing:
-                      '${Formatters.money(cs.spent)} / ${Formatters.money(target)}',
+                      '${Formatters.moneyExact(cs.spent)} / ${Formatters.moneyExact(target)}',
                 ),
                 if (over) ...[
                   const SizedBox(height: AppSpace.xs),
                   Text(
-                    '${Formatters.money(cs.spent - target)} over',
+                    '${Formatters.moneyExact(cs.spent - target)} over',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: barColor,
                       fontWeight: FontWeight.w600,

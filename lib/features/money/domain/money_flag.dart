@@ -53,7 +53,7 @@ class MoneyFlagRules {
             kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
-                '${category.name} is over target: ${Formatters.money(spent)} of ${Formatters.money(amountFromCents(category.monthlyTargetCents))}.',
+                '${category.name} is over target: ${Formatters.moneyExact(spent)} of ${Formatters.moneyExact(amountFromCents(category.monthlyTargetCents))}.',
           );
         }
         return null;
@@ -64,7 +64,7 @@ class MoneyFlagRules {
             kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
-                '${category.name} spend is ${Formatters.money(spent)}. Target is \$0.',
+                '${category.name} spend is ${Formatters.moneyExact(spent)}. Target is \$0.',
           );
         }
         return null;
@@ -75,7 +75,7 @@ class MoneyFlagRules {
             kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
-                '${category.name} spend is ${Formatters.money(spent)} and not marked intentional.',
+                '${category.name} spend is ${Formatters.moneyExact(spent)} and not marked intentional.',
           );
         }
         return null;
@@ -86,7 +86,7 @@ class MoneyFlagRules {
             kind: MoneyFlagKind.category,
             categoryId: category.id,
             message:
-                '${category.name} spend is ${Formatters.money(spent)}. Hard floor is \$0.',
+                '${category.name} spend is ${Formatters.moneyExact(spent)}. Hard floor is \$0.',
           );
         }
         return null;
@@ -103,7 +103,7 @@ class MoneyFlagRules {
           severity: MoneyFlagSeverity.critical,
           kind: MoneyFlagKind.surplus,
           message:
-              'Spending is on pace to end the month ${Formatters.money(-projectedSurplus)} past income.',
+              'Spending is on pace to end the month ${Formatters.moneyExact(-projectedSurplus)} past income.',
         ),
       ];
     }
@@ -113,7 +113,7 @@ class MoneyFlagRules {
           severity: MoneyFlagSeverity.warning,
           kind: MoneyFlagKind.surplus,
           message:
-              'Projected surplus ${Formatters.money(projectedSurplus)} is below your ${Formatters.money(targetSurplusLow)} target.',
+              'Projected surplus ${Formatters.moneyExact(projectedSurplus)} is below your ${Formatters.moneyExact(targetSurplusLow)} target.',
         ),
       ];
     }

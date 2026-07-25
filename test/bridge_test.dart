@@ -67,6 +67,7 @@ void main() {
           type: 'boolean',
           unit: null,
           weekdays: 127,
+          notificationId: 8,
           sortOrder: 0,
           isArchived: false,
           createdAt: at,

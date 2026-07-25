@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/storage/app_database.dart';
-import '../../../core/storage/seed_service.dart';
 
 /// Persistence for reminders. OS scheduling is handled by ReminderScheduler;
 /// this repository only owns the rows.
@@ -43,7 +42,7 @@ class RemindersRepository {
           weekdays: weekdays,
           oneShotDate: oneShotDate,
           enabled: enabled,
-          notificationId: SeedService.notificationIdFor(id),
+          notificationId: await _db.allocateNotificationId(),
           createdAt: now,
           updatedAt: now,
         ));

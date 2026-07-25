@@ -48,6 +48,7 @@ class CaptureLauncher {
           initialDescription: request.text,
           initialCategoryId:
               resolveByName(request.category, {for (final c in categories) c.id: c.name}),
+          initialDate: request.date,
         );
       case CaptureType.time:
         final budgets = await ref.read(timeBudgetsProvider.future);
@@ -59,6 +60,7 @@ class CaptureLauncher {
               resolveByName(request.category, {for (final b in budgets) b.id: b.name}),
           initialHours: request.hours,
           initialNote: request.text,
+          initialDate: request.date,
         );
       case CaptureType.step:
         // Await the actions stream so "already logged today" resolves to

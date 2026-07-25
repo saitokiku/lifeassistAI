@@ -1,7 +1,11 @@
 # Data model
 
 SQLite via drift. Schema in `lib/core/storage/app_database.dart`
-(schemaVersion 2). IDs are UUIDv4 strings. Calendar days are stored as
+(**schemaVersion 7** — this document describes the v2 shape and has not
+been updated since; read the table definitions in the source for the
+current truth, including integer-cents money (v4), Health mappings (v5),
+notes (v6), and the unique day-key indexes plus stored notification ids
+(v7)). IDs are UUIDv4 strings. Calendar days are stored as
 `yyyy-MM-dd` text keys (timezone-safe day math); timestamps are DateTime
 columns. Weeks start Monday.
 

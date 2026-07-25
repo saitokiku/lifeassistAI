@@ -24,7 +24,8 @@ import 'pressable.dart';
 /// The Universal Capture Inbox: speak, type, paste, or drop a photo of
 /// anything — a receipt, a bank line, "2h deep work and coffee 4.50" —
 /// and it gets sorted into typed capture chips that save through the
-/// same forms Siri and deep links use. Voice via on-device speech
+/// same forms Siri and deep links use. A line carrying more than one
+/// thing yields one chip each; nothing is ever dropped silently. Voice via on-device speech
 /// recognition; photos via the Vision OCR bridge (iOS). Everything
 /// parses deterministically on-device — no cloud, ever.
 class CaptureInbox extends ConsumerStatefulWidget {

@@ -31,17 +31,26 @@ final noteLinkCountProvider = StreamProvider<int>(
 );
 
 /// One note, live — the detail screen re-renders on outside edits
-/// (imports, a future sync) without holding stale text.
-final noteProvider = StreamProvider.family<Note?, String>(
+/// (vault fold-in, another screen) without holding stale text.
+///
+/// autoDispose on every per-note family below: they are keyed by note
+/// id, so without it each note the user opens leaves a live drift
+/// subscription (and, via localGraphProvider, a cached layout) alive for
+/// the whole session. unlinkedMentionsProvider is the worst of them —
+/// it watches notesProvider and runs a full-table LIKE scan, so every
+/// note save re-scanned the vault once per note ever visited.
+final noteProvider = StreamProvider.autoDispose.family<Note?, String>(
   (ref, id) => ref.watch(notesRepositoryProvider).watchNote(id),
 );
 
 /// Who links here, with the words they used.
-final backlinksProvider = StreamProvider.family<List<Backlink>, String>(
+final backlinksProvider =
+    StreamProvider.autoDispose.family<List<Backlink>, String>(
   (ref, id) => ref.watch(notesRepositoryProvider).watchBacklinks(id),
 );
 
-final noteTagsProvider = StreamProvider.family<List<NoteTag>, String>(
+final noteTagsProvider =
+    StreamProvider.autoDispose.family<List<NoteTag>, String>(
   (ref, id) => ref.watch(notesRepositoryProvider).watchTags(id),
 );
 
@@ -59,7 +68,7 @@ final allNotesProvider = StreamProvider<List<Note>>(
 /// Plain-text mentions of a note's title that aren't links yet.
 /// Recomputes as the vault or this note's backlinks change.
 final unlinkedMentionsProvider =
-    FutureProvider.family<List<Note>, String>((ref, id) async {
+    FutureProvider.autoDispose.family<List<Note>, String>((ref, id) async {
   ref.watch(notesProvider);
   ref.watch(backlinksProvider(id));
   return ref.watch(notesRepositoryProvider).unlinkedMentions(id);

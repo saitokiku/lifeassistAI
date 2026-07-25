@@ -1,6 +1,7 @@
 import '../errors/result.dart';
 import '../storage/app_database.dart';
 import '../utils/date_utils.dart';
+import 'notification_ids.dart';
 import 'notification_service.dart';
 import 'reminder_message_builder.dart';
 
@@ -17,24 +18,16 @@ class ReminderScheduler {
 
   bool get isSupported => _notifications.isSupported;
 
-  /// Spacing between per-weekday variants of one reminder's id. Large
-  /// enough that two reminders' variant sets colliding is as unlikely as
-  /// their base hashes colliding.
-  static const int _weekdayIdStep = 0x01000000;
-
   /// Every notification id a reminder may occupy: the base id (daily and
   /// one-shot schedules) plus one variant per weekday (weekly schedules).
-  static Iterable<int> allIdsFor(Reminder reminder) sync* {
-    yield reminder.notificationId;
-    for (var weekday = DateTime.monday;
-        weekday <= DateTime.sunday;
-        weekday++) {
-      yield weekdayIdFor(reminder.notificationId, weekday);
-    }
-  }
+  /// Ids come from [NotificationIds]' block layout, so a reminder's
+  /// variants can never reach into a habit's block (or another
+  /// reminder's) — see the note there.
+  static Iterable<int> allIdsFor(Reminder reminder) =>
+      NotificationIds.blockFor(reminder.notificationId);
 
   static int weekdayIdFor(int baseId, int weekday) =>
-      (baseId + weekday * _weekdayIdStep) & 0x7fffffff;
+      NotificationIds.weekdayId(baseId, weekday);
 
   /// Reconciles the OS schedule with [reminders]: cancels every id these
   /// reminders may hold, then reschedules the enabled ones. When

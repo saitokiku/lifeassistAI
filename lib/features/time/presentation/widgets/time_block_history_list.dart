@@ -93,7 +93,7 @@ class TimeBlockHistoryList extends ConsumerWidget {
   String _dayLabel(String dateKey, DateTime today) {
     final date = AppDateUtils.parseDateKey(dateKey);
     if (AppDateUtils.isSameDay(date, today)) return 'Today';
-    if (AppDateUtils.isSameDay(date, today.subtract(const Duration(days: 1)))) {
+    if (AppDateUtils.isSameDay(date, AppDateUtils.subtractDays(today, 1))) {
       return 'Yesterday';
     }
     return date.year == today.year

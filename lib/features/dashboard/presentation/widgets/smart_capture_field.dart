@@ -77,11 +77,18 @@ class _SmartCaptureFieldState extends ConsumerState<SmartCaptureField> {
       'time' => CaptureType.time,
       'idea' => CaptureType.idea,
       'reminder' => CaptureType.reminder,
-      'habit' => null, // habits check off in place, no sheet to prefill
+      // Habits check off in place — there's no sheet to prefill.
+      'habit' => null,
+      // Unreachable: AiCaptureDraft.tryParse rejects unknown kinds. If
+      // one ever slipped through it must NOT land in the habit branch
+      // (which used to share this arm and silently navigated the user
+      // to the Habits tab).
       _ => null,
     };
     if (type == null) {
-      ref.read(pendingRouteProvider.notifier).state = '/habits';
+      if (draft.kind == 'habit') {
+        ref.read(pendingRouteProvider.notifier).state = '/habits';
+      }
       return;
     }
     ref.read(pendingCaptureProvider.notifier).state = CaptureRequest(
@@ -91,6 +98,7 @@ class _SmartCaptureFieldState extends ConsumerState<SmartCaptureField> {
       hours: draft.hours,
       text: draft.text,
       category: draft.categoryName,
+      dateKey: draft.dateIso,
     );
     setState(() =>
         _drafts = _drafts.where((d) => !identical(d, draft)).toList());

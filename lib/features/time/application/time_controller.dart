@@ -78,8 +78,8 @@ final viewedWeekOffsetProvider = StateProvider<int>((ref) => 0);
 final viewedWeekStartProvider = Provider<DateTime>((ref) {
   final today = readToday(ref);
   final offset = ref.watch(viewedWeekOffsetProvider);
-  return AppDateUtils.startOfWeek(today)
-      .subtract(Duration(days: 7 * offset));
+  return AppDateUtils.subtractDays(
+      AppDateUtils.startOfWeek(today), 7 * offset);
 });
 
 final _weekBlocksForProvider = StreamProvider.autoDispose
@@ -144,8 +144,8 @@ final _blocksSinceProvider = StreamProvider.autoDispose
 final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
   final now = readToday(ref);
   final budgets = ref.watch(timeBudgetsProvider).valueOrNull;
-  final firstWeekStart = AppDateUtils.startOfWeek(now)
-      .subtract(const Duration(days: 7 * (kWeeklyHistoryWeeks - 1)));
+  final firstWeekStart = AppDateUtils.subtractDays(
+      AppDateUtils.startOfWeek(now), 7 * (kWeeklyHistoryWeeks - 1));
   final blocks = ref.watch(_blocksSinceProvider(firstWeekStart)).valueOrNull;
   if (budgets == null || blocks == null) return null;
 
@@ -168,7 +168,7 @@ final weeklyHoursHistoryProvider = Provider<List<WeeklyHoursPoint>?>((ref) {
   return [
     for (var i = 0; i < kWeeklyHistoryWeeks; i++)
       () {
-        final weekStart = firstWeekStart.add(Duration(days: 7 * i));
+        final weekStart = AppDateUtils.addDays(firstWeekStart, 7 * i);
         final key = AppDateUtils.dateKey(weekStart);
         return WeeklyHoursPoint(
           weekStart: weekStart,

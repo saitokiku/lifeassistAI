@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../errors/result.dart';
+import 'notification_ids.dart';
 
 /// Wraps flutter_local_notifications behind a platform-safe API.
 ///
@@ -21,10 +22,6 @@ class NotificationService {
 
   /// Invoked with the notification payload when the user taps one.
   void Function(String payload)? onTap;
-
-  /// Notification-id offset for snooze copies, well clear of the 31-bit
-  /// hash space used for reminder ids.
-  static const int _snoozeIdOffset = 0x20000000;
 
   static const Duration snoozeDuration = Duration(minutes: 30);
   static const String snoozeActionId = 'snooze';
@@ -73,7 +70,7 @@ class NotificationService {
       final id = response.id;
       if (id != null) {
         await _plugin.zonedSchedule(
-          (id + _snoozeIdOffset) & 0x7fffffff,
+          NotificationIds.snoozeFor(id),
           'Reminder',
           'You snoozed this — time to take another look.',
           tz.TZDateTime.now(tz.local).add(snoozeDuration),
@@ -99,6 +96,48 @@ class NotificationService {
       return details!.notificationResponse?.payload;
     }
     return null;
+  }
+
+  /// Whether the OS currently permits notifications — asked fresh, not
+  /// remembered. A grant recorded at request time says nothing about
+  /// today: the user may have revoked it in system settings, and the
+  /// app would keep reporting reminders as armed. Platforms without a
+  /// permission concept report true.
+  Future<bool> hasPermission() async {
+    if (!isSupported) return false;
+    await initialize();
+    try {
+      final ios = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      if (ios != null) {
+        return (await ios.checkPermissions())?.isEnabled ?? false;
+      }
+      final macos = _plugin.resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin>();
+      if (macos != null) {
+        return (await macos.checkPermissions())?.isEnabled ?? false;
+      }
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (android != null) {
+        return await android.areNotificationsEnabled() ?? false;
+      }
+    } catch (_) {
+      // Plugin can't answer — don't strand the user's reminders on a
+      // failed query; assume permitted and let scheduling report.
+    }
+    return true;
+  }
+
+  /// How many notifications the OS currently holds for this app.
+  Future<int> pendingCount() async {
+    if (!isSupported) return 0;
+    await initialize();
+    try {
+      return (await _plugin.pendingNotificationRequests()).length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// Asks the OS for notification permission. Returns whether granted.
@@ -245,33 +284,54 @@ class NotificationService {
     }
   }
 
-  tz.TZDateTime _nextInstanceOf(int hour, int minute) {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+  /// The next local [hour]:[minute], built with CALENDAR arithmetic.
+  ///
+  /// `add(Duration(days: 1))` adds 24 absolute hours, so rolling over
+  /// into a DST transition day shifted the wall-clock time by an hour —
+  /// and because `matchDateTimeComponents` derives the repeat from this
+  /// first instance, an 08:00 reminder became a permanent 09:00 one.
+  /// Constructing the next calendar day keeps the requested wall time.
+  static tz.TZDateTime nextInstanceOf(int hour, int minute, {DateTime? now}) {
+    final at = now ?? tz.TZDateTime.now(tz.local);
+    final today = tz.TZDateTime(tz.local, at.year, at.month, at.day, hour,
+        minute);
+    if (today.isAfter(at)) return today;
+    // day + 1 normalizes across month/year ends.
+    return tz.TZDateTime(
+        tz.local, at.year, at.month, at.day + 1, hour, minute);
+  }
+
+  /// The next [weekday] at [hour]:[minute], also by calendar steps.
+  static tz.TZDateTime nextInstanceOfWeekday(int weekday, int hour, int minute,
+      {DateTime? now}) {
+    var scheduled = nextInstanceOf(hour, minute, now: now);
+    var guard = 0;
+    while (scheduled.weekday != weekday && guard++ < 7) {
+      scheduled = tz.TZDateTime(tz.local, scheduled.year, scheduled.month,
+          scheduled.day + 1, hour, minute);
     }
     return scheduled;
   }
 
-  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
-    var scheduled = _nextInstanceOf(hour, minute);
-    while (scheduled.weekday != weekday) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-    return scheduled;
-  }
+  tz.TZDateTime _nextInstanceOf(int hour, int minute) =>
+      nextInstanceOf(hour, minute);
+
+  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) =>
+      nextInstanceOfWeekday(weekday, hour, minute);
 
   Future<void> cancel(int id) async {
     if (!isSupported) return;
     await _plugin.cancel(id);
   }
 
+  /// Cancels each id AND its snooze copy. A snoozed notification used to
+  /// outlive the reminder it came from — deleting the reminder cancelled
+  /// the schedule but left the snooze armed, so it still fired.
   Future<void> cancelMany(Iterable<int> ids) async {
     if (!isSupported) return;
     for (final id in ids) {
       await _plugin.cancel(id);
+      await _plugin.cancel(NotificationIds.snoozeFor(id));
     }
   }
 

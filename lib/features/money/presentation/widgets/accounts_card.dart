@@ -93,7 +93,7 @@ class AccountsCard extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         '${trendDelta >= 0 ? '+' : '−'}'
-                        '${Formatters.money(trendDelta.abs())} over '
+                        '${Formatters.moneyExact(trendDelta.abs())} over '
                         '${_spanLabel(history.length)}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: trendDelta >= 0
@@ -198,8 +198,8 @@ class _AccountRow extends ConsumerWidget {
             const SizedBox(width: AppSpace.sm),
             Text(
               kind.countsNegative
-                  ? '−${Formatters.money(amountFromCents(account.balanceCents))}'
-                  : Formatters.money(amountFromCents(account.balanceCents)),
+                  ? '−${Formatters.moneyExact(amountFromCents(account.balanceCents))}'
+                  : Formatters.moneyExact(amountFromCents(account.balanceCents)),
               style: theme.textTheme.numberBody.copyWith(
                 color: kind.countsNegative
                     ? AppColors.watch

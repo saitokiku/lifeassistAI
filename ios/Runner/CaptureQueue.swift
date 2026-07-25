@@ -38,6 +38,9 @@ enum CaptureQueue {
         }
 
         do {
+            // Marks the bridge root excluded from backups the first
+            // time it's created (see BridgePaths.ensureRoot).
+            BridgePaths.ensureRoot()
             let dir = BridgePaths.pendingDir
             try FileManager.default.createDirectory(
                 at: dir, withIntermediateDirectories: true)

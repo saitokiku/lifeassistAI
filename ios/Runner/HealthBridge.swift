@@ -1,12 +1,10 @@
-// Phase 5 scaffold: HealthKit → auto-habits (see docs/SIRI_AI_BLUEPRINT.md).
+// HealthKit → auto-habits (see docs/SIRI_AI_BLUEPRINT.md).
 //
-// Dormant by design until two Mac-side switches flip:
-//   1. Xcode → Runner target → Signing & Capabilities → add HealthKit.
-//   2. Info.plist → LAHealthKitEnabled → YES.
-// Until then `availability` answers "disabledInBuild" and the Dart side
-// shows nothing. The flag exists because calling HealthKit APIs without
-// the entitlement raises at runtime — a build without the capability
-// must never reach them.
+// LIVE: the entitlement is committed and Info.plist sets
+// LAHealthKitEnabled = YES. The flag still gates every call because
+// touching HealthKit APIs without the entitlement raises at runtime —
+// a build compiled without the capability must never reach them, and
+// `availability` then answers "disabledInBuild".
 //
 // Read-only. Values never leave the device; the Dart side writes plain
 // source-tagged HabitLogs the user can see and delete like any other.
@@ -119,17 +117,23 @@ private final class Store {
         // yesterday through 18:00 today. Consecutive days' windows are
         // disjoint and cover the clock, so a night is never counted
         // twice; sleep after 18:00 today is tomorrow's wake-up.
+        guard let nightStart = calendar.date(
+                  byAdding: .hour, value: -6, to: start),
+              let nightEnd = calendar.date(
+                  byAdding: .hour, value: 18, to: start)
+        else { return ["steps": nil] }
         let nightPredicate = HKQuery.predicateForSamples(
-            withStart: calendar.date(byAdding: .hour, value: -6, to: start),
-            end: calendar.date(byAdding: .hour, value: 18, to: start),
-            options: [])
+            withStart: nightStart, end: nightEnd, options: [])
 
         async let steps = sumQuantity(.stepCount, dayPredicate, unit: .count())
         async let sleep = categoryHours(
             .sleepAnalysis, nightPredicate,
+            windowStart: nightStart, windowEnd: nightEnd,
             valueFilter: { HKCategoryValueSleepAnalysis.allAsleepValues
                 .map(\.rawValue).contains($0) })
-        async let mindful = categoryHours(.mindfulSession, dayPredicate)
+        async let mindful = categoryHours(
+            .mindfulSession, dayPredicate,
+            windowStart: start, windowEnd: end)
         async let workouts = workoutMinutes(dayPredicate)
 
         return await [
@@ -163,6 +167,8 @@ private final class Store {
     private func categoryHours(
         _ id: HKCategoryTypeIdentifier,
         _ predicate: NSPredicate,
+        windowStart: Date,
+        windowEnd: Date,
         valueFilter: @escaping (Int) -> Bool = { _ in true }
     ) async -> Double? {
         guard let type = HKObjectType.categoryType(forIdentifier: id) else {
@@ -176,10 +182,17 @@ private final class Store {
                 guard let samples = samples as? [HKCategorySample],
                       !samples.isEmpty
                 else { return continuation.resume(returning: nil) }
+                // Clip each sample to the query window before summing.
+                // The sleep predicate deliberately has no
+                // .strictStartDate (a night starts the previous
+                // evening), so a sample that straddles the boundary
+                // would otherwise be counted IN FULL on both days.
                 let seconds = samples
                     .filter { valueFilter($0.value) }
-                    .reduce(0.0) {
-                        $0 + $1.endDate.timeIntervalSince($1.startDate)
+                    .reduce(0.0) { total, sample in
+                        let from = max(sample.startDate, windowStart)
+                        let to = min(sample.endDate, windowEnd)
+                        return total + max(0, to.timeIntervalSince(from))
                     }
                 continuation.resume(returning: seconds / 3600)
             }

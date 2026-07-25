@@ -5058,6 +5058,14 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
   late final GeneratedColumn<int> reminderMinute = GeneratedColumn<int>(
       'reminder_minute', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _notificationIdMeta =
+      const VerificationMeta('notificationId');
+  @override
+  late final GeneratedColumn<int> notificationId = GeneratedColumn<int>(
+      'notification_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _healthMetricMeta =
       const VerificationMeta('healthMetric');
   @override
@@ -5103,6 +5111,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         weekdays,
         reminderHour,
         reminderMinute,
+        notificationId,
         healthMetric,
         healthTarget,
         sortOrder,
@@ -5153,6 +5162,12 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
           _reminderMinuteMeta,
           reminderMinute.isAcceptableOrUnknown(
               data['reminder_minute']!, _reminderMinuteMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+          _notificationIdMeta,
+          notificationId.isAcceptableOrUnknown(
+              data['notification_id']!, _notificationIdMeta));
     }
     if (data.containsKey('health_metric')) {
       context.handle(
@@ -5205,6 +5220,8 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_hour']),
       reminderMinute: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}reminder_minute']),
+      notificationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}notification_id'])!,
       healthMetric: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}health_metric']),
       healthTarget: attachedDatabase.typeMapping
@@ -5238,6 +5255,13 @@ class Habit extends DataClass implements Insertable<Habit> {
   final int? reminderHour;
   final int? reminderMinute;
 
+  /// Stable OS notification id, stored rather than derived. It used to
+  /// be `'habit:$id'.hashCode`, which Dart does not guarantee across
+  /// platforms or SDK versions — a shifted hash would orphan every
+  /// pending notification beyond cancellation. Reminders already store
+  /// theirs; habits now do too. 0 = unassigned (backfilled on write).
+  final int notificationId;
+
   /// Apple Health auto-check mapping: which daily metric feeds this habit
   /// (steps | sleepHours | mindfulMinutes | workoutMinutes; null = manual
   /// only) and the threshold that counts a boolean habit as done.
@@ -5254,6 +5278,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       required this.weekdays,
       this.reminderHour,
       this.reminderMinute,
+      required this.notificationId,
       this.healthMetric,
       this.healthTarget,
       required this.sortOrder,
@@ -5275,6 +5300,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     if (!nullToAbsent || reminderMinute != null) {
       map['reminder_minute'] = Variable<int>(reminderMinute);
     }
+    map['notification_id'] = Variable<int>(notificationId);
     if (!nullToAbsent || healthMetric != null) {
       map['health_metric'] = Variable<String>(healthMetric);
     }
@@ -5300,6 +5326,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderMinute: reminderMinute == null && nullToAbsent
           ? const Value.absent()
           : Value(reminderMinute),
+      notificationId: Value(notificationId),
       healthMetric: healthMetric == null && nullToAbsent
           ? const Value.absent()
           : Value(healthMetric),
@@ -5323,6 +5350,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       weekdays: serializer.fromJson<int>(json['weekdays']),
       reminderHour: serializer.fromJson<int?>(json['reminderHour']),
       reminderMinute: serializer.fromJson<int?>(json['reminderMinute']),
+      notificationId: serializer.fromJson<int>(json['notificationId']),
       healthMetric: serializer.fromJson<String?>(json['healthMetric']),
       healthTarget: serializer.fromJson<double?>(json['healthTarget']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
@@ -5341,6 +5369,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       'weekdays': serializer.toJson<int>(weekdays),
       'reminderHour': serializer.toJson<int?>(reminderHour),
       'reminderMinute': serializer.toJson<int?>(reminderMinute),
+      'notificationId': serializer.toJson<int>(notificationId),
       'healthMetric': serializer.toJson<String?>(healthMetric),
       'healthTarget': serializer.toJson<double?>(healthTarget),
       'sortOrder': serializer.toJson<int>(sortOrder),
@@ -5357,6 +5386,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           int? weekdays,
           Value<int?> reminderHour = const Value.absent(),
           Value<int?> reminderMinute = const Value.absent(),
+          int? notificationId,
           Value<String?> healthMetric = const Value.absent(),
           Value<double?> healthTarget = const Value.absent(),
           int? sortOrder,
@@ -5372,6 +5402,7 @@ class Habit extends DataClass implements Insertable<Habit> {
             reminderHour.present ? reminderHour.value : this.reminderHour,
         reminderMinute:
             reminderMinute.present ? reminderMinute.value : this.reminderMinute,
+        notificationId: notificationId ?? this.notificationId,
         healthMetric:
             healthMetric.present ? healthMetric.value : this.healthMetric,
         healthTarget:
@@ -5393,6 +5424,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderMinute: data.reminderMinute.present
           ? data.reminderMinute.value
           : this.reminderMinute,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
       healthMetric: data.healthMetric.present
           ? data.healthMetric.value
           : this.healthMetric,
@@ -5416,6 +5450,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('weekdays: $weekdays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('notificationId: $notificationId, ')
           ..write('healthMetric: $healthMetric, ')
           ..write('healthTarget: $healthTarget, ')
           ..write('sortOrder: $sortOrder, ')
@@ -5434,6 +5469,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       weekdays,
       reminderHour,
       reminderMinute,
+      notificationId,
       healthMetric,
       healthTarget,
       sortOrder,
@@ -5450,6 +5486,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.weekdays == this.weekdays &&
           other.reminderHour == this.reminderHour &&
           other.reminderMinute == this.reminderMinute &&
+          other.notificationId == this.notificationId &&
           other.healthMetric == this.healthMetric &&
           other.healthTarget == this.healthTarget &&
           other.sortOrder == this.sortOrder &&
@@ -5465,6 +5502,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<int> weekdays;
   final Value<int?> reminderHour;
   final Value<int?> reminderMinute;
+  final Value<int> notificationId;
   final Value<String?> healthMetric;
   final Value<double?> healthTarget;
   final Value<int> sortOrder;
@@ -5479,6 +5517,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.weekdays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.notificationId = const Value.absent(),
     this.healthMetric = const Value.absent(),
     this.healthTarget = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -5494,6 +5533,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.weekdays = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
+    this.notificationId = const Value.absent(),
     this.healthMetric = const Value.absent(),
     this.healthTarget = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -5511,6 +5551,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<int>? weekdays,
     Expression<int>? reminderHour,
     Expression<int>? reminderMinute,
+    Expression<int>? notificationId,
     Expression<String>? healthMetric,
     Expression<double>? healthTarget,
     Expression<int>? sortOrder,
@@ -5526,6 +5567,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (weekdays != null) 'weekdays': weekdays,
       if (reminderHour != null) 'reminder_hour': reminderHour,
       if (reminderMinute != null) 'reminder_minute': reminderMinute,
+      if (notificationId != null) 'notification_id': notificationId,
       if (healthMetric != null) 'health_metric': healthMetric,
       if (healthTarget != null) 'health_target': healthTarget,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -5543,6 +5585,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       Value<int>? weekdays,
       Value<int?>? reminderHour,
       Value<int?>? reminderMinute,
+      Value<int>? notificationId,
       Value<String?>? healthMetric,
       Value<double?>? healthTarget,
       Value<int>? sortOrder,
@@ -5557,6 +5600,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       weekdays: weekdays ?? this.weekdays,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      notificationId: notificationId ?? this.notificationId,
       healthMetric: healthMetric ?? this.healthMetric,
       healthTarget: healthTarget ?? this.healthTarget,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -5590,6 +5634,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (reminderMinute.present) {
       map['reminder_minute'] = Variable<int>(reminderMinute.value);
     }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<int>(notificationId.value);
+    }
     if (healthMetric.present) {
       map['health_metric'] = Variable<String>(healthMetric.value);
     }
@@ -5621,6 +5668,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('weekdays: $weekdays, ')
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
+          ..write('notificationId: $notificationId, ')
           ..write('healthMetric: $healthMetric, ')
           ..write('healthTarget: $healthTarget, ')
           ..write('sortOrder: $sortOrder, ')
@@ -9964,12 +10012,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index idxBalanceSnapshotsAccount = Index(
       'idx_balance_snapshots_account',
       'CREATE INDEX idx_balance_snapshots_account ON balance_snapshots (account_id)');
+  late final Index idxBalanceSnapshotsUnique = Index(
+      'idx_balance_snapshots_unique',
+      'CREATE UNIQUE INDEX idx_balance_snapshots_unique ON balance_snapshots (account_id, date)');
   late final Index idxWeeklyReviewsWeek = Index('idx_weekly_reviews_week',
       'CREATE INDEX idx_weekly_reviews_week ON weekly_reviews (week_start)');
   late final Index idxMetricEntriesMetric = Index('idx_metric_entries_metric',
       'CREATE INDEX idx_metric_entries_metric ON growth_metric_entries (metric_id)');
   late final Index idxMetricEntriesDate = Index('idx_metric_entries_date',
       'CREATE INDEX idx_metric_entries_date ON growth_metric_entries (date)');
+  late final Index idxMetricEntriesUnique = Index('idx_metric_entries_unique',
+      'CREATE UNIQUE INDEX idx_metric_entries_unique ON growth_metric_entries (metric_id, date)');
   late final Index idxDailyExperimentsDate = Index('idx_daily_experiments_date',
       'CREATE INDEX idx_daily_experiments_date ON daily_experiments (date)');
   late final Index idxTransactionsDate = Index('idx_transactions_date',
@@ -9986,6 +10039,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX idx_habit_logs_habit ON habit_logs (habit_id)');
   late final Index idxHabitLogsDate = Index('idx_habit_logs_date',
       'CREATE INDEX idx_habit_logs_date ON habit_logs (date)');
+  late final Index idxHabitLogsUnique = Index('idx_habit_logs_unique',
+      'CREATE UNIQUE INDEX idx_habit_logs_unique ON habit_logs (habit_id, date)');
   late final Index idxJournalEntriesDate = Index('idx_journal_entries_date',
       'CREATE INDEX idx_journal_entries_date ON journal_entries (date)');
   late final Index idxNotesUpdated = Index('idx_notes_updated',
@@ -10034,9 +10089,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         settingsEntries,
         idxMainGoalsStatus,
         idxBalanceSnapshotsAccount,
+        idxBalanceSnapshotsUnique,
         idxWeeklyReviewsWeek,
         idxMetricEntriesMetric,
         idxMetricEntriesDate,
+        idxMetricEntriesUnique,
         idxDailyExperimentsDate,
         idxTransactionsDate,
         idxTransactionsCategory,
@@ -10045,6 +10102,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         idxTimeBlocksBudget,
         idxHabitLogsHabit,
         idxHabitLogsDate,
+        idxHabitLogsUnique,
         idxJournalEntriesDate,
         idxNotesUpdated,
         idxNotesZettel,
@@ -12653,6 +12711,7 @@ typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
   Value<int> weekdays,
   Value<int?> reminderHour,
   Value<int?> reminderMinute,
+  Value<int> notificationId,
   Value<String?> healthMetric,
   Value<double?> healthTarget,
   Value<int> sortOrder,
@@ -12668,6 +12727,7 @@ typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
   Value<int> weekdays,
   Value<int?> reminderHour,
   Value<int?> reminderMinute,
+  Value<int> notificationId,
   Value<String?> healthMetric,
   Value<double?> healthTarget,
   Value<int> sortOrder,
@@ -12705,6 +12765,10 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get healthMetric => $composableBuilder(
@@ -12755,6 +12819,10 @@ class $$HabitsTableOrderingComposer
       column: $table.reminderMinute,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get notificationId => $composableBuilder(
+      column: $table.notificationId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get healthMetric => $composableBuilder(
       column: $table.healthMetric,
       builder: (column) => ColumnOrderings(column));
@@ -12803,6 +12871,9 @@ class $$HabitsTableAnnotationComposer
   GeneratedColumn<int> get reminderMinute => $composableBuilder(
       column: $table.reminderMinute, builder: (column) => column);
 
+  GeneratedColumn<int> get notificationId => $composableBuilder(
+      column: $table.notificationId, builder: (column) => column);
+
   GeneratedColumn<String> get healthMetric => $composableBuilder(
       column: $table.healthMetric, builder: (column) => column);
 
@@ -12849,6 +12920,7 @@ class $$HabitsTableTableManager extends RootTableManager<
             Value<int> weekdays = const Value.absent(),
             Value<int?> reminderHour = const Value.absent(),
             Value<int?> reminderMinute = const Value.absent(),
+            Value<int> notificationId = const Value.absent(),
             Value<String?> healthMetric = const Value.absent(),
             Value<double?> healthTarget = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
@@ -12864,6 +12936,7 @@ class $$HabitsTableTableManager extends RootTableManager<
             weekdays: weekdays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            notificationId: notificationId,
             healthMetric: healthMetric,
             healthTarget: healthTarget,
             sortOrder: sortOrder,
@@ -12879,6 +12952,7 @@ class $$HabitsTableTableManager extends RootTableManager<
             Value<int> weekdays = const Value.absent(),
             Value<int?> reminderHour = const Value.absent(),
             Value<int?> reminderMinute = const Value.absent(),
+            Value<int> notificationId = const Value.absent(),
             Value<String?> healthMetric = const Value.absent(),
             Value<double?> healthTarget = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
@@ -12894,6 +12968,7 @@ class $$HabitsTableTableManager extends RootTableManager<
             weekdays: weekdays,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute,
+            notificationId: notificationId,
             healthMetric: healthMetric,
             healthTarget: healthTarget,
             sortOrder: sortOrder,

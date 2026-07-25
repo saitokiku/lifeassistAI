@@ -140,7 +140,7 @@ class MoneyRepository {
   /// transaction in [days] recent days (see CsvImport.duplicateKey).
   Future<Set<String>> recentDuplicateKeys({int days = 400}) async {
     final from = AppDateUtils.dateKey(
-        DateTime.now().subtract(Duration(days: days)));
+        AppDateUtils.subtractDays(DateTime.now(), days));
     final rows = await (_db.select(_db.transactionEntries)
           ..where((t) => t.date.isBiggerOrEqualValue(from)))
         .get();

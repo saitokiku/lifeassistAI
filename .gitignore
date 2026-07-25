@@ -44,3 +44,8 @@ app.*.map.json
 
 # drift web worker source map (worker js itself is committed)
 web/*.js.map
+
+# Android release signing — never commit keystores or their passwords.
+android/key.properties
+*.jks
+*.keystore

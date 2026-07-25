@@ -37,7 +37,7 @@ class IdeasRepository {
           potentialValue: potentialValue,
           dateCaptured: AppDateUtils.dateKey(captured),
           reviewDate: AppDateUtils.dateKey(
-            captured.add(const Duration(days: AppConstants.ideaCoolingDays)),
+            AppDateUtils.addDays(captured, AppConstants.ideaCoolingDays),
           ),
           decision: 'undecided',
           helpsMainGoal: helpsMainGoal,

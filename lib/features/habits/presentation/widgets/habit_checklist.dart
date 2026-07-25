@@ -273,7 +273,10 @@ class _HabitRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      '${view.streak}',
+                      // "N+" once the streak reaches the log window:
+                      // the run is at least this long, and saying a
+                      // flat number would freeze it there.
+                      '${view.streak}${view.streakIsCapped ? '+' : ''}',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),

@@ -160,10 +160,10 @@ class _CategoryPace extends StatelessWidget {
           progress: cs.progress,
           color: barColor,
           leading:
-              '${Formatters.money(cs.spent)} of ${Formatters.money(target)}',
+              '${Formatters.moneyExact(cs.spent)} of ${Formatters.moneyExact(target)}',
           trailing: over
-              ? '${Formatters.money(cs.spent - target)} over'
-              : '${Formatters.money(cs.remaining)} left',
+              ? '${Formatters.moneyExact(cs.spent - target)} over'
+              : '${Formatters.moneyExact(cs.remaining)} left',
         ),
       ],
     );

@@ -50,7 +50,7 @@ final graphLayoutProvider = Provider<GraphLayoutResult?>((ref) {
 /// The local mini-map around one note: its direct neighborhood, laid
 /// out small. Null while loading; an empty graph means "no links yet".
 final localGraphProvider =
-    Provider.family<GraphLayoutResult?, String>((ref, noteId) {
+    Provider.autoDispose.family<GraphLayoutResult?, String>((ref, noteId) {
   final graph = ref.watch(noteGraphProvider);
   if (graph == null) return null;
   final local = graph.neighborhood(noteId);

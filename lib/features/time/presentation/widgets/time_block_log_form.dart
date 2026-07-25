@@ -29,6 +29,7 @@ class TimeBlockLogForm extends ConsumerStatefulWidget {
     this.initialBudgetId,
     this.initialHours,
     this.initialNote,
+    this.initialDate,
   });
 
   final List<TimeBudget> budgets;
@@ -37,6 +38,9 @@ class TimeBlockLogForm extends ConsumerStatefulWidget {
   final double? initialHours;
   final String? initialNote;
 
+  /// The day a capture named ("2h deep work yesterday"). Null = today.
+  final DateTime? initialDate;
+
   static Future<void> show(
     BuildContext context, {
     required List<TimeBudget> budgets,
@@ -44,6 +48,7 @@ class TimeBlockLogForm extends ConsumerStatefulWidget {
     String? initialBudgetId,
     double? initialHours,
     String? initialNote,
+    DateTime? initialDate,
   }) =>
       showAppSheet<void>(
         context,
@@ -53,6 +58,7 @@ class TimeBlockLogForm extends ConsumerStatefulWidget {
           initialBudgetId: initialBudgetId,
           initialHours: initialHours,
           initialNote: initialNote,
+          initialDate: initialDate,
         ),
       );
 
@@ -73,9 +79,9 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
   late final _note = TextEditingController(
       text: widget.block?.note ?? widget.initialNote ?? '');
   String? _budgetId;
-  late DateTime _date = widget.block == null
-      ? DateTime.now()
-      : AppDateUtils.parseDateKey(widget.block!.date);
+  late DateTime _date = widget.block != null
+      ? AppDateUtils.parseDateKey(widget.block!.date)
+      : widget.initialDate ?? DateTime.now();
   bool _deleting = false;
 
   @override
@@ -222,7 +228,7 @@ class _TimeBlockLogFormState extends ConsumerState<TimeBlockLogForm> {
     _budgetId ??= budgets.isEmpty ? null : budgets.first.id;
 
     final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 1));
+    final yesterday = AppDateUtils.subtractDays(now, 1);
     final isToday = AppDateUtils.isSameDay(_date, now);
     final isYesterday = AppDateUtils.isSameDay(_date, yesterday);
     final customDate = !isToday && !isYesterday;

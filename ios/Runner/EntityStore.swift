@@ -63,6 +63,36 @@ enum BridgePaths {
             .appendingPathComponent("lifeassist_bridge", isDirectory: true)
     }
 
+    /// Creates the bridge root and marks it excluded from iCloud/iTunes
+    /// backups.
+    ///
+    /// The mirror holds real figures — month-to-date spend per budget
+    /// category, the user's goal title, habit names — as plaintext JSON
+    /// so Siri and the widgets can read it without launching the app.
+    /// That's a deliberate trade for lock-screen features, but it does
+    /// not belong in a device backup: the database itself is the
+    /// system of record and is backed up on its own. Idempotent and
+    /// best-effort; a failure here never blocks a capture.
+    @discardableResult
+    static func ensureRoot() -> URL {
+        let dir = root
+        var url = dir
+        do {
+            try FileManager.default.createDirectory(
+                at: dir, withIntermediateDirectories: true)
+            let values = try url.resourceValues(forKeys: [.isExcludedFromBackupKey])
+            if values.isExcludedFromBackup != true {
+                var resourceValues = URLResourceValues()
+                resourceValues.isExcludedFromBackup = true
+                try url.setResourceValues(resourceValues)
+            }
+        } catch {
+            // Directory may already exist, or the volume may not support
+            // the flag. Either way the queue still works.
+        }
+        return dir
+    }
+
     static var entitiesFile: URL {
         root.appendingPathComponent("entities.json")
     }

@@ -38,7 +38,7 @@ class RecurringSheet extends ConsumerWidget {
       subtitle: rows.isEmpty
           ? 'Rent, subscriptions, insurance — each lands as a real '
               'transaction on its day of the month.'
-          : '${Formatters.money(amountFromCents(monthlyTotalCents))} a month across '
+          : '${Formatters.moneyExact(amountFromCents(monthlyTotalCents))} a month across '
               '${rows.where((r) => r.active).length} active.',
       footer: AppSheetButton(
         label: 'Add recurring expense',
@@ -104,7 +104,7 @@ class _RecurringRow extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpace.sm),
             Text(
-              Formatters.money(amountFromCents(row.amountCents)),
+              Formatters.moneyExact(amountFromCents(row.amountCents)),
               style: theme.textTheme.numberBody.copyWith(
                 color: row.active ? null : scheme.textTertiary,
               ),

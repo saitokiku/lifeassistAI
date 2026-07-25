@@ -27,6 +27,7 @@ class CaptureRequest {
     this.category,
     this.hour,
     this.minute,
+    this.dateKey,
   });
 
   final CaptureType type;
@@ -40,6 +41,16 @@ class CaptureRequest {
   final String? category;
   final int? hour;
   final int? minute;
+
+  /// The day this belongs to (`yyyy-MM-dd`), when the capture named one
+  /// ("coffee 4.50 yesterday"). Null = today. The AI bridge always
+  /// parsed this and nothing ever read it, so a dated utterance saved
+  /// under today's date regardless.
+  final String? dateKey;
+
+  /// [dateKey] as a DateTime, or null when absent/unparseable.
+  DateTime? get date =>
+      dateKey == null ? null : DateTime.tryParse(dateKey!);
 
   /// Parses `lifeassist://capture?type=expense&amount=4.5&text=coffee` and
   /// the equivalent `/capture?...` route location. Returns null when the
@@ -66,6 +77,7 @@ class CaptureRequest {
           : q['category']!.trim(),
       hour: int.tryParse(q['hour'] ?? ''),
       minute: int.tryParse(q['minute'] ?? ''),
+      dateKey: q['date']?.trim().isEmpty ?? true ? null : q['date']!.trim(),
     );
   }
 }

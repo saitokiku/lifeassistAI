@@ -11,14 +11,25 @@ class AppConstants {
   /// Weeks start on Monday everywhere in the app.
   static const int firstDayOfWeek = DateTime.monday;
 
-  /// '4' stores money as integer cents and adds the journal. Older
-  /// backups are still importable; see BackupService and LegacyMigration.
-  static const String exportSchemaVersion = '4';
+  /// Envelope version stamped on exports. Tracks the DATABASE schema
+  /// version so an export from a newer app is recognisable as such —
+  /// it sat at '4' while the schema moved to 7, which meant a v6 export
+  /// (carrying notes) and a real v4 export (without) were labelled
+  /// identically and the "backup is from a newer version" guard could
+  /// never fire. Older backups still import; see BackupService and
+  /// LegacyMigration.
+  static const String exportSchemaVersion = '7';
 
   /// Bump when SeedService or LegacyMigration gain new work. Bootstrap
   /// skips both while the stored preference matches; reset and import
   /// clear the preference so the next launch re-runs them.
   static const int dataRevision = 3;
+
+  /// Generation of the OS notification-id layout. Bumping this makes
+  /// the next launch cancel every pending notification once and re-arm
+  /// from the database, so ids from an older scheme can't linger
+  /// beyond cancellation. 1 = block-aligned ids (schema v7).
+  static const int notificationIdScheme = 1;
 }
 
 /// Short, plain product copy used across the app. One voice: calm, direct,

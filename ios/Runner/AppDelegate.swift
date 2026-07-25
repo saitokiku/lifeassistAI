@@ -34,7 +34,9 @@ import WidgetKit
       channel.setMethodCallHandler { call, result in
         switch call.method {
         case "bridgeRoot":
-          result(BridgePaths.root.path)
+          // Creating it here (rather than letting Dart mkdir it) is what
+          // gets the excluded-from-backup flag set on the container.
+          result(BridgePaths.ensureRoot().path)
         case "legacyBridgeRoot":
           result(BridgePaths.appContainerRoot.path)
         case "todayPublished":

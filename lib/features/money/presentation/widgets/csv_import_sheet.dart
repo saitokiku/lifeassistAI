@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -83,14 +82,29 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
   bool get _ready =>
       _table.isNotEmpty && _dateCol != null && _amountCol != null;
 
-  CsvExtraction? get _extraction => !_ready
-      ? null
-      : CsvImport.extract(
-          _table,
-          dateColumn: _dateCol!,
-          amountColumn: _amountCol!,
-          descriptionColumn: _descriptionCol,
-        );
+  /// Memoized extraction, keyed on the column mapping.
+  ///
+  /// This was an uncached getter read from build(), so every setState —
+  /// each column-picker change, each account selection, each AI
+  /// suggestion toggle — re-ran a full extract over the entire table.
+  /// On a large statement that is a complete re-scan per frame.
+  CsvExtraction? _extractionCache;
+  String? _extractionKey;
+
+  CsvExtraction? get _extraction {
+    if (!_ready) return null;
+    final key = '$_dateCol|$_amountCol|$_descriptionCol|${_table.length}';
+    if (_extractionKey != key) {
+      _extractionCache = CsvImport.extract(
+        _table,
+        dateColumn: _dateCol!,
+        amountColumn: _amountCol!,
+        descriptionColumn: _descriptionCol,
+      );
+      _extractionKey = key;
+    }
+    return _extractionCache;
+  }
 
   Future<void> _pickFile() async {
     setState(() => _error = null);
@@ -104,9 +118,9 @@ class _CsvImportSheetState extends ConsumerState<CsvImportSheet> {
       final picked = result.files.single;
       final String content;
       if (picked.bytes != null) {
-        content = utf8.decode(picked.bytes!, allowMalformed: true);
+        content = CsvImport.decodeBytes(picked.bytes!);
       } else if (picked.path != null) {
-        content = await File(picked.path!).readAsString();
+        content = CsvImport.decodeBytes(await File(picked.path!).readAsBytes());
       } else {
         return;
       }

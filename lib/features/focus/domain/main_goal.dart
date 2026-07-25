@@ -45,11 +45,9 @@ extension MainGoalX on MainGoal {
   int? daysLeft(DateTime today) {
     final target = targetDateTime;
     if (target == null) return null;
-    return target.difference(AppDateUtils.dateOnly(today)).inDays;
+    return AppDateUtils.daysBetween(today, target);
   }
 
   /// Days since the goal was created (age of the pursuit).
-  int daysIn(DateTime today) => AppDateUtils.dateOnly(today)
-      .difference(AppDateUtils.dateOnly(createdAt))
-      .inDays;
+  int daysIn(DateTime today) => AppDateUtils.daysBetween(createdAt, today);
 }

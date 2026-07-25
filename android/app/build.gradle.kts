@@ -28,11 +28,52 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing comes from android/key.properties when present
+    // (gitignored — never commit a keystore or its passwords). Create it
+    // alongside a keystore you keep safe:
+    //
+    //   keytool -genkey -v -keystore ~/lifeassist-release.jks \
+    //     -keyalg RSA -keysize 2048 -validity 10000 -alias lifeassist
+    //
+    //   android/key.properties:
+    //     storeFile=/Users/you/lifeassist-release.jks
+    //     storePassword=...
+    //     keyPassword=...
+    //     keyAlias=lifeassist
+    //
+    // Why this matters beyond store distribution: CI runners are
+    // ephemeral and cache nothing, so the debug fallback minted a NEW
+    // random keystore on every build. Consecutive APKs were signed by
+    // different identities, so installing an update over an existing
+    // build failed with INSTALL_FAILED_UPDATE_INCOMPATIBLE and forced an
+    // uninstall — which deletes the local database. A stable key makes
+    // updates install in place and keeps user data.
+    val keystoreProperties = java.util.Properties().apply {
+        val file = rootProject.file("key.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to debug signing only for local `flutter run
+            // --release`; a distributable build needs key.properties.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

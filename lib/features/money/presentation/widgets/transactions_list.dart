@@ -72,7 +72,7 @@ class _TransactionsListState extends ConsumerState<TransactionsList> {
   String _dayLabel(DateTime day) {
     final now = widget.state.now;
     if (AppDateUtils.isSameDay(day, now)) return 'Today';
-    if (AppDateUtils.isSameDay(day, now.subtract(const Duration(days: 1)))) {
+    if (AppDateUtils.isSameDay(day, AppDateUtils.subtractDays(now, 1))) {
       return 'Yesterday';
     }
     return Formatters.shortDate(day);

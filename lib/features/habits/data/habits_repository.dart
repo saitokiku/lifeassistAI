@@ -22,12 +22,20 @@ class HabitsRepository {
 
   Future<List<Habit>> getHabits() => _db.select(_db.habits).get();
 
+  /// How many days of logs are streamed. The streak walk can only see
+  /// this far back, so it also bounds the largest streak the app can
+  /// state exactly — see [HabitView.streakIsCapped], which renders
+  /// anything at the ceiling as "N+" rather than a number that silently
+  /// stops growing. Two years covers essentially every real streak
+  /// while keeping the stream small (one row per habit per day).
+  static const int logWindowDays = 730;
+
   /// Logs newest-first, bounded to a trailing window — enough for streaks
   /// and the heatmap without streaming the whole table forever.
   Stream<List<HabitLog>> watchRecentLogs(
-      {required DateTime today, int sinceDays = 190}) {
+      {required DateTime today, int sinceDays = logWindowDays}) {
     final from = AppDateUtils.dateKey(
-        today.subtract(Duration(days: sinceDays)));
+        AppDateUtils.subtractDays(today, sinceDays));
     return (_db.select(_db.habitLogs)
           ..where((t) => t.date.isBiggerOrEqualValue(from))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
@@ -44,7 +52,10 @@ class HabitsRepository {
     String? healthMetric,
     double? healthTarget,
   }) async {
-    final existing = await _db.select(_db.habits).get();
+    final count = await _db.habits.count().getSingle();
+    // Allocated once and stored, never re-derived from a hash — see
+    // NotificationIds.
+    final notificationId = await _db.allocateNotificationId();
     await _db.into(_db.habits).insert(Habit(
           id: _uuid.v4(),
           name: name,
@@ -53,9 +64,10 @@ class HabitsRepository {
           weekdays: weekdays,
           reminderHour: reminderHour,
           reminderMinute: reminderMinute,
+          notificationId: notificationId,
           healthMetric: healthMetric,
           healthTarget: healthTarget,
-          sortOrder: existing.length,
+          sortOrder: count,
           isArchived: false,
           createdAt: DateTime.now(),
         ));
@@ -80,26 +92,28 @@ class HabitsRepository {
     String source = 'manual',
   }) async {
     final key = AppDateUtils.dateKey(date);
-    final existing = await (_db.select(_db.habitLogs)
-          ..where((t) => t.habitId.equals(habitId) & t.date.equals(key)))
-        .getSingleOrNull();
-    if (existing != null) {
-      await (_db.update(_db.habitLogs)..where((t) => t.id.equals(existing.id)))
-          .write(HabitLogsCompanion(
-        value: Value(value),
-        note: Value(note),
-        source: Value(source),
-      ));
-    } else {
-      await _db.into(_db.habitLogs).insert(HabitLog(
+    // Single atomic statement against the (habitId, date) unique index.
+    // The old read-then-write raced with the Health sync and the Siri
+    // drain — both write today's logs, unawaited and unsynchronized —
+    // and a duplicate then made getSingleOrNull() throw forever.
+    await _db.into(_db.habitLogs).insert(
+          HabitLog(
             id: _uuid.v4(),
             habitId: habitId,
             date: key,
             value: value,
             note: note,
             source: source,
-          ));
-    }
+          ),
+          onConflict: DoUpdate(
+            (_) => HabitLogsCompanion(
+              value: Value(value),
+              note: Value(note),
+              source: Value(source),
+            ),
+            target: [_db.habitLogs.habitId, _db.habitLogs.date],
+          ),
+        );
   }
 
   /// Removes the log for a date (un-checks a habit).

@@ -103,6 +103,7 @@ class MonthlyMoneySnapshot {
     ]..sort((a, b) => b.severity.index.compareTo(a.severity.index));
 
     return MonthlyMoneySnapshot._(
+      dayOfMonth: dayOfMonth,
       monthlyNetIncome: monthlyNetIncome,
       targetSurplusLow: targetSurplusLow,
       targetSurplusHigh: targetSurplusHigh,
@@ -122,6 +123,7 @@ class MonthlyMoneySnapshot {
   }
 
   const MonthlyMoneySnapshot._({
+    required this.dayOfMonth,
     required this.monthlyNetIncome,
     required this.targetSurplusLow,
     required this.targetSurplusHigh,
@@ -143,6 +145,14 @@ class MonthlyMoneySnapshot {
   final double targetSurplusHigh;
 
   /// Month-to-date spend, exact.
+  /// Day of the month the snapshot was computed for — lets callers ask
+  /// whether the straight-line projection is trustworthy yet.
+  final int dayOfMonth;
+
+  /// Whether [projectedSpend] is far enough into the month to act on.
+  bool get projectionIsMeaningful =>
+      MoneyMath.projectionIsMeaningful(dayOfMonth);
+
   final int spendCentsSoFar;
   double get spendSoFar => amountFromCents(spendCentsSoFar);
   final double projectedSpend;

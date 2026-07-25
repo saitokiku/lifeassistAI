@@ -6,7 +6,7 @@ import '../../../../core/utils/formatters.dart';
 String relativeDayLabel(DateTime date, DateTime today) {
   final d = AppDateUtils.dateOnly(date);
   final t = AppDateUtils.dateOnly(today);
-  final days = t.difference(d).inDays;
+  final days = AppDateUtils.daysBetween(d, t);
   if (days <= 0) return 'Today';
   if (days == 1) return 'Yesterday';
   if (days < 7) return '$days days ago';

@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/layout/responsive_scaffold.dart';
+import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../habits/application/habits_controller.dart';
@@ -29,8 +31,25 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardStateProvider);
+    final hasError = ref.watch(dashboardHasErrorProvider);
     final anyHabits =
         (ref.watch(habitsStateProvider)?.habits.isNotEmpty) ?? false;
+
+    // A failed stream must not render as a calm day of zeros — Today
+    // aggregates everything, so it is the screen most able to lie.
+    if (state == null && hasError) {
+      return Scaffold(
+        body: SafeArea(
+          child: ContentWidth(
+            child: ErrorState(
+              title: "Today didn't load.",
+              message: AppCopy.dataSafeRetry,
+              onRetry: () => refreshDashboard(ref),
+            ),
+          ),
+        ),
+      );
+    }
 
     final showCheckIn =
         state != null && CheckInStrip.hasChips(state, anyHabits: anyHabits);
