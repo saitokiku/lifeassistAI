@@ -31,7 +31,10 @@ class MoneyField extends StatelessWidget {
       validator: validator ?? (v) => Validators.number(v, label: label),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+        // The decimal key types ',' on most European/Latin American
+        // keyboards; it must be kept (Validators normalizes it), not
+        // silently dropped — dropping turned "4,50" into 450.
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
       ],
       decoration: InputDecoration(
         labelText: label,

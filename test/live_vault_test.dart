@@ -112,7 +112,7 @@ void main() {
     expect(titles, contains('Fresh thought'));
   });
 
-  test('stale files with our id are swept; foreign files survive',
+  test('stale files with our id move to trash; foreign files survive',
       () async {
     // A file claiming an id that has no note = deleted note leftover.
     await vaultDir().create(recursive: true);
@@ -122,9 +122,61 @@ void main() {
 
     await vault.start();
     expect(await vaultFile('Ghost.md').exists(), isFalse);
-    // The handwritten file has no id — imported, never deleted.
+    // Moved, not destroyed: after "Reset all data" this sweep sees an
+    // empty notes table and every mirrored file as stale — deletion
+    // here would erase the user's whole vault on the next launch.
+    final trashed = File(
+        '${vaultDir().path}/${LiveVaultService.trashFolderName}/Ghost.md');
+    expect(await trashed.exists(), isTrue);
+    expect(await trashed.readAsString(), contains('body'));
+    // The handwritten file has no id — imported, never touched.
     expect(await vaultFile('Handwritten.md').exists(), isTrue);
     final titles = await repo.allTitles();
     expect(titles, contains('Handwritten'));
+  });
+
+  test('a stale file never overwrites a newer note; its text is parked',
+      () async {
+    await vault.start();
+    final note =
+        await repo.createNote(title: 'Alpha', content: 'newer app text');
+    await vault.mirrorNow();
+
+    // Simulate an un-synced/stale copy landing in the folder: right id,
+    // old content, old mtime (an iCloud placeholder, a missed mirror).
+    final file = vaultFile('Alpha.md');
+    await file.writeAsString(
+        '---\nid: ${note.id}\ntitle: "Alpha"\n---\n\nold stale text\n');
+    file.setLastModifiedSync(
+        DateTime.now().subtract(const Duration(hours: 1)));
+
+    final result = await vault.syncFromFolder();
+    expect(result.total, 0, reason: 'the stale file must not import');
+    final row = await repo.getNote(note.id);
+    expect(row!.content, 'newer app text',
+        reason: 'the newer in-app text survives');
+
+    // The divergent file text is preserved, not discarded.
+    final conflicts = Directory(
+        '${vaultDir().path}/${LiveVaultService.conflictFolderName}');
+    final parked = conflicts.listSync().whereType<File>().toList();
+    expect(parked, hasLength(1));
+    expect(await parked.single.readAsString(), contains('old stale text'));
+  });
+
+  test('a genuinely newer outside edit still imports', () async {
+    await vault.start();
+    final note = await repo.createNote(title: 'Alpha', content: 'original');
+    await vault.mirrorNow();
+
+    // Fresh mtime (now) — the normal Obsidian-edit case.
+    final file = vaultFile('Alpha.md');
+    final edited = (await file.readAsString())
+        .replaceFirst('original', 'edited outside');
+    await file.writeAsString(edited);
+
+    final result = await vault.syncFromFolder();
+    expect(result.updated, 1);
+    expect((await repo.getNote(note.id))!.content, 'edited outside');
   });
 }

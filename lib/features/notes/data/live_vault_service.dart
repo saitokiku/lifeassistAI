@@ -136,11 +136,24 @@ class LiveVaultService {
     }
   }
 
+  /// Obsidian's own trash-folder convention; `dir.list()` is
+  /// non-recursive, so nothing in here is ever swept or re-imported.
+  static const trashFolderName = '.trash';
+
+  /// Divergent file versions preserved during conflict resolution.
+  /// Visible in Files/Obsidian; never re-imported (subfolder).
+  static const conflictFolderName = 'conflicts';
+
   /// Files that carry OUR frontmatter id but whose note no longer
   /// exists are leftovers of an in-app delete (from before live mode,
   /// or from another install of this database). Without this sweep the
   /// next fold-in would resurrect the deleted note. Files without our
   /// id — hand-written, Obsidian-created — are never touched.
+  ///
+  /// Swept files are MOVED to [trashFolderName], never deleted: this
+  /// sweep runs on every launch, so after "Reset all data" (empty notes
+  /// table) it would otherwise destroy the user's entire mirrored vault
+  /// — the copy the app calls theirs forever.
   Future<void> _sweepStale() async {
     final dir = _dir;
     if (dir == null) return;
@@ -152,10 +165,35 @@ class LiveVaultService {
       try {
         final parsed = ObsidianVault.parse(name, await entity.readAsString());
         if (parsed.id != null && !liveIds.contains(parsed.id)) {
-          await entity.delete();
+          await _moveToTrash(dir, entity, name);
         }
       } catch (_) {}
     }
+  }
+
+  Future<void> _moveToTrash(Directory dir, File file, String name) async {
+    final trash = Directory('${dir.path}/$trashFolderName');
+    await trash.create(recursive: true);
+    final target = File('${trash.path}/$name');
+    if (target.existsSync()) await target.delete();
+    await file.rename(target.path);
+  }
+
+  /// Preserves a stale file's divergent text under
+  /// `conflicts/<base> (conflict <stamp>).md`. Same-second collisions
+  /// overwrite — the content is identical then.
+  Future<void> _parkConflictCopy(
+      Directory dir, String name, String raw) async {
+    final folder = Directory('${dir.path}/$conflictFolderName');
+    await folder.create(recursive: true);
+    final base = name.replaceFirst(RegExp(r'\.(md|markdown)$'), '');
+    final now = DateTime.now();
+    final stamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')} '
+        '${now.hour.toString().padLeft(2, '0')}.'
+        '${now.minute.toString().padLeft(2, '0')}';
+    await File('${folder.path}/$base (conflict $stamp).md')
+        .writeAsString(raw, flush: true);
   }
 
   /// Imports every folder file that is new or differs from its matched
@@ -180,8 +218,10 @@ class LiveVaultService {
       final name = entity.uri.pathSegments.last;
       if (!name.endsWith('.md') && !name.endsWith('.markdown')) continue;
       String raw;
+      DateTime fileModified;
       try {
         raw = await entity.readAsString();
+        fileModified = entity.statSync().modified;
       } catch (_) {
         continue;
       }
@@ -194,7 +234,27 @@ class LiveVaultService {
           match.title.trim() == v.title.trim() &&
           match.content.trimRight() == v.content &&
           match.isArchived == v.archived;
-      if (!same) changed.add(VaultPayload(name: name, content: raw));
+      if (same) continue;
+
+      // A file older than its note yet differing is stale — a missed
+      // mirror pass, or an un-materialized iCloud placeholder. Importing
+      // it would overwrite the newer in-app text with old (possibly
+      // truncated) content. Keep the note, park the file's text as a
+      // conflict copy so nothing is ever silently lost, and let the
+      // mirror pass below rewrite the canonical file. The 2s pad
+      // absorbs filesystem timestamp granularity.
+      if (match != null &&
+          match.updatedAt
+              .isAfter(fileModified.add(const Duration(seconds: 2)))) {
+        try {
+          await _parkConflictCopy(dir, name, raw);
+        } catch (_) {
+          // Preservation is best-effort; the note itself is safe.
+        }
+        continue;
+      }
+
+      changed.add(VaultPayload(name: name, content: raw));
     }
 
     if (changed.isEmpty) {

@@ -16,6 +16,7 @@ import '../../../core/errors/result.dart';
 import '../../../core/health/health_habit_sync.dart';
 import '../../../core/health/health_service.dart';
 import '../../../core/native/capture_queue_drain.dart';
+import '../../../core/native/live_activity_service.dart';
 import '../../../core/providers.dart';
 import '../../../core/security/app_lock.dart';
 import '../../../core/storage/seed_service.dart';
@@ -39,6 +40,7 @@ import '../../notes/application/notes_controller.dart';
 import '../../notes/data/vault_service.dart';
 import '../../reminders/application/reminders_controller.dart';
 import '../application/settings_controller.dart';
+import '../data/auto_backup_service.dart';
 import '../data/backup_service.dart';
 import '../domain/user_settings.dart';
 
@@ -1336,12 +1338,14 @@ class _BirthdaySheet extends ConsumerWidget {
 /// Lenient read of a backup's envelope — used for the pre-import preview.
 class _Envelope {
   const _Envelope({
+    this.app,
     this.schemaVersion,
     this.exportedAt,
     this.recordCount,
     required this.hasData,
   });
 
+  final String? app;
   final String? schemaVersion;
   final DateTime? exportedAt;
   final int? recordCount;
@@ -1361,6 +1365,7 @@ class _Envelope {
         count = total;
       }
       return _Envelope(
+        app: decoded['app']?.toString(),
         schemaVersion: decoded['schemaVersion']?.toString(),
         exportedAt: DateTime.tryParse(decoded['exportedAt']?.toString() ?? ''),
         recordCount: count,
@@ -1412,6 +1417,16 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     final envelope = _Envelope.tryParse(raw);
     if (envelope == null || !envelope.hasData) {
       return "That file doesn't look like a ${AppConstants.appName} backup.";
+    }
+    // Only our own exports (current or pre-rename) may replace the
+    // database — any other JSON with a `data` key used to slip through.
+    if (envelope.app != AppConstants.appName &&
+        envelope.app != BackupService.legacyAppName) {
+      return "That file doesn't look like a ${AppConstants.appName} backup.";
+    }
+    // A record-free backup could only erase; refuse it up front.
+    if ((envelope.recordCount ?? 0) == 0) {
+      return 'This backup contains no records.';
     }
     final version = int.tryParse(envelope.schemaVersion ?? '');
     final current = int.parse(AppConstants.exportSchemaVersion);
@@ -1485,6 +1500,13 @@ class _ImportSheetState extends ConsumerState<_ImportSheet> {
     if (!confirmed || !mounted) return;
 
     final navigator = Navigator.of(context);
+    // Safety copy of what's about to be replaced — the current data must
+    // never have zero copies while a foreign file overwrites it.
+    await AutoBackupService(
+      BackupService(ref.read(databaseProvider)),
+      ref.read(preferencesProvider),
+    ).safetyCopy('pre_import');
+    if (!mounted) return;
     // The next launch re-runs seed + legacy migration over the restored data.
     await ref.read(preferencesProvider).clearDataRevision();
     final result = await ref.read(backupServiceProvider).importJson(raw);
@@ -1651,6 +1673,21 @@ class _ResetSheetState extends ConsumerState<_ResetSheet> {
     final navigator = Navigator.of(context);
     final db = ref.read(databaseProvider);
     final prefs = ref.read(preferencesProvider);
+    // Safety copy first — "no undo" should mean "you chose not to",
+    // never "there was no copy".
+    await AutoBackupService(BackupService(db), prefs).safetyCopy('pre_reset');
+    // A running timer's lock-screen Live Activity must end with the
+    // timer, or it keeps counting with no way to dismiss it in-app.
+    await ref.read(liveActivityServiceProvider).stopFocusTimer();
+    // Queued Siri captures written before the reset would drain
+    // afterwards and re-insert data the user just erased.
+    if (!kIsWeb) {
+      try {
+        await ref.read(captureQueueDrainProvider).purgeAll();
+      } catch (_) {
+        // No bridge (tests, desktop): nothing queued to purge.
+      }
+    }
     // Clearing the revision first makes the next launch re-run seeding
     // even if the app dies between the clear and the re-seed below.
     await prefs.clearDataRevision();
@@ -1681,9 +1718,11 @@ class _ResetSheetState extends ConsumerState<_ResetSheet> {
       title: 'Reset everything?',
       children: [
         Text(
-          'Every metric, transaction, time block, habit, idea, goal, '
-          'countdown, reminder, and identity line is deleted, and settings '
-          'go back to the starter defaults. There is no undo.',
+          'Everything is deleted: your goal and its history, transactions, '
+          'accounts, time blocks, habits, ideas, notes, journal, '
+          'countdowns, reminders, and principles. Settings go back to the '
+          'starter defaults. A safety copy is written to the backups '
+          'folder first, but there is no in-app undo.',
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: AppSpace.xxl),

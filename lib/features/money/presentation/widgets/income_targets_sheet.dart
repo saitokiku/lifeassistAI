@@ -54,7 +54,7 @@ class _IncomeTargetsSheetState extends ConsumerState<IncomeTargetsSheet> {
     final base = Validators.number(value, label: 'High target');
     if (base != null) return base;
     final low = Validators.tryParseNumber(_low.text);
-    if (low != null && double.parse(value!.trim()) < low) {
+    if (low != null && Validators.parseNumber(value!) < low) {
       return "High target can't be under the low one.";
     }
     return null;

@@ -34,8 +34,10 @@ class AppNumberField extends StatelessWidget {
         signed: allowNegative,
       ),
       inputFormatters: [
+        // ',' is the decimal key on many keyboards; Validators
+        // normalizes it, so it must survive the filter.
         FilteringTextInputFormatter.allow(
-          allowNegative ? RegExp(r'[-0-9.]') : RegExp(r'[0-9.]'),
+          allowNegative ? RegExp(r'[-0-9.,]') : RegExp(r'[0-9.,]'),
         ),
       ],
       onChanged: onChanged,

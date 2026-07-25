@@ -16,6 +16,7 @@ import 'core/storage/legacy_migration.dart';
 import 'core/storage/preferences_service.dart';
 import 'core/storage/seed_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/money/data/recurring_repository.dart';
 import 'features/settings/data/settings_repository.dart';
 
 /// Initializes storage, seeds first-launch defaults, and runs the app.
@@ -45,6 +46,16 @@ Future<void> bootstrap() async {
     // even if the configured income changes later. Write-free after the
     // first launch of each month.
     await SettingsRepository(database).ensureIncomeSnapshot();
+
+    // Recurring expenses land at launch — not only when the Money tab
+    // is opened — including every month missed while the app was closed.
+    // Best-effort: bookkeeping must never block startup; the Money
+    // screen's materializer provider retries on view.
+    try {
+      await RecurringRepository(database).materialize();
+    } catch (e) {
+      debugPrint('Recurring catch-up skipped: $e');
+    }
 
     // The Swift bridge: mirror the app's nouns for Siri's entity queries
     // and drain any captures Siri wrote while the engine was down. Web

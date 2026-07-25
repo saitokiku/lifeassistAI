@@ -22,6 +22,9 @@ class AutoBackupService {
   static const int keepCount = 4;
   static const Duration interval = Duration(days: 7);
 
+  /// Newest safety copies kept per tag (pre-import, pre-reset).
+  static const int safetyKeepCount = 2;
+
   Future<void> maybeRun({DateTime? now}) async {
     if (kIsWeb) return;
     final at = now ?? DateTime.now();
@@ -51,6 +54,40 @@ class AutoBackupService {
       await _prefs.setLastAutoBackupAt(at);
     } catch (e) {
       debugPrint('Auto-backup skipped: $e');
+    }
+  }
+
+  /// Immediate safety copy before a destructive operation (import,
+  /// reset) — the data about to be replaced must never have zero copies.
+  /// Files land beside the weekly ones as
+  /// `life_assist_<tag>_<stamp>.json`; the newest [safetyKeepCount] per
+  /// tag are kept. Best-effort: failures are logged, never thrown, so a
+  /// full disk can't block the operation the user asked for.
+  Future<void> safetyCopy(String tag, {DateTime? now}) async {
+    if (kIsWeb) return;
+    final at = now ?? DateTime.now();
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final folder = Directory('${dir.path}/backups');
+      await folder.create(recursive: true);
+
+      final json = await _backup.exportJson();
+      final stamp =
+          at.toIso8601String().replaceAll(':', '-').split('.').first;
+      final prefix = 'life_assist_$tag';
+      await File('${folder.path}/${prefix}_$stamp.json').writeAsString(json);
+
+      final files = folder
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.contains(prefix))
+          .toList()
+        ..sort((a, b) => b.path.compareTo(a.path));
+      for (final stale in files.skip(safetyKeepCount)) {
+        await stale.delete();
+      }
+    } catch (e) {
+      debugPrint('Safety copy ($tag) skipped: $e');
     }
   }
 }

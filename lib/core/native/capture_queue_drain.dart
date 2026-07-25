@@ -73,6 +73,27 @@ class CaptureQueueDrain {
     }
   }
 
+  /// Deletes every queued capture — pending, legacy-pending, and failed.
+  /// Used by "Reset all data": without this, records Siri wrote before
+  /// the reset would drain afterwards and re-insert data the user just
+  /// erased. Best-effort per file; never throws.
+  Future<void> purgeAll() async {
+    Future<void> wipe(Directory? dir) async {
+      if (dir == null || !dir.existsSync()) return;
+      for (final entity in dir.listSync().whereType<File>()) {
+        try {
+          await entity.delete();
+        } catch (_) {
+          // A locked file stays; the next drain treats it normally.
+        }
+      }
+    }
+
+    await wipe(_paths.pendingDir);
+    await wipe(_paths.legacyPendingDir);
+    await wipe(_paths.failedDir);
+  }
+
   Future<DrainResult> _drain() async {
     await _paths.ensureDirs();
     List<File> pendingIn(Directory dir) => !dir.existsSync()

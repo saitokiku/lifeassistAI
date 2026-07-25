@@ -88,7 +88,7 @@ class _HabitEditorState extends ConsumerState<HabitEditor> {
     final unit = _unit.text.trim().isEmpty ? null : _unit.text.trim();
     // A boolean habit needs a threshold to auto-check against; without
     // one the mapping is meaningless, so it isn't saved.
-    final target = double.tryParse(_healthTarget.text.trim());
+    final target = Validators.tryParseNumber(_healthTarget.text);
     final metric = _healthMetric == null ||
             (_type == HabitType.boolean && (target == null || target <= 0))
         ? null

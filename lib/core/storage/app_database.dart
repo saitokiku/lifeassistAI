@@ -570,10 +570,19 @@ class AppDatabase extends _$AppDatabase {
           // Catch-up index pass, once, AFTER every versioned block: the
           // set spans the CURRENT schema, so running it mid-history
           // would reference tables a later block hasn't created yet
-          // (v3's loop naming v6's notes indexes, say). createIndex is
-          // idempotent, and alterTable-recreated tables (v4) get their
-          // indexes back here too.
+          // (v3's loop naming v6's notes indexes, say). alterTable-
+          // recreated tables (v4) get their indexes back here too.
+          //
+          // Drop-then-create, NOT bare createIndex: the generated
+          // CREATE INDEX has no IF NOT EXISTS, and on every real
+          // upgrade the older tables already carry their indexes
+          // (onCreate or a previous upgrade built them) — a bare
+          // create throws "index already exists", aborts the
+          // migration, and bricks the app at launch. Proven by
+          // test/schema_upgrade_test.dart. The drop also picks up
+          // changed index definitions for free.
           for (final index in allSchemaEntities.whereType<Index>()) {
+            await customStatement('DROP INDEX IF EXISTS ${index.entityName}');
             await m.createIndex(index);
           }
         },

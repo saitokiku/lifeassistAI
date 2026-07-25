@@ -17,6 +17,9 @@ class BackupService {
 
   final AppDatabase _db;
 
+  /// Pre-rename exports (v1) stamp this name; they import fine.
+  static const legacyAppName = 'Life Dashboard';
+
   static const _tableOrder = [
     'settings',
     'mainGoals',
@@ -134,7 +137,9 @@ class BackupService {
   }
 
   /// Replaces all data with the backup contents inside one transaction.
-  /// Fails without touching the database when the JSON is malformed.
+  /// Fails without touching the database when the JSON is malformed,
+  /// isn't one of this app's own exports, or carries zero records —
+  /// an import must never be able to erase more than it restores.
   Future<Result<int>> importJson(String raw) async {
     final Map<String, dynamic> parsed;
     try {
@@ -143,10 +148,28 @@ class BackupService {
       return Result.failure('Not valid JSON.', e);
     }
 
+    // Only our own exports may replace the database. Without this check
+    // any JSON with a top-level `data` map — an unrelated config file, a
+    // truncated download — would wipe every table and report success.
+    final app = parsed['app'];
+    if (app != AppConstants.appName && app != legacyAppName) {
+      return const Result.failure(
+          "That file isn't a ${AppConstants.appName} backup.");
+    }
+
     final data = parsed['data'];
     if (data is! Map<String, dynamic>) {
       return const Result.failure(
           "Missing 'data' section. Is this a ${AppConstants.appName} export?");
+    }
+
+    // A backup with no rows would only ever destroy; refuse it before
+    // touching the database.
+    final totalRows = data.values
+        .whereType<List>()
+        .fold<int>(0, (sum, rows) => sum + rows.length);
+    if (totalRows == 0) {
+      return const Result.failure('This backup contains no records.');
     }
 
     List<Map<String, dynamic>> rows(String key) => [
@@ -207,14 +230,20 @@ class BackupService {
         await insertAll(
             _db.journalEntries, 'journalEntries', JournalEntry.fromJson);
         await insertAll(_db.notes, 'notes', Note.fromJson);
+
+        // Both post-steps run INSIDE the transaction, so a failure in
+        // either rolls the wipe and the inserts back with it and the
+        // "data was rolled back" message below stays true. They used to
+        // run after commit, where a failure left the database already
+        // replaced while the UI said nothing had changed.
+
+        // A v1 backup carries Kaizen-era values and no main goal; rewrite
+        // it into the universal shape (no-op for v2 backups).
+        await LegacyMigration(_db).run();
+
+        // Rebuild the derived link/tag index from the restored note text.
+        await NotesRepository(_db).reindexAll();
       });
-
-      // A v1 backup carries Kaizen-era values and no main goal; rewrite it
-      // into the universal shape (no-op for v2 backups).
-      await LegacyMigration(_db).run();
-
-      // Rebuild the derived link/tag index from the restored note text.
-      await NotesRepository(_db).reindexAll();
 
       return Result.success(count);
     } catch (e) {

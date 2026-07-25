@@ -49,6 +49,14 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   bool _saving = false;
   bool _missing = false;
 
+  /// Programmatic controller writes must not read as user edits.
+  bool _syncingControllers = false;
+
+  /// A newer row that arrived (vault fold-in, another screen) while the
+  /// editor held unsaved text; _save preserves it as a conflict copy
+  /// instead of blind-overwriting it.
+  Note? _externalRow;
+
   List<String> _allTitles = const [];
   List<String> _allTags = const [];
   List<_Suggestion> _suggestions = const [];
@@ -102,7 +110,29 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   }
 
   void _markDirty() {
+    if (_syncingControllers) return;
     if (!_dirty) setState(() => _dirty = true);
+  }
+
+  /// An outside edit landed (vault fold-in on resume, another screen).
+  /// Clean editor: refresh silently — the screen finally lives up to
+  /// noteProvider's "re-renders on outside edits" contract. Dirty
+  /// editor: remember the newer row so _save keeps both versions.
+  void _onExternalChange(Note row) {
+    final loaded = _note;
+    if (loaded == null || !row.updatedAt.isAfter(loaded.updatedAt)) return;
+    if (_dirty) {
+      _externalRow = row;
+      return;
+    }
+    _syncingControllers = true;
+    _title.text = row.title;
+    _body.text = row.content;
+    _syncingControllers = false;
+    setState(() {
+      _note = row;
+      _dirty = false;
+    });
   }
 
   /// Persists current text. A brand-new note is only created once it
@@ -119,6 +149,30 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       if (_note == null) {
         _note = await controller.createNote(title: title, content: content);
       } else {
+        // The note changed under the editor while it held unsaved text.
+        // The version on screen wins the row, but the other version is
+        // kept as its own note — a conflict must never cost content.
+        final external = _externalRow;
+        _externalRow = null;
+        if (external != null &&
+            external.updatedAt.isAfter(_note!.updatedAt) &&
+            (external.content != content || external.title != title)) {
+          final base = external.title.trim().isEmpty
+              ? 'Untitled'
+              : external.title.trim();
+          await controller.createNote(
+            title: '$base (conflict)',
+            content: external.content,
+          );
+          if (mounted) {
+            showErrorSnack(
+              context,
+              'This note changed outside the editor — that version was '
+              'kept as "$base (conflict)".',
+            );
+          }
+          _note = external;
+        }
         _note = await controller.saveNote(
           _note!,
           title: title,
@@ -259,6 +313,16 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+
+    // Outside edits (vault fold-in on resume, saves from another
+    // screen) reach the open editor instead of being clobbered by it.
+    final noteId = widget.noteId;
+    if (noteId != null) {
+      ref.listen(noteProvider(noteId), (previous, next) {
+        final row = next.valueOrNull;
+        if (row != null) _onExternalChange(row);
+      });
+    }
 
     if (_loading) {
       return const Scaffold(body: SafeArea(child: SkeletonList()));
