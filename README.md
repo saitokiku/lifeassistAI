@@ -1,6 +1,16 @@
+<div align="center">
+
+<img src="assets/icon/app_icon.png" width="104" alt="Life Assist">
+
 # Life Assist
 
-One quiet place to run your life.
+**One quiet place to run your life.**
+
+[![CI](https://github.com/saitokiku/lifeassistAI/actions/workflows/ci.yml/badge.svg)](https://github.com/saitokiku/lifeassistAI/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+![Flutter](https://img.shields.io/badge/Flutter-iOS%20·%20Android%20·%20desktop%20·%20web-0f9b8e)
+
+</div>
 
 Life Assist is a local-first personal operating system built around a
 simple idea: **pick one main goal, keep it in front of you, and keep the
