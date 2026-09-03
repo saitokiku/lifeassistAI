@@ -7,7 +7,7 @@ import 'package:life_dashboard/core/health/health_habit_sync.dart';
 import 'package:life_dashboard/core/health/health_service.dart';
 import 'package:life_dashboard/core/storage/app_database.dart';
 
-/// The Phase 5 contract: health data becomes habit logs ONLY through the
+/// The contract: health data becomes habit logs ONLY through the
 /// user's explicit mapping, manual logs always win, and the sync's own
 /// writes stay honest when the data no longer supports them.
 void main() {

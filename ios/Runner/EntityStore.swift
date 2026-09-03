@@ -1,4 +1,4 @@
-// Read side of the Dart↔Swift bridge (see docs/SIRI_AI_BLUEPRINT.md §2).
+// Read side of the Dart↔Swift capture bridge.
 //
 // Dart's EntityMirrorService atomically rewrites entities.json whenever
 // budgets, categories, or habits change. Siri's entity queries resolve
@@ -36,13 +36,13 @@ struct EntityMirror: Codable {
 
 /// Filesystem contract shared with lib/core/native/bridge_paths.dart.
 ///
-/// When the App Group capability is enabled (widgets, Phase 6), both
+/// When the App Group capability is enabled (widgets), both
 /// sides automatically move to the shared container: Swift resolves it
 /// here, Dart asks the `lifeassist/paths` channel. Without the
 /// entitlement `containerURL` returns nil and everything stays in the
 /// app's own container — today's behavior, unchanged.
 enum BridgePaths {
-    /// Must match the App Group the user adds in Xcode (Phase 6) and
+    /// Must match the App Group the user adds in Xcode and
     /// scripts/ios/add_widget_extension.rb.
     static let appGroupId = "group.com.saitokiku.lifeassist"
 

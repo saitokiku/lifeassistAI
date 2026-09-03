@@ -1,9 +1,9 @@
 # Siri & Shortcuts setup
 
-Voice-first capture is the app's flagship bet (see
-`IMPROVEMENT_BLUEPRINT.md` §9). The Dart side — the **capture bus** — is
-fully wired: any `lifeassist://capture?...` URL opens the matching sheet,
-prefilled, from cold start or warm. Siri support rides that rail.
+Voice-first capture is the app's flagship bet. The Dart side — the
+**capture bus** — is fully wired: any `lifeassist://capture?...` URL
+opens the matching sheet, prefilled, from cold start or warm. Siri
+support rides that rail.
 
 ## What already works with zero setup
 
@@ -34,17 +34,17 @@ Phrases that work immediately after install:
 
 Siri collects the missing parameter by voice ("How much was it?"), the
 app opens on the right tab with the sheet prefilled, and one tap saves.
-The confirmation tap is deliberate for v1 — see the blueprint's honesty
+The confirmation tap is deliberate — see the honesty
 principles (voice never invents an outcome or a category).
 
 ## Background capture and beyond
 
 The advanced integration — logging without opening the app, typed
-entities, iOS 27 Siri AI alignment, on-device Foundation Models — is
-specified as Phases 2–4 of [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md),
-the current plan of record. The original sketch below is kept for
-history; the blueprint supersedes it where they differ (notably: no App
-Group is needed for background intents in the app target):
+entities, iOS 27 Siri AI alignment, on-device Foundation Models — ships
+in `ios/Runner/` (`BackgroundIntents.swift`, `EntityStore.swift`,
+`SiriAnswers.swift`, `AiBridge.swift`). Background intents need no App
+Group: they write into the app's own sandbox. The original sketch below
+is kept because it explains the constraints that shaped that design:
 
 - An **App Group** shared container with a small pending-capture queue
   (JSON file or SQLite separate from the drift DB — the extension must

@@ -17,27 +17,28 @@ the Actions tab) produces the artifact **`LifeAssist-unsigned-ipa`**:
 3. App Shortcut phrases ("Log an expense in Life Assist") register on
    first launch — no setup.
 
-Everything in Phases 0–4 of [SIRI_AI_BLUEPRINT.md](SIRI_AI_BLUEPRINT.md)
-works on a sideloaded build; entitlements only enter at HealthKit
-(Phase 5) and App Groups/widgets (Phase 6). Cost note: macOS runners
+Siri capture, entity resolution and on-device AI all work on a
+sideloaded build; entitlements only enter at HealthKit and at App
+Groups (widgets). Cost note: macOS runners
 bill 10× minutes on private repos — the workflow is path-filtered and
 cancels superseded runs; a public repo makes them free.
 
-### On-device test checklist (per blueprint phase)
+### On-device test checklist
 
-- **Phase 0**: "Hey Siri, log an expense in Life Assist" from a locked
-  phone → app opens on the prefilled expense sheet.
-- **Phase 2**: same phrase, phone locked → Siri confirms WITHOUT opening
-  the app; open later → the row exists exactly once (also force-kill the
-  app right after Siri confirms, reopen, recheck). Create a reminder by
-  voice, never open the app, and wait for it to fire.
-- **Phase 3** (iOS 27): unphrased "log twelve fifty for groceries…" →
-  the right category entity resolves; the snippet's month-to-date total
-  appears only when fresh; Undo removes the row; Spotlight surfaces
-  budget names.
-- **Phase 4** (Apple-Intelligence device): smart-capture field appears on
-  Today; "coffee 4.50 yesterday and 2h deep work" → two chips; on a
-  non-AI device the field is absent entirely.
+- **Foreground capture**: "Hey Siri, log an expense in Life Assist" from
+  a locked phone → app opens on the prefilled expense sheet.
+- **Background capture**: same phrase, phone locked → Siri confirms
+  WITHOUT opening the app; open later → the row exists exactly once
+  (also force-kill the app right after Siri confirms, reopen, recheck).
+  Create a reminder by voice, never open the app, and wait for it to
+  fire.
+- **Entity resolution** (iOS 27): unphrased "log twelve fifty for
+  groceries…" → the right category entity resolves; the snippet's
+  month-to-date total appears only when fresh; Undo removes the row;
+  Spotlight surfaces budget names.
+- **On-device AI** (Apple-Intelligence device): smart-capture field
+  appears on Today; "coffee 4.50 yesterday and 2h deep work" → two
+  chips; on a non-AI device the field is absent entirely.
 
 ## 1. Flutter setup
 
@@ -204,7 +205,9 @@ Every upload:
    first launch.
 7. Next build: bump `+N` in pubspec.yaml `version:`, rebuild, re-upload.
 
-See docs/app_store_checklist.md for the full store checklist.
+Store metadata to paste into App Store Connect — name, subtitle,
+description, keywords, privacy answers — is in
+[app_store_listing.md](app_store_listing.md).
 
 ## Web caveat
 

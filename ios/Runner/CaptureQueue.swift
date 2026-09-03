@@ -1,4 +1,4 @@
-// Write side of the Dart↔Swift bridge (see docs/SIRI_AI_BLUEPRINT.md §2).
+// Write side of the Dart↔Swift capture bridge.
 //
 // Background App Intents append one JSON file per capture. Atomic
 // tmp+rename makes torn writes impossible; the filename's epoch prefix

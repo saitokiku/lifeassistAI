@@ -1,4 +1,4 @@
-// Background Siri capture (docs/SIRI_AI_BLUEPRINT.md Phase 2).
+// Background Siri capture.
 //
 // These intents run with `openAppWhenRun = false`: iOS launches the app
 // process headless (no scene → no Flutter engine), Swift writes a queue

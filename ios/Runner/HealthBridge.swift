@@ -1,4 +1,4 @@
-// HealthKit → auto-habits (see docs/SIRI_AI_BLUEPRINT.md).
+// HealthKit → auto-habits.
 //
 // LIVE: the entitlement is committed and Info.plist sets
 // LAHealthKitEnabled = YES. The flag still gates every call because

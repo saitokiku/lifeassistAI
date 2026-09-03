@@ -1,15 +1,15 @@
 // Siri / Shortcuts entry points for Life Assist (App Intents).
 //
-// Phase B v1 of the voice-capture plan (docs/SIRI_AI_BLUEPRINT.md):
-// every intent here is a lightweight FOREGROUND intent that opens the app
+// The foreground half of voice capture: every intent here is a
+// lightweight FOREGROUND intent that opens the app
 // on a `lifeassist://capture?...` deep link. The Flutter capture bus
 // parses the URL, opens the matching sheet prefilled, and the user
 // confirms with one tap — these intents never write to the database, so
 // there is nothing to keep consistent between Swift and drift.
 //
 // Wired into the Runner target via project.pbxproj (no Xcode step needed).
-// Background intents that DO capture without opening the app arrive in
-// Phase 2 of the blueprint and live in BackgroundIntents.swift.
+// Background intents that DO capture without opening the app live in
+// BackgroundIntents.swift.
 
 import AppIntents
 import UIKit

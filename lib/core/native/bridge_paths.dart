@@ -17,7 +17,7 @@ class BridgePaths {
 
   /// Production root. iOS answers through the `lifeassist/paths` channel
   /// so Dart and Swift always agree: the shared App Group container once
-  /// its entitlement exists (widgets, Phase 6), the app's own container
+  /// its entitlement exists (widgets), the app's own container
   /// until then. Platforms without the channel fall back directly.
   static Future<BridgePaths> resolve() async {
     final support = await getApplicationSupportDirectory();

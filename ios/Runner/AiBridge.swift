@@ -1,5 +1,4 @@
 // On-device AI via Apple's Foundation Models framework (iOS 26+).
-// docs/SIRI_AI_BLUEPRINT.md Phase 4.
 //
 // The `lifeassist/ai` MethodChannel exposes four capabilities to Dart:
 //   availability() -> String state

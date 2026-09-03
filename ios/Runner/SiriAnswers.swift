@@ -1,4 +1,4 @@
-// iOS 26/27 Siri AI alignment (docs/SIRI_AI_BLUEPRINT.md Phase 3).
+// iOS 26/27 Siri AI alignment.
 //
 // Query intents answer questions from the `today.json` aggregates the
 // Flutter shell publishes; confirmation snippets show what a capture did;

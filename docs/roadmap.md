@@ -1,73 +1,54 @@
 # Roadmap
 
-## v1 — local-first private app ✅
+## Shipped
 
-Full local persistence, dashboard, Kaizen/Money/Time/Habits/Ideas/
-Identity/Reminders/Settings, onboarding, JSON export/import, tests, iOS
-build scripts. Private use via development builds / TestFlight internal
-testing.
+- **v1** — local-first persistence, the five tabs, onboarding, JSON
+  export/import, iOS build scripts.
+- **v1.1** — trend charts (fl_chart), share-sheet export with clipboard
+  fallback, file-picker import with paste fallback, web persistence via
+  a committed drift worker.
+- **v2** — the universal **main goal** system replaced the original
+  single-owner experience: user-defined goal with why, timeframe and
+  status, milestones, an optional progress measure, daily steps. New
+  information architecture (Today / Focus / Money / Time / You),
+  rebuilt onboarding, neutral seed data, one product voice. Schema v2
+  migrates existing data; v1 backups still import.
+- **v3** — tracked accounts with balance history, recurring expenses
+  that materialize as real transactions, bank-CSV statement import with
+  duplicate detection, guided weekly reviews, per-habit and per-reminder
+  weekday schedules.
+- **v4** — money moved to **integer cents** end to end, so sums are
+  exact; plus the journal.
+- **v5** — Apple Health habit mappings and a source tag on every habit
+  log (`manual | siri | health`; manual always wins).
+- **v6** — Notes: a built-in Zettelkasten with `[[wiki links]]`, tags,
+  backlinks, a graph, and an Obsidian-compatible vault in Files.
+- **v7** — real UNIQUE constraints behind the three "one row per day"
+  invariants, and stored (rather than derived) notification ids.
+- **iOS integration** — App Intents for Siri capture that works with the
+  phone locked, entity resolution, on-device Foundation Models for
+  parsing and drafting, widgets, a Control Center button, and the
+  focus-timer Live Activity.
 
-## v1.1 — better charts & export ergonomics ✅
+## Next
 
-- Richer trend charts (fl_chart): 30/90-day metric history line chart,
-  weekly hour stacks, monthly surplus history bars
-- Share-sheet export (share_plus) with clipboard fallback; file-picker
-  import (file_picker) with paste fallback
-- `drift_worker.js` compiled and committed under `web/`; `sqlite3.wasm`
-  documented in `web/README.md` (single manual download — the release
-  asset host is blocked in the build sandbox, so it can't be vendored here)
-- App version shown in Settings → About
+- **Launch** — App Store screenshots, marketing page, App Review
+  submission. The privacy policy ([privacy.md](privacy.md)) and support
+  page ([support.md](support.md)) are written and ready to host.
+- **Calendar overlay** — read-only device calendar on the Time screen,
+  with one-tap conversion of a calendar block into logged time.
+- **Reminder robustness** — Android rescheduling after reboot, and
+  staying under the iOS 64-pending-notification ceiling as reminder
+  counts grow.
 
-## v2 — universal product ✅ (this revamp)
+## Deliberately not doing (yet)
 
-- The hardcoded Kaizen experience replaced by a universal **main goal**
-  system (Focus tab): user-defined goal with why/timeframe/status,
-  milestones, optional progress measure, daily steps
-- Safe migration: schema v2, legacy enum rewrites, the original "Kaizen"
-  goal derived from existing data; v1 backups still import
-- New IA: Today / Focus / Money / Time / You; identity folded into You;
-  long-term target moved to Money
-- Onboarding rebuilt around goal setup; neutral seed data; one product
-  voice; app renamed **Life Assist**
-- Personalizable Today (area modules), reduced-motion support, honest
-  zero-income states
-
-> Improvement priorities (defects, quick wins, depth features, and the voice-capture
-> flagship) are formulated in [IMPROVEMENT_BLUEPRINT.md](IMPROVEMENT_BLUEPRINT.md);
-> the releases below map to its tiers.
-
-## v2.1 — launch readiness
-
-- Real app icon/branding, screenshots, marketing page
-- App Review submission; privacy policy finalized
-- Widget/watch complications for the day score (nice-to-have)
-
-## v2.2 — calendar integration
-
-- Read-only device calendar overlay on the Time screen
-- One-tap "log this calendar block as goal time / work / ..." conversion
-
-## v2.3 — bank import / CSV
-
-- Manual CSV import for transactions (bank export mapping)
-- Duplicate detection, bulk categorization, category auto-suggest rules
-
-## v2.4 — cloud sync (opt-in)
-
-- Encrypted sync/backup (still no accounts requirement for local use)
-- Multi-device conflict strategy; privacy policy update first
-
-## AI (separate track)
-
-Staged plan, principles, and architecture live in
-[AI_PRODUCT_ROADMAP.md](AI_PRODUCT_ROADMAP.md). The app must stay
-excellent without it.
-
-## Engineering debt to watch
-
-- Notification rescheduling after device reboot on Android
-  (bootReceiver) and iOS 64-pending-notification limit if reminders grow
-- `docs/product_spec.md`, `docs/scoring_rules.md`, and
-  `docs/life_philosophy.md` describe v1 and are kept as historical
-  context; current behavior is documented in the README and
-  `docs/data_model.md`
+- **Cloud sync.** Encrypted, opt-in, no-account sync is the only version
+  worth building, and it needs the privacy policy updated first. A
+  rushed version would cost the local-first guarantee that makes the app
+  worth using.
+- **Live bank feeds.** They need third-party credentials and a token
+  server. The integration seam is documented in
+  [BANK_CONNECTIONS.md](BANK_CONNECTIONS.md); CSV import covers the real
+  need without asking anyone for their bank login.
+- **Accounts, social, gamification.** Not planned.

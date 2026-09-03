@@ -26,7 +26,7 @@ import WidgetKit
       VisionBridge.register(with: registrar)
     }
     // Dart asks where the bridge lives so both sides agree the moment
-    // the App Group entitlement appears (Phase 6 widgets); without it
+    // the App Group entitlement appears (widgets); without it
     // this answers with the app container, same as before.
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PathsBridge") {
       let channel = FlutterMethodChannel(

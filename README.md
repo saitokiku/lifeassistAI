@@ -65,8 +65,7 @@ AI drives — with three bridges between Dart and Swift:
   guided generation parses free-text captures, suggests statement
   categories (constrained to your real category names), drafts weekly
   reflections from your numbers, and expands parked ideas. Draft-only —
-  nothing writes without your confirmation. Where this goes next:
-  [docs/EDGE_AI_ROADMAP.md](docs/EDGE_AI_ROADMAP.md).
+  nothing writes without your confirmation.
 - **Widgets + Live Activity.** Today's score, up-next, an interactive
   habit check (writes the same queue record Siri does), a Control Center
   button (iOS 18+), and the focus-timer Live Activity. Widgets need the
@@ -106,7 +105,7 @@ bridges live under `lib/core/{native,ai,health}/`. Design tokens in
 
 ### Data schema & migrations
 
-Current schema: **v6**. Every upgrade (and old backup import) is
+Current schema: **v7**. Every upgrade (and old backup import) is
 automatic and tested:
 
 - **v2** — the universal main-goal system; Kaizen-era data becomes the
@@ -119,10 +118,14 @@ automatic and tested:
   (`manual | siri | health` — manual always wins).
 - **v6** — the Zettelkasten: notes plus their derived link/tag index
   (rebuilt from note text on every save and after imports).
+- **v7** — UNIQUE constraints behind the three "one row per day"
+  invariants, and stored notification ids (a `String.hashCode`
+  derivation is not stable across platforms, so pending notifications
+  could become uncancellable).
 
-Backups are versioned JSON (`schemaVersion: "4"` exports; every older
-version imports with conversion). See `lib/core/storage/` and
-`test/money_migration_test.dart`.
+Backups are versioned JSON stamped with the schema version; every older
+version imports with conversion. See `lib/core/storage/`,
+`test/money_migration_test.dart`, and `test/schema_upgrade_test.dart`.
 
 ## Run it
 
@@ -188,7 +191,7 @@ flutter build ipa --release   # .ipa in build/ios/ipa/
 Then upload with Transporter. Signing, the exact TestFlight walkthrough,
 and the two optional capability switches (HealthKit, App Group for
 widgets) are in [docs/release_ios.md](docs/release_ios.md); store
-metadata lives in [docs/app_store_checklist.md](docs/app_store_checklist.md).
+metadata lives in [docs/app_store_listing.md](docs/app_store_listing.md).
 
 ## Project structure
 
@@ -218,17 +221,19 @@ lib/
 ios/Runner/          AppDelegate + App Intents + bridges + privacy manifest
 ios/LifeAssistWidgets/  WidgetKit extension (widgets, control, Live Activity)
 demo/                a fictional customer's backup + its generator's output
-docs/                plans of record, release docs, scrutiny report
+docs/                data model, scoring rules, release + store docs
 scripts/             analyze/test/run/build helpers, widget target generator,
                      demo-data generator
 test/                281 unit/repository/contract/smoke tests
 ```
 
-Key documents: [SIRI_AI_BLUEPRINT.md](docs/SIRI_AI_BLUEPRINT.md) (plan
-of record, phases 0–7), [EDGE_AI_ROADMAP.md](docs/EDGE_AI_ROADMAP.md)
-(what's next for on-device AI — the only open horizon),
-[SCRUTINY_REPORT.md](docs/SCRUTINY_REPORT.md) (full-repo review:
-what's solid, what's open, verdict).
+Reference docs: [data_model.md](docs/data_model.md) (every table and
+what it means), [scoring_rules.md](docs/scoring_rules.md) (how the day
+score is computed), [NOTES_ZETTELKASTEN.md](docs/NOTES_ZETTELKASTEN.md),
+[BANK_CONNECTIONS.md](docs/BANK_CONNECTIONS.md),
+[SIRI_SETUP.md](docs/SIRI_SETUP.md),
+[release_ios.md](docs/release_ios.md), and
+[roadmap.md](docs/roadmap.md).
 
 ## Current limitations
 
@@ -246,3 +251,7 @@ what's solid, what's open, verdict).
   compromise the local-first, no-account stance if rushed.
 - Reminders use inexact Android alarms; on iOS times are exact but
   require notification permission.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).

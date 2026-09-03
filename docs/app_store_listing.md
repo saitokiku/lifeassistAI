@@ -1,9 +1,9 @@
 # App Store listing — paste-ready metadata
 
 Copy each block into App Store Connect exactly as written (character
-limits verified). The ASC app record currently shows the working name
-**Aurgun-Eyes** — on the app's page, set the **Name** field below (the
-name users see); if "Life Assist" is taken, use the fallback.
+limits verified). Set the **Name** field below on the app's page — that
+is the name users see, and it is independent of whatever working name
+the App Store Connect record was created with.
 
 ## Name (30 chars max)
 
@@ -161,5 +161,14 @@ categories; the seeded categories are neutral — Groceries, Rent, etc.)
 
 ## App Privacy (nutrition label)
 
-Answer: **Data Not Collected** — see `app_store_checklist.md` §Privacy
-for the exact click path and the HealthKit nuance.
+Answer: **Data Not Collected.** Click path: App Privacy → Get Started →
+"Do you or your third-party partners collect data from this app?" → **No,
+we do not collect data from this app** → Publish.
+
+This stays true with HealthKit connected: Apple defines "collect" as
+transmitting off-device, and Health data never leaves the device — it is
+read-only, processed locally, and never sent anywhere.
+
+Host [privacy.md](privacy.md) and [support.md](support.md) at public URLs
+before submitting (GitHub Pages serves the `/docs` folder directly) and
+put both links in App Store Connect.

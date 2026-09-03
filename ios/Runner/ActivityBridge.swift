@@ -1,4 +1,4 @@
-// Focus-timer Live Activity control (Phase 6). Dart starts/stops it
+// Focus-timer Live Activity control. Dart starts/stops it
 // alongside the in-app timer over the `lifeassist/activity` channel;
 // the LifeAssistWidgets extension renders it (FocusTimerLiveActivity).
 //

@@ -48,7 +48,7 @@ class HealthDailySummary {
 }
 
 /// Dart face of the `lifeassist/health` channel (HealthBridge.swift).
-/// Phase 5 scaffold: the auto-habit mapping UI arrives with the phase;
+/// Ships dormant: the auto-habit mapping UI arrives with the feature;
 /// this service is complete and tested so that work is purely Dart.
 class HealthService {
   HealthService({@visibleForTesting MethodChannel? channel})

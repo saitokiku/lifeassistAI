@@ -1,4 +1,4 @@
-// Phase 6: home/lock-screen widgets, an interactive habit check, an
+// Home and lock-screen widgets, an interactive habit check, an
 // iOS 18 control, and the focus-timer Live Activity UI.
 //
 // Everything reads the same today.json the Siri answers use — from the

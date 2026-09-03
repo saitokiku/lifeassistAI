@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_dashboard/core/health/health_service.dart';
 
-/// Phase 5 scaffold contract: availability states map, summaries parse,
+/// Scaffold contract: availability states map, summaries parse,
 /// and non-iOS platforms never touch the channel.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
