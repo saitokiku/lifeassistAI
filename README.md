@@ -143,13 +143,29 @@ Useful scripts (all in `scripts/`):
 | `build_ipa_release.sh` | same, then `flutter build ipa --release` |
 | `ios/add_widget_extension.rb` | regenerates the widget target (no-op when present) |
 
+## Demo data
+
+`demo/life_assist_demo.json` is a full backup for a fictional customer —
+five months of goal, money, time, habit, journal and note history.
+Import it (You → Settings → *Import backup*) and the app looks lived-in
+instead of empty. It doubles as the fixture for the import/export tests.
+
+```bash
+python3 scripts/generate_demo_data.py            # re-date it to today
+python3 scripts/generate_demo_data.py --now 2026-12-24
+```
+
+Every date is relative to the anchor day, so regenerate before a demo.
+See [demo/README.md](demo/README.md) for the persona, the tour, and why
+a late-month anchor shows the Money screen at its best.
+
 ## Test & CI
 
 ```bash
 flutter test
 ```
 
-129 tests: focus score, money projections and flag rules (in exact
+281 tests: focus score, money projections and flag rules (in exact
 cents), the v3→v4 migration against a real database file, backup
 round-trips and version conversion, capture-queue idempotency and undo,
 the entity mirror, CSV parsing, Health sync rules (manual-wins), AI and
@@ -201,9 +217,11 @@ lib/
     └── onboarding/  first-launch flow
 ios/Runner/          AppDelegate + App Intents + bridges + privacy manifest
 ios/LifeAssistWidgets/  WidgetKit extension (widgets, control, Live Activity)
+demo/                a fictional customer's backup + its generator's output
 docs/                plans of record, release docs, scrutiny report
-scripts/             analyze/test/run/build helpers + widget target generator
-test/                129 unit/repository/contract/smoke tests
+scripts/             analyze/test/run/build helpers, widget target generator,
+                     demo-data generator
+test/                281 unit/repository/contract/smoke tests
 ```
 
 Key documents: [SIRI_AI_BLUEPRINT.md](docs/SIRI_AI_BLUEPRINT.md) (plan

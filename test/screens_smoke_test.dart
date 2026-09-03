@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,7 @@ import 'package:life_dashboard/core/storage/app_database.dart';
 import 'package:life_dashboard/core/storage/legacy_migration.dart';
 import 'package:life_dashboard/core/storage/preferences_service.dart';
 import 'package:life_dashboard/core/storage/seed_service.dart';
+import 'package:life_dashboard/features/settings/data/backup_service.dart';
 import 'package:life_dashboard/ui/console_tab_bar.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -275,6 +278,59 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('KAIZEN'), findsOneWidget); // goal snapshot card
+
+    await shutDown(tester);
+  });
+
+  /// The demo backup is what a prospect sees first, so it has to render
+  /// as a lived-in app, not just import cleanly. Assertions stay clear of
+  /// anything that depends on the current date — the file is dated when
+  /// it is generated and this test runs whenever.
+  testWidgets('the demo backup renders as a lived-in app', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final demo = File('demo/life_assist_demo.json').readAsStringSync();
+    await tester.pumpWidget(await appWith(
+      onboarded: true,
+      prepare: (db) async {
+        final result = await BackupService(db).importJson(demo);
+        expect(result.isSuccess, isTrue, reason: result.errorOrNull ?? '');
+      },
+    ));
+
+    // Today: a real person's name in the greeting, and no setup nags.
+    await pumpUntil(tester, find.text('UP NEXT'));
+    await settle(tester);
+    expect(find.textContaining('Jordan'), findsWidgets);
+    expect(find.text('Set your main goal'), findsNothing);
+    expect(find.text('CHECK-IN'), findsOneWidget);
+
+    // Focus: the goal and its milestones are already there.
+    await tapTab(tester, 'Focus');
+    expect(find.text('MAIN GOAL'), findsOneWidget);
+    expect(find.text('MILESTONES'), findsOneWidget);
+    expect(find.text('What are you working toward?'), findsNothing);
+
+    // Money: income is set, so the screen leads with the month's
+    // numbers instead of a setup prompt.
+    await tapTab(tester, 'Money');
+    expect(find.text('Where the month stands.'), findsOneWidget);
+    expect(find.text('Set income'), findsNothing);
+    expect(find.text('SURPLUS'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('BUDGET CATEGORIES'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('BUDGET CATEGORIES'), findsOneWidget);
+
+    await tapTab(tester, 'Time');
+    expect(find.text('Your week, in hours.'), findsOneWidget);
+
+    await goYou(tester);
+    expect(find.text('Principles, systems, and settings.'), findsOneWidget);
 
     await shutDown(tester);
   });

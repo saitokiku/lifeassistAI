@@ -62,9 +62,19 @@ class SurplusCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                Formatters.moneySigned(snapshot.projectedSurplus),
-                style: theme.textTheme.headlineMedium,
+              // The amount yields before the badge does: a five-figure
+              // surplus, a wide currency symbol or a large system text
+              // size must not push the status off the card.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    Formatters.moneySigned(snapshot.projectedSurplus),
+                    maxLines: 1,
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                ),
               ),
               const SizedBox(width: AppSpace.md),
               StatusBadge(label: label, level: status),
