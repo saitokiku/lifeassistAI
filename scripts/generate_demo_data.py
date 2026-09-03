@@ -19,7 +19,7 @@ Output is deterministic for a given `--now`: ids are UUIDv5 of stable
 labels and every random choice comes from a seeded generator, so
 regenerating on the same day produces a byte-identical file.
 
-The persona: Jordan, ~31, take-home $4,250/mo, five months into paying
+The persona: Jordan, ~31, take-home $4,250/mo, seven months into paying
 off a credit card and building a cushion. Ordinary numbers, ordinary
 slip-ups — one category over target this month, a few missed habit
 days — because a demo where everything is perfect reads as fake.
@@ -127,7 +127,7 @@ class Builder:
     MONTHLY_INCOME = 4250.0
     BIRTHDAY = date(1994, 7, 19)
 
-    # The card's opening balance five months ago; today's balance lives in
+    # The card's opening balance when the goal started; today's balance is in
     # ACCOUNTS, and the difference is what the progress measure has to add
     # up to. Keeping one number here keeps that story consistent.
     CARD_OPENING_BALANCE = 6810.00

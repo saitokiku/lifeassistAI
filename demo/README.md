@@ -2,13 +2,14 @@
 
 `life_assist_demo.json` is a full **Life Assist** backup for a fictional
 customer. Import it and the app looks like someone has been living in it
-for five months: a main goal with milestones, four accounts with balance
+for seven months: a main goal with milestones, four accounts with balance
 history, a hundred-odd transactions, weeks of logged time and habits, a
 journal, parked ideas, and a small linked notebook.
 
 It is a normal export — the same envelope and row shapes
 `BackupService.exportJson()` writes — so it also serves as the fixture
-for the import/export tests (`test/demo_backup_test.dart`).
+for the import/export tests (`test/demo_backup_test.dart`), and it is
+what the screenshots on the repo's front page show.
 
 ## Use it
 
@@ -59,7 +60,7 @@ gives the current month a full set of transactions to show.
 
 ## The persona
 
-Jordan, 31, take-home $4,250/month, five months into one goal: clear a
+Jordan, 31, take-home $4,250/month, seven months into one goal: clear a
 credit card and build a three-month cushion. The card is down from
 $6,810 to $3,118; savings are up from $1,200 to $3,420.
 

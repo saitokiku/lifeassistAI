@@ -18,6 +18,36 @@ rest of life — money, time, habits, ideas — honest with light logging.**
 No cloud, no account, no analytics; your data lives in SQLite on your
 device and exports to a JSON file you own.
 
+<div align="center">
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/today.png" width="240" alt="Today screen"></td>
+<td align="center"><img src="docs/screenshots/focus.png" width="240" alt="Focus screen"></td>
+<td align="center"><img src="docs/screenshots/money.png" width="240" alt="Money screen"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Today</b><br>the day's score, one thing up next</sub></td>
+<td align="center"><sub><b>Focus</b><br>one goal, in your words, with milestones</sub></td>
+<td align="center"><sub><b>Money</b><br>projected surplus, budgets, exact cents</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/time.png" width="240" alt="Time screen"></td>
+<td align="center"><img src="docs/screenshots/habits.png" width="240" alt="Habits screen"></td>
+<td align="center"><img src="docs/screenshots/notes.png" width="240" alt="Notes screen"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Time</b><br>the week in hours, against your targets</sub></td>
+<td align="center"><sub><b>Habits</b><br>streaks that forgive one miss a week</sub></td>
+<td align="center"><sub><b>Notes</b><br>a Zettelkasten with links, tags, backlinks</sub></td>
+</tr>
+</table>
+
+<sub>Every screen above is <a href="demo/life_assist_demo.json"><code>demo/life_assist_demo.json</code></a> —
+import it and the app looks like this on your own device.</sub>
+
+</div>
+
 ## How it's organized
 
 Five tabs — **Today · Focus · Money · Time · You** — on a shared design
